@@ -1,18 +1,18 @@
 # RegentParticleDSL
 (Working name)
 
-## Idea
+## Idea ##
 This repository is to cover the goal of building a particle-method DSL using Regent 
 metaprogramming. The repository at current contains a few mini examples proving that
 this can be done in principle, and will now be fleshed out.
 
-##How does it work
+## How does it work ##
 Regent/Terralang/Lua metaprogramming is quite flexible and allows the creation of functions
 which essentially inject code into other functions, which can be used to eventually create tasks.
 These tasks can be replicated for different injected KERNELS, allowing for a DSL-style approach 
 with small sections of user-written code being injected into the larger parallel infrastructure.
 
-##The DSL - defining Kernels
+## The DSL - defining Kernels ##
 This is still a work in progress. The current idea is that kernels are defined using mostly simple
 high level code, though there are a few annoying syntactic hurdles I'd like to avoid that are 
 currently required.
@@ -45,7 +45,7 @@ Regent is pass by value, so these are copies of some particle, and the only way 
 to pass regions, and that ends up too complex for how I envisage this.
 
 
-##The DSL defining Particle structure
+## The DSL defining Particle structure ##
 Particles are defined using a field space. There is a `core_part` field space defined in src/particles
 which all particles must include, and then the `neighbour_part` field space defined in for 
 whichever neighbour search algorith the user wants to use. On top of this, any user-required variables can
