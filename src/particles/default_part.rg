@@ -1,0 +1,13 @@
+import "regent"
+
+require("src/particles/core_part")
+--TODO: Fix this to just import defaults.
+require("src/neighbour_search/default_neighbour_search")
+
+--Definition of the default particle type with no extra data.
+fspace part{
+--We are required to include the neighbour_part and core_part types in our particle
+--declaration
+  neighbour_part_space : neighbour_part,
+  core_part_space : core_part,
+}
