@@ -1,4 +1,4 @@
-#Interaction Counter
+# Interaction Counter
 
 ## Purpose ##
 This example creates a set of particles, and counts how many neighbours each particle has.
