@@ -2,6 +2,9 @@ import "regent"
 
 require("defaults")
 
+task zero_neighbour_part(particle_region : region(ispace(int1d), part)) where writes(particle_region.neighbour_part_space) do
+  fill(particle_region.neighbour_part_space.cell_id, int3d({0,0,0}))
+end
 
 task update_cell_partitions(particles : region(ispace(int1d), part), x_cells : int1d, y_cells : int1d, z_cells : int1d) where
   reads(particles.neighbour_part_space.cell_id) do
@@ -22,7 +25,7 @@ local part2 = regentlib.newsymbol("part2")
 local interaction = kernel_name(part1, part2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part)) where 
-   reads(parts1, parts2), writes(parts1, parts2), parts1 * parts2 do
+   reads(parts1, parts2), writes(parts1, parts2) do
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        --Compute particle distance
@@ -51,7 +54,6 @@ local part2 = regentlib.newsymbol("part2")
 --Asymmetric kernel can only write to part1
 local interaction = kernel_name(part1, part2)
 
-local task_name = regentlib.newsymbol("pairwise_"..function_name)
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part)) where reads(parts1, parts2), writes(parts1) do
    for [part1] in [parts1] do
      for [part2] in [parts2] do
@@ -80,8 +82,8 @@ local cell1 = regentlib.newsymbol("cell1")
 local cell2 = regentlib.newsymbol("cell2")
 local cell_space = regentlib.newsymbol("cell_space")
 --local task run_symmetric_pairwise_task_code( cell_space :region(ispace(int3d), part))
-local task run_symmetric_pairwise_task_code( cell_space : partition(disjoint, complete, region(ispace(int1d), part) , ispace(int3d)))
-    where reads(cell_space), writes(cell_space) do
+local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)))
+    where reads(particles), writes(particles) do
    
     --Do all cell2s in the positive direction
     --Not optimised, it does all cell pairs in the domain, doesn't check
