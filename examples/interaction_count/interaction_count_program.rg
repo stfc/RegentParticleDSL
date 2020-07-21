@@ -20,7 +20,11 @@ task main_task()
 --We will use 9 particles, with a large cutoff. Various of these functions will not be user-implemented later.
 var particles_space = ispace(int1d, 9)
 var particle_region = region(particles_space, part)
+var space = region(ispace(int1d, 1), space_config)
+fill(space.{dim_x, dim_y, dim_z}, 0.0)
 
+
+init_space(3.0, 3.0, 3.0, space)
 particle_initialisation(particle_region)
 
 --We will set cell size to be 1.0 for now. Not periodic or anything for now so no idea of global cell size for now.
@@ -31,14 +35,14 @@ var cell_partition = update_cell_partitions(particle_region, 3, 3, 3)
 
 --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
 --the programming model
-interaction_tasks_runner(particle_region, cell_partition)
+interaction_tasks_runner(particle_region, cell_partition, space)
 
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
 format.println("{}", particle_region[0].interactions)
 regentlib.assert(particle_region[0].interactions == 8, "test failed")
 regentlib.assert(particle_region[6].interactions == 8, "test failed")
 
-write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", particle_region)
+write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", particle_region, space)
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
 --var copy_region = read_hdf5_snapshot("test.hdf5")
 var read_count = read_particle_count("examples/interaction_count/basic_test.hdf5")

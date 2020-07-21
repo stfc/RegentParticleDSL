@@ -24,8 +24,8 @@ local part2 = regentlib.newsymbol("part2")
 
 local interaction = kernel_name(part1, part2)
 
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part)) where 
-   reads(parts1, parts2), writes(parts1, parts2) do
+local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where 
+   reads(parts1, parts2, space), writes(parts1, parts2) do
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        --Compute particle distance
@@ -54,7 +54,8 @@ local part2 = regentlib.newsymbol("part2")
 --Asymmetric kernel can only write to part1
 local interaction = kernel_name(part1, part2)
 
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part)) where reads(parts1, parts2), writes(parts1) do
+local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part),  space : region(ispace(int1d), space_config)) where 
+   reads(parts1, parts2, space), writes(parts1) do
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        --Compute particle distance
@@ -81,9 +82,10 @@ local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
 local cell1 = regentlib.newsymbol("cell1")
 local cell2 = regentlib.newsymbol("cell2")
 local cell_space = regentlib.newsymbol("cell_space")
+local space = regentlib.newsymbol("space")
 --local task run_symmetric_pairwise_task_code( cell_space :region(ispace(int3d), part))
-local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)))
-    where reads(particles), writes(particles) do
+local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config))
+    where reads(particles, space), writes(particles) do
    
     --Do all cell2s in the positive direction
     --Not optimised, it does all cell pairs in the domain, doesn't check
@@ -91,11 +93,11 @@ local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), pa
     for [cell1] in [cell_space].colors do
         for [cell2] in [cell_space].colors do
           if([cell2].x > [cell1].x ) then
-            task_name( [cell_space][cell1], [cell_space][cell2] )
+            task_name( [cell_space][cell1], [cell_space][cell2], [space] )
           elseif( [cell2].x == [cell1].x and [cell2].y > [cell1].y ) then
-            task_name( [cell_space][cell1], [cell_space][cell2] )
+            task_name( [cell_space][cell1], [cell_space][cell2], [space] )
           elseif( [cell2].x == [cell1].x and [cell2].y == [cell1].y and [cell2].z > [cell1].z) then
-            task_name( [cell_space][cell1], [cell_space][cell2] )
+            task_name( [cell_space][cell1], [cell_space][cell2], [space] )
           end
         end
     end

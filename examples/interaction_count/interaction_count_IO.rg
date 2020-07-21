@@ -54,7 +54,7 @@ terra write_field_I(file_id: h5lib.hid_t, group : h5lib.hid_t, fieldname : rawst
 
 end
 
-task write_hdf5_snapshot(filename : rawstring, particle_list: region(ispace(int1d), part)) where reads(particle_list) do
+task write_hdf5_snapshot(filename : rawstring, particle_list: region(ispace(int1d), part),  space : region(ispace(int1d), space_config)) where reads(particle_list, space) do
   --This must be called at the start of every function involving hdf5 right now
   wrap.init_wrapper()
   
@@ -77,9 +77,9 @@ task write_hdf5_snapshot(filename : rawstring, particle_list: region(ispace(int1
   h5lib.H5Sset_extent_simple(h_space, 1, dims, [&uint64](0))
   var h_attr = h5lib.H5Acreate1(h_grp, "BoxSize", wrap.WRAP_H5T_IEEE_F64LE, h_space, wrap.WRAP_H5P_DEFAULT)
   var boxsize : double[3]
-  boxsize[0] = 3.0
-  boxsize[1] = 3.0
-  boxsize[2] = 3.0
+  boxsize[0] = space[0].dim_x
+  boxsize[1] = space[0].dim_y
+  boxsize[2] = space[0].dim_z
   h5lib.H5Awrite(h_attr, wrap.WRAP_H5T_IEEE_F64LE, &boxsize)
   h5lib.H5Sclose(h_space)
   h5lib.H5Aclose(h_attr)

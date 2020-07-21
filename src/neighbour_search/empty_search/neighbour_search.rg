@@ -13,8 +13,8 @@ local part2 = regentlib.newsymbol("part2")
 
 local interaction = kernel_name(part1, part2)
 
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part)) where 
-   reads(parts1, parts2), writes(parts1, parts2), parts1 * parts2 do
+local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where 
+   reads(parts1, parts2, space), writes(parts1, parts2) do
    for [part1] in [parts1] do
      for [part2] in [parts2] do
          [interaction]
@@ -34,7 +34,7 @@ local part2 = regentlib.newsymbol("part2")
 --Asymmetric kernel can only write to part1
 local interaction = kernel_name(part1, part2)
 
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part)) where reads(parts1, parts2), writes(parts1) do
+local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where reads(parts1, parts2), writes(parts1) do
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        [interaction]
@@ -54,10 +54,8 @@ local cell1 = regentlib.newsymbol("cell1")
 local cell2 = regentlib.newsymbol("cell2")
 local cell_space = regentlib.newsymbol("cell_space")
 local task run_symmetric_pairwise_task_code( parts : region(ispace(int1d), part) )
-   
-    --Do all cell2s in the positive direction
-    --Not optimised, it does all cell pairs in the domain, doesn't check
-    --cutoff radii or anything.
+
+    --Do nothing   
 end
 
 return run_symmetric_pairwise_task_code
