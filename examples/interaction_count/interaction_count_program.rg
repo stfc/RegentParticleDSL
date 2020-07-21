@@ -6,6 +6,7 @@ require("src/neighbour_search/cell_pair/neighbour_search")
 require("src/neighbour_search/cell_pair/cell")
 require("examples/interaction_count/interaction_count_kernel")
 require("examples/interaction_count/interaction_count_init")
+require("examples/interaction_count/interaction_count_IO")
 
 local c = regentlib.c
 format = require("std/format")
@@ -37,6 +38,19 @@ format.println("{}", particle_region[0].interactions)
 regentlib.assert(particle_region[0].interactions == 8, "test failed")
 regentlib.assert(particle_region[6].interactions == 8, "test failed")
 
+write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", particle_region)
+c.legion_runtime_issue_execution_fence(__runtime(), __context())
+--var copy_region = read_hdf5_snapshot("test.hdf5")
+var read_count = read_particle_count("examples/interaction_count/basic_test.hdf5")
+var copy_region = region(ispace(int1d, read_count), part)
+read_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", copy_region)
+
+for point in copy_region do
+regentlib.assert(copy_region[point].core_part_space.pos_x == particle_region[point].core_part_space.pos_x, "failed on pos_x")
+regentlib.assert(copy_region[point].core_part_space.pos_y == particle_region[point].core_part_space.pos_y, "failed on pos_y")
+regentlib.assert(copy_region[point].core_part_space.pos_z == particle_region[point].core_part_space.pos_z, "failed on pos_z")
+regentlib.assert(copy_region[point].core_part_space.cutoff == particle_region[point].core_part_space.cutoff, "failed on cutoff")
+end
 end
 
 regentlib.start(main_task)
