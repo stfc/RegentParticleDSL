@@ -32,14 +32,14 @@ require("example_types/example_part")
 --end
 
 
-function kernel_one(part1, part2)
+function kernel_one(part1, part2, r2)
 local kernel = rquote
 [part1].extra_variable_1 = 1.0
 end
 return kernel
 end
 
-function kernel_two(part1, part2)
+function kernel_two(part1, part2, r2)
 
 local kernel = rquote
     [part2].extra_variable_1 = 2 

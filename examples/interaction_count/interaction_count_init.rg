@@ -16,39 +16,39 @@ c.legion_runtime_issue_execution_fence(__runtime(), __context())
 
 particle_region[0].core_part_space.pos_x = 0.0
 particle_region[0].core_part_space.pos_y = 0.0
-particle_region[0].core_part_space.cutoff = 5.0
+particle_region[0].core_part_space.cutoff = 1.75
 
 particle_region[1].core_part_space.pos_x = 1.0
 particle_region[1].core_part_space.pos_y = 0.0
-particle_region[1].core_part_space.cutoff = 5.0
+particle_region[1].core_part_space.cutoff = 1.75
 
 particle_region[2].core_part_space.pos_x = 2.0
 particle_region[2].core_part_space.pos_y = 0.0
-particle_region[2].core_part_space.cutoff = 5.0
+particle_region[2].core_part_space.cutoff = 1.75
 
 
 particle_region[3].core_part_space.pos_x = 0.0
 particle_region[3].core_part_space.pos_y = 1.0
-particle_region[3].core_part_space.cutoff = 5.0
+particle_region[3].core_part_space.cutoff = 1.75
 
 particle_region[4].core_part_space.pos_x = 1.0
 particle_region[4].core_part_space.pos_y = 1.0
-particle_region[4].core_part_space.cutoff = 5.0
+particle_region[4].core_part_space.cutoff = 1.75
 
 particle_region[5].core_part_space.pos_x = 2.0
 particle_region[5].core_part_space.pos_y = 1.0
-particle_region[5].core_part_space.cutoff = 5.0
+particle_region[5].core_part_space.cutoff = 1.75
 
 
 particle_region[6].core_part_space.pos_x = 0.0
 particle_region[6].core_part_space.pos_y = 2.0
-particle_region[6].core_part_space.cutoff = 5.0
+particle_region[6].core_part_space.cutoff = 1.75
 
 particle_region[7].core_part_space.pos_x = 1.0
 particle_region[7].core_part_space.pos_y = 2.0
-particle_region[7].core_part_space.cutoff = 5.0
+particle_region[7].core_part_space.cutoff = 1.75
 
 particle_region[8].core_part_space.pos_x = 2.0
 particle_region[8].core_part_space.pos_y = 2.0
-particle_region[8].core_part_space.cutoff = 5.0
+particle_region[8].core_part_space.cutoff = 1.75
 end

@@ -1,7 +1,6 @@
 import "regent"
 
 require("defaults")
-format = require("std/format")
 
 task zero_neighbour_part(particle_region : region(ispace(int1d), part)) where writes(particle_region.neighbour_part_space) do
   fill(particle_region.neighbour_part_space.cell_id, int3d({0,0,0}))
@@ -28,21 +27,12 @@ local interaction = kernel_name(part1, part2, r2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where 
    reads(parts1, parts2, space), writes(parts1, parts2) do
-   var half_box_x = 0.5 * space[0].dim_x
-   var half_box_y = 0.5 * space[0].dim_y
-   var half_box_z = 0.5 * space[0].dim_z
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        --Compute particle distance
        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-       if (dx > half_box_x) then dx = dx - half_box_x end
-       if (dy > half_box_y) then dy = dy - half_box_y end
-       if (dz > half_box_z) then dz = dz - half_box_z end
-       if (dx <-half_box_x) then dx = dx + half_box_x end
-       if (dy <-half_box_y) then dy = dy + half_box_y end
-       if (dz <-half_box_z) then dz = dz + half_box_z end
        var cutoff2 = [parts1][part1].core_part_space.cutoff
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
@@ -68,21 +58,12 @@ local interaction = kernel_name(part1, part2, r2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part),  space : region(ispace(int1d), space_config)) where 
    reads(parts1, parts2, space), writes(parts1) do
-   var half_box_x = 0.5 * space[0].dim_x
-   var half_box_y = 0.5 * space[0].dim_y
-   var half_box_z = 0.5 * space[0].dim_z
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        --Compute particle distance
-       var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-       var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-       var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-       if (dx > half_box_x) then dx = dx - half_box_x end
-       if (dy > half_box_y) then dy = dy - half_box_x end
-       if (dz > half_box_z) then dz = dz - half_box_x end
-       if (dx <-half_box_x) then dx = dx + half_box_x end
-       if (dy <-half_box_y) then dy = dy + half_box_y end
-       if (dz <-half_box_z) then dz = dz + half_box_z end
+       var dx = [parts1][part1].pos_x - [parts2][part2].pos_x
+       var dy = [parts1][part1].pos_y - [parts2][part2].pos_y
+       var dz = [parts1][part1].pos_z - [parts2][part2].pox_z
        var cutoff2 = [parts1][part1].core_part_space.cutoff
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
