@@ -17,13 +17,6 @@ end
 --Generate the classic MD-style symmetric update pairwise task.
 --This function assumes the cutoff is the same for both particles
 function generate_symmetric_pairwise_task( kernel_name )
-local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
-local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
-local part1 = regentlib.newsymbol("part1")
-local part2 = regentlib.newsymbol("part2")
-local r2 = regentlib.newsymbol("r2")
-
-local interaction = kernel_name(part1, part2, r2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where 
    reads(parts1, parts2, space), writes(parts1, parts2) do
@@ -37,7 +30,7 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(is
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
        if(r2 <= cutoff2) then
-         [interaction]
+         [kernel_name( rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
        end
      end
    end
@@ -47,14 +40,7 @@ end
 
 --Functionality added but unclear on use-case right now
 function generate_asymmetric_pairwise_task( kernel_name )
-local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
-local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
-local part1 = regentlib.newsymbol("part1")
-local part2 = regentlib.newsymbol("part2")
-local r2 = regentlib.newsymbol("r2")
-
 --Asymmetric kernel can only write to part1
-local interaction = kernel_name(part1, part2, r2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part),  space : region(ispace(int1d), space_config)) where 
    reads(parts1, parts2, space), writes(parts1) do
@@ -68,7 +54,7 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(is
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
        if(r2 <= cutoff2) then
-         [interaction]
+         [kernel_name( rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
        end
      end
    end

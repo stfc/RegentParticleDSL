@@ -22,9 +22,9 @@ local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
 local part1 = regentlib.newsymbol("part1")
 local part2 = regentlib.newsymbol("part2")
-local r2 = regentlib.newsymbol("r2")
+local r2 = regentlib.newsymbol(double, "r2")
 
-local interaction = kernel_name(part1, part2, r2)
+--local interaction = kernel_name(part1, part2, r2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where 
    reads(parts1, parts2, space), writes(parts1, parts2) do
@@ -45,9 +45,9 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(is
        if (dz <-half_box_z) then dz = dz + half_box_z end
        var cutoff2 = [parts1][part1].core_part_space.cutoff
        cutoff2 = cutoff2 * cutoff2
-       var r2 = dx*dx + dy*dy + dz*dz
-       if(r2 <= cutoff2) then
-         [interaction]
+       var [r2] = dx*dx + dy*dy + dz*dz
+       if([r2] <= cutoff2) then
+         [kernel_name(rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
        end
      end
    end
@@ -64,7 +64,7 @@ local part2 = regentlib.newsymbol("part2")
 local r2 = regentlib.newsymbol("r2")
 
 --Asymmetric kernel can only write to part1
-local interaction = kernel_name(part1, part2, r2)
+--local interaction = kernel_name(part1, part2, r2)
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part),  space : region(ispace(int1d), space_config)) where 
    reads(parts1, parts2, space), writes(parts1) do
@@ -87,7 +87,7 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(is
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
        if(r2 <= cutoff2) then
-         [interaction]
+         [kernel_name(rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
        end
      end
    end
@@ -125,4 +125,42 @@ local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), pa
 end
 
 return run_symmetric_pairwise_task_code
+end
+
+
+-----------------------------------------
+--End of Pair Tasks ---------------------
+-----------------------------------------
+
+--Generate a task to be executed on every particle in the system
+function generate_per_part_task( kernel_name )
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local part1 = regentlib.newsymbol("part1")
+
+--local update_particle = kernel_name(part1)
+
+local task pairwise_task(parts1 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where
+   reads(parts1, space), writes(parts1) do
+   for [part1] in [parts1] do
+         [kernel_name(rexpr parts1[part1] end)]
+   end
+end
+return pairwise_task
+end
+
+function run_per_particle_task( task_name )
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local cell1 = regentlib.newsymbol("cell1")
+local cell_space = regentlib.newsymbol("cell_space")
+local space = regentlib.newsymbol("space")
+local task run_per_particle_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config) )
+    where reads(particles, space), writes(particles) do
+
+    --For each cell, call the task!
+    for [cell1] in [cell_space].colors do
+       task_name([cell_space][cell1], [space])
+    end
+end
+
+return run_per_particle_task_code
 end
