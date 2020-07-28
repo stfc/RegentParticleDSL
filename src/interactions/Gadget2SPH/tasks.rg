@@ -8,7 +8,7 @@ require("src/interactions/Gadget2SPH/interactions")
 require("src/interactions/Gadget2SPH/timestep")
 
 local density_symmetric_task = generate_symmetric_pairwise_task(density_kernel)
-
+local c = regentlib.c
 
 --Some big number
 local hmax = 12345678.0
@@ -19,10 +19,22 @@ local kernel_dimension = 3.0
 local hydro_eta = 1.2348
 local hydro_eps = 1e-4
 
+local fabsd = regentlib.fabs(double)
+local cbrtd = regentlib.cbrt(double)
+--local fmind = regentlib.fmin()
+--local fmaxd = regentlib.fmax()
 --3D case
 terra cube_val(value : double)
   var x2 = value * value
   return x2 * value
+end
+
+terra fmind(val1 : double, val2 : double)
+  return regentlib.fmin(val1, val2)
+end
+
+terra fmaxd(val1 : double, val2 : double)
+  return regentlib.fmax(val1, val2)
 end
 
 local run_subset_task = run_asymmetric_subset_task(nonsym_density_kernel)
@@ -33,10 +45,6 @@ task update_cutoffs(parts1 : region(ispace(int1d),part), particles: region(ispac
 --Define some constants/import some math functions
 var no_redo = int1d(1)
 var redo = int1d(0)
-var fmind = regentlib.fmin(double)
-var fmaxd = regentlib.fmax(double)
-var fabsd = regentlib.fabs(double)
-var cbrtd = regentlib.cbrt(double)
 var hydro_eta_3 = cube_val(hydro_eta)
 
 for particle in parts1 do
@@ -47,15 +55,15 @@ for particle in parts1 do
   parts1[particle].cutoff_update_space.h_0 = parts1[particle].h
 end
 
-var redo_partition = partition(parts1.cutoff_update_space.redo, ispace(int1d, 2))
 
 --TODO: Loop more than once
 for attempts = 1, 2 do
+  var redo_partition = partition(parts1.cutoff_update_space.redo, ispace(int1d, 2))
   --Loop through the particles and correct h
   for particle in redo_partition[redo] do
     var h_init = parts1[particle].cutoff_update_space.h_0
     var h_old = parts1[particle].h
-    var h_old_dim = cube_value(h_old)
+    var h_old_dim = cube_val(h_old)
     var h_old_dim_minus_one = h_old * h_old
     var h_new : double
     var has_no_neighbours : bool
@@ -69,14 +77,14 @@ for attempts = 1, 2 do
     else
       --TODO: Finish the density calculation
       var inv_h = 1.0 / parts1[particle].h
-      var inv_h_3 = cube_value(inv_h)
+      var inv_h_3 = cube_val(inv_h)
       var inv_h_4 = inv_h * inv_h_3
    
       --Add self contribution
       parts1[particle].rho = parts1[particle].rho + ( parts1[particle].mass * kernel_root)
-      parts1[particle].rho_dh = parts1[particle].rho_dh - ( hydro_dimension * parts1[particle].mass * kernel_root )
+      parts1[particle].rho_dh = parts1[particle].rho_dh - ( kernel_dimension * parts1[particle].mass * kernel_root )
       parts1[particle].wcount = parts1[particle].wcount + kernel_root
-      parts1[particle].wcount_dh = parts1[particle].wcount_dh - ( hydro_dimension * kernel_root )
+      parts1[particle].wcount_dh = parts1[particle].wcount_dh - ( kernel_dimension * kernel_root )
       --Insert the missing h factors
       parts1[particle].rho = parts1[particle].rho * inv_h_3
       parts1[particle].rho_dh = parts1[particle].rho_dh * inv_h_4
@@ -91,16 +99,16 @@ for attempts = 1, 2 do
 
       --TODO: Compute a newton-raphson step on h
       var n_sum = parts1[particle].wcount * h_old_dim
-      var n_target = hydro_eta_dim
+      var n_target = hydro_eta_3
       var f = n_sum - n_target
-      var f_prime = parts1[particle].wcount_dh * h_old_dim + hydro_dimension * parts1[particle].wcount * h_old_dim_minus_1
+      var f_prime = parts1[particle].wcount_dh * h_old_dim + kernel_dimension * parts1[particle].wcount * h_old_dim_minus_one
         --Improve the bounds
         if(n_sum < n_target) then
           parts1[particle].cutoff_update_space.left = fmaxd(parts1[particle].cutoff_update_space.left, h_old)
         elseif(n_sum > n_target) then
           parts1[particle].cutoff_update_space.right = fmind(parts1[particle].cutoff_update_space.right, h_old)
         end
-      --TODO: Finish with a particle if above h_max or below h_min sometimes
+      --TODO: Finish with a particle if above hmax or below h_min sometimes
       if( (parts1[particle].h >= hmax and f < 0.0 ) or (parts1[particle].h <= hmin and f > 0.0) ) then
         regentlib.assert(1 == 0, "NYI: This should never happen as hmin is 0 and hmax is \"large\"")
         --FUTURE TODO: Calculate timestep and prepare for the force step and this particle is done.
@@ -127,7 +135,7 @@ for attempts = 1, 2 do
            parts1[particle].h = h_new
         end
         --If in acceptable range then redo this part
-        if( parts1[particle].h <h_max and parts1[particle].h > h_min) then
+        if( parts1[particle].h <hmax and parts1[particle].h > hmin) then
           parts1[particle].cutoff_update_space.redo = redo
           --Reset the particle properties
           parts1[particle].rho = 0.0
@@ -150,18 +158,19 @@ for attempts = 1, 2 do
 
   --Recreate the redo partition
   __delete(redo_partition)
-  redo_partition = partition(parts1.cutoff_update_space.redo, ispace(int1d, 2))  
+  var redo_partition2 = partition(parts1.cutoff_update_space.redo, ispace(int1d, 2))  
       --TODO: For particles that have a converged smoothing length, get ready for force loop.
-  for particle in redo_partition[no_redo] do
+  for particle in redo_partition2[no_redo] do
     --TODO Set timestep
     --TODO: Prepare force
     --TODO: Reset acceleration
   end
   --TODO: Loop over the redo particles and rerun the density loops on this subset with all other cells.
   --FUTURE TODO: Can use a generated task to do this for an appropriate neighbour search algorithm 
-  run_subset_task(redo_partition[redo], particles, cell_space, space )
+  run_subset_task(redo_partition2[redo], particles, cell_space, space )
   --Wait on the subset task -- TODO: May not need this
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
+  __delete(redo_partition2)
 end
 
 end

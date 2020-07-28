@@ -281,7 +281,7 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(is
    for [part1] in [parts1] do
      for [part2] in [parts2] do
        --Compute particle distance
-       if part1 ~= part2 then
+       if part1.core_part_space.id ~= part2.core_part_space.id then
          var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
          var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
          var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
@@ -323,7 +323,7 @@ local task run_asym_subset_task(subset: region(ispace(int1d),part), particles: r
     for s in subset do
       local_cell = subset[s].neighbour_part_space.cell_id
     end
-    for cell in cell_space do
+    for cell in cell_space.colors do
       if cell == local_cell then
          self_task(subset, cell_space[cell], space)
       else
