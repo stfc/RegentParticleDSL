@@ -3,9 +3,22 @@ import "regent"
 require("src/particles/core_part")
 require("src/neighbour_search/cell_pair/import_cell_pair")
 
+--Extra data required for the cutoff update
+fspace cutoff_update{
+  redo : int1d,
+  left : double,
+  right : double,
+  h_0 : double
+}
+
+
 fspace part{
   neighbour_part_space : neighbour_part,
   core_part_space : core_part,
+  cutoff_update_space : cutoff_update,
+  --SPH h - used to compute the cutoff radius since the cutoff
+  --in the core part space is technically the search radius
+  h : double,
   --velocity at the last full step
   v_full_x : double,
   v_full_y : double,
