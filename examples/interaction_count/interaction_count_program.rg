@@ -41,8 +41,10 @@ interaction_tasks_runner(particle_region, cell_partition, space)
 
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
 format.println("{}", particle_region[0].interactions)
-regentlib.assert(particle_region[0].interactions == 8, "test failed")
-regentlib.assert(particle_region[6].interactions == 8, "test failed")
+for point in particle_region.ispace do
+  regentlib.assert(particle_region[point].interactions == 8, "test failed")
+end
+--regentlib.assert(particle_region[6].interactions == 8, "test failed")
 
 write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", particle_region, space)
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
