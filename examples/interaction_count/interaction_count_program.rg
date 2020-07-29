@@ -12,8 +12,10 @@ local c = regentlib.c
 format = require("std/format")
 
 --Create the tasks and runner from the kernel. This will become a single function call soon.
-local count_interaction_task = generate_symmetric_pairwise_task( symmetric_interaction_count_kernel )
-local interaction_tasks_runner = run_symmetric_pairwise_task( count_interaction_task )
+--local count_interaction_task = generate_symmetric_pairwise_task( symmetric_interaction_count_kernel )
+--local interaction_tasks_runner = run_symmetric_pairwise_task( count_interaction_task )
+--local interaction_tasks_runner = create_symmetric_pairtask_runner( symmetric_interaction_count_kernel )
+local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel )
 
 task main_task()
 
@@ -29,9 +31,9 @@ particle_initialisation(particle_region)
 
 --We will set cell size to be 1.0 for now. Not periodic or anything for now so no idea of global cell size for now.
 --NYI: The task/library should choose the cell size itself.
-particles_to_cell_launcher(particle_region, 1.0, 1.0, 1.0)
+particles_to_cell_launcher(particle_region, 1.5, 1.5, 1.5)
 --Generate the cell partition. This ideally will not be done by the user, or will be "hidden"
-var cell_partition = update_cell_partitions(particle_region, 3, 3, 3)
+var cell_partition = update_cell_partitions(particle_region, 2, 2, 2)
 
 --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
 --the programming model
