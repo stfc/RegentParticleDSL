@@ -2,7 +2,8 @@ import "regent"
 
 require("defaults")
 require("src/neighbour_search/cell_pair/neighbour_search")
-local sqrt = regentlib.sqrt(double)
+sqrt = regentlib.sqrt(double)
+
 
 --Viscosity parameters
 local const_viscosity_beta = 3.0
@@ -10,11 +11,14 @@ local const_viscosity_beta = 3.0
 local hydro_gamma = 5.0/3.0
 local hydro_gamma_minus_one = hydro_gamma-1.0
 --Ideal gas equation
-terra gas_pressure_from_internal_energy(density : double, u : double)
+__demand(__inline)
+task gas_pressure_from_internal_energy(density : double, u : double)
   return hydro_gamma_minus_one * u * density
 end
 
-terra gas_soundspeed_from_pressure(density : double, P : double) 
+__demand(__inline)
+task gas_soundspeed_from_pressure(density : double, P : double) 
+  var density_inv = 1.0 / density
   return sqrt(hydro_gamma * P * density_inv)
 end
 
@@ -60,7 +64,7 @@ function nonsym_density_kernel(part1, part2, r2)
 local hydro_dimension = 3.0
 local kernel = rquote
 
-  var mj = part2.mass
+  var mj = part2.core_part_space.mass
 
   var ir = 1.0 / sqrt(r2)
   var r = r2 * ir
@@ -80,9 +84,9 @@ local kernel = rquote
   var faci = mj * wi_dx * ir
 
   --Compute dvdr
-  var dv_x = part1.vel_x - part2.vel_x
-  var dv_y = part1.vel_y - part2.vel_y
-  var dv_z = part1.vel_z - part2.vel_z
+  var dv_x = part1.core_part_space.vel_x - part2.core_part_space.vel_x
+  var dv_y = part1.core_part_space.vel_y - part2.core_part_space.vel_y
+  var dv_z = part1.core_part_space.vel_z - part2.core_part_space.vel_z
   var dx_x = part1.core_part_space.pos_x - part2.core_part_space.pos_x
   var dx_y = part1.core_part_space.pos_y - part2.core_part_space.pos_y
   var dx_z = part1.core_part_space.pos_z - part2.core_part_space.pos_z
@@ -107,8 +111,8 @@ function density_kernel(part1, part2, r2)
 
 local hydro_dimension = 3.0
 local kernel = rquote
-  var mi = part1.mass
-  var mj = part2.mass
+  var mi = part1.core_part_space.mass
+  var mj = part2.core_part_space.mass
 
   var ir = 1.0 / sqrt(r2)
   var r = r2 * ir
@@ -140,9 +144,9 @@ local kernel = rquote
   var facj = mi * wj_dx * ir
 
   --Compute dvdr
-  var dv_x = part1.vel_x - part2.vel_x
-  var dv_y = part1.vel_y - part2.vel_y
-  var dv_z = part1.vel_z - part2.vel_z
+  var dv_x = part1.core_part_space.vel_x - part2.core_part_space.vel_x
+  var dv_y = part1.core_part_space.vel_y - part2.core_part_space.vel_y
+  var dv_z = part1.core_part_space.vel_z - part2.core_part_space.vel_z
   var dx_x = part1.core_part_space.pos_x - part2.core_part_space.pos_x
   var dx_y = part1.core_part_space.pos_y - part2.core_part_space.pos_y
   var dx_z = part1.core_part_space.pos_z - part2.core_part_space.pos_z
@@ -174,8 +178,8 @@ function nonsym_force_kernel(part1, part2, r2)
 local fmind = regentlib.fmin(double)
 local kernel = rquote
 
-  var mi = part1.mass
-  var mj = part2.mass
+  var mi = part1.core_part_space.mass
+  var mj = part2.core_part_space.mass
   var rhoi = part1.rho
   var rhoj = part2.rho
   var pressurei = part1.pressure
@@ -217,9 +221,9 @@ local kernel = rquote
   var cj = part2.soundspeed
 
 --Compute dvdr
-  var dv_x = part1.vel_x - part2.vel_x
-  var dv_y = part1.vel_y - part2.vel_y
-  var dv_z = part1.vel_z - part2.vel_z
+  var dv_x = part1.core_part_space.vel_x - part2.core_part_space.vel_x
+  var dv_y = part1.core_part_space.vel_y - part2.core_part_space.vel_y
+  var dv_z = part1.core_part_space.vel_z - part2.core_part_space.vel_z
   var dx_x = part1.core_part_space.pos_x - part2.core_part_space.pos_x
   var dx_y = part1.core_part_space.pos_y - part2.core_part_space.pos_y
   var dx_z = part1.core_part_space.pos_z - part2.core_part_space.pos_z
@@ -273,8 +277,8 @@ function force_kernel(part1, part2, r2)
 local fmind = regentlib.fmin(double)
 local kernel = rquote
 
-  var mi = part1.mass
-  var mj = part2.mass
+  var mi = part1.core_part_space.mass
+  var mj = part2.core_part_space.mass
   var rhoi = part1.rho
   var rhoj = part2.rho
   var pressurei = part1.pressure

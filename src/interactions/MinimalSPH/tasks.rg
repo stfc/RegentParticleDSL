@@ -4,8 +4,8 @@ require("defaults")
 --require("src/neighbour_search/cell_pair/import_cell_pair")
 require("src/neighbour_search/cell_pair/neighbour_search")
 require("src/neighbour_search/cell_pair/cell")
-require("src/interactions/Gadget2SPH/interactions")
-require("src/interactions/Gadget2SPH/timestep")
+require("src/interactions/MinimalSPH/interactions")
+require("src/interactions/MinimalSPH/timestep")
 
 local density_symmetric_task = generate_symmetric_pairwise_task(density_kernel)
 local c = regentlib.c
@@ -75,36 +75,37 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
 end
 
 
---task self_redo_density( parts : region(ispace(int1d), part), subset : partition(disjoint, parts, ispace(int1d)), space : region(ispace(int1d), space_config) )
---   where reads(parts, space), writes(parts) do
---   var no_redo = int1d(1)
---   var redo = int1d(0)
---   var half_box_x = 0.5 * space[0].dim_x
---   var half_box_y = 0.5 * space[0].dim_y
---   var half_box_z = 0.5 * space[0].dim_z
---   for part1 in subset[redo].ispace do
---     for part2 in parts.ispace do
---       --Compute particle distance
---       if(part1 ~= part2) then
---         var dx = subset[redo][part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
---         var dy = subset[redo][part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
---         var dz = subset[redo][part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
---         if (dx > half_box_x) then dx = dx - half_box_x end
---         if (dy > half_box_y) then dy = dy - half_box_y end
---         if (dz > half_box_z) then dz = dz - half_box_z end
---         if (dx <-half_box_x) then dx = dx + half_box_x end
---         if (dy <-half_box_y) then dy = dy + half_box_y end
---         if (dz <-half_box_z) then dz = dz + half_box_z end
---         var cutoff2 = subset[redo][part1].core_part_space.cutoff
---         cutoff2 = cutoff2 * cutoff2
---         var r2 = dx*dx + dy*dy + dz*dz
---         if(r2 <= cutoff2) then
---           [nonsym_density_kernel(rexpr subset[redo][part1] end, rexpr parts[part2] end, rexpr r2 end)]
---         end
---       end
---     end
---   end
---end
+task self_redo_density( parts : region(ispace(int1d), part), subset : partition(disjoint, parts, ispace(int1d)), space : region(ispace(int1d), space_config) )
+   where reads(parts, space), writes(parts) do
+   var no_redo = int1d(1)
+   var redo = int1d(0)
+   var half_box_x = 0.5 * space[0].dim_x
+   var half_box_y = 0.5 * space[0].dim_y
+   var half_box_z = 0.5 * space[0].dim_z
+   for part1 in subset[redo].ispace do
+     for part2 in parts.ispace do
+       --Compute particle distance
+       if(int1d(part1) ~= int1d(part2)) then
+         var dx = subset[redo][part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
+         var dy = subset[redo][part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
+         var dz = subset[redo][part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
+         if (dx > half_box_x) then dx = dx - half_box_x end
+         if (dy > half_box_y) then dy = dy - half_box_y end
+         if (dz > half_box_z) then dz = dz - half_box_z end
+         if (dx <-half_box_x) then dx = dx + half_box_x end
+         if (dy <-half_box_y) then dy = dy + half_box_y end
+         if (dz <-half_box_z) then dz = dz + half_box_z end
+         var cutoff2 = subset[redo][part1].core_part_space.cutoff
+         cutoff2 = cutoff2 * cutoff2
+         var r2 = dx*dx + dy*dy + dz*dz
+         regentlib.assert(r2 > 0.0, "Distance of 0 between particles")
+         if(r2 <= cutoff2) then
+           [nonsym_density_kernel(rexpr subset[redo][part1] end, rexpr parts[part2] end, rexpr r2 end)]
+         end
+       end
+     end
+   end
+end
 
 --The SPH task between density and force calculations is a special task, which for now is 
 --non-generalised.
@@ -148,8 +149,8 @@ for attempts = 1, 2 do
       var inv_h_4 = inv_h * inv_h_3
    
       --Add self contribution
-      parts1[particle].rho = parts1[particle].rho + ( parts1[particle].mass * kernel_root)
-      parts1[particle].rho_dh = parts1[particle].rho_dh - ( kernel_dimension * parts1[particle].mass * kernel_root )
+      parts1[particle].rho = parts1[particle].rho + ( parts1[particle].core_part_space.mass * kernel_root)
+      parts1[particle].rho_dh = parts1[particle].rho_dh - ( kernel_dimension * parts1[particle].core_part_space.mass * kernel_root )
       parts1[particle].wcount = parts1[particle].wcount + kernel_root
       parts1[particle].wcount_dh = parts1[particle].wcount_dh - ( kernel_dimension * kernel_root )
       --Insert the missing h factors
@@ -246,7 +247,7 @@ for attempts = 1, 2 do
     end
     
     var grad_h_term = 1.0 / (1.0 + hydro_dimension_inv * redo_partition2[no_redo][particle].h * rho_dh * rho_inv)
-    var balsara = alpha * abs_div_v / ( abs_div_physical_v * curl_v + 0.0001 * soundspeed * h_inv)
+    var balsara = alpha * abs_div_v / ( abs_div_v * curl_v + 0.0001 * soundspeed * h_inv)
     redo_partition2[no_redo][particle].f = grad_h_term
     redo_partition2[no_redo][particle].pressure = pressure
     redo_partition2[no_redo][particle].soundspeed = soundspeed

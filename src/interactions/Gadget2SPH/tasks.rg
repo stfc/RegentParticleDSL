@@ -21,6 +21,7 @@ local hydro_eps = 1e-4
 
 local fabsd = regentlib.fabs(double)
 local cbrtd = regentlib.cbrt(double)
+local sqrt = regentlib.sqrt(double)
 --local fmind = regentlib.fmin()
 --local fmaxd = regentlib.fmax()
 --3D case
@@ -39,9 +40,73 @@ end
 
 local run_subset_task = run_asymmetric_subset_task(nonsym_density_kernel)
 
+task pair_redo_density( parts_self : region(ispace(int1d), part), 
+                        subset: partition(disjoint, parts_self, ispace(int1d)), 
+                        parts_far : region(ispace(int1d), part),
+                        space : region(ispace(int1d), space_config) )
+   where reads(parts_self, parts_far, space), writes( parts_self ) do
+   var no_redo = int1d(1)
+   var redo = int1d(0)
+   var half_box_x = 0.5 * space[0].dim_x
+   var half_box_y = 0.5 * space[0].dim_y
+   var half_box_z = 0.5 * space[0].dim_z
+   for part1 in subset[redo].ispace do
+     for part2 in parts_far.ispace do
+       --Compute particle distance
+         var dx = subset[redo][part1].core_part_space.pos_x - parts_far[part2].core_part_space.pos_x
+         var dy = subset[redo][part1].core_part_space.pos_y - parts_far[part2].core_part_space.pos_y
+         var dz = subset[redo][part1].core_part_space.pos_z - parts_far[part2].core_part_space.pos_z
+         if (dx > half_box_x) then dx = dx - half_box_x end
+         if (dy > half_box_y) then dy = dy - half_box_y end
+         if (dz > half_box_z) then dz = dz - half_box_z end
+         if (dx <-half_box_x) then dx = dx + half_box_x end
+         if (dy <-half_box_y) then dy = dy + half_box_y end
+         if (dz <-half_box_z) then dz = dz + half_box_z end
+         var cutoff2 = subset[redo][part1].core_part_space.cutoff
+         cutoff2 = cutoff2 * cutoff2
+         var r2 = dx*dx + dy*dy + dz*dz
+         if(r2 <= cutoff2) then
+           [nonsym_density_kernel(rexpr subset[redo][part1] end, rexpr parts_far[part2] end, rexpr r2 end)]
+         end
+     end
+   end
+end
+
+
+--task self_redo_density( parts : region(ispace(int1d), part), subset : partition(disjoint, parts, ispace(int1d)), space : region(ispace(int1d), space_config) )
+--   where reads(parts, space), writes(parts) do
+--   var no_redo = int1d(1)
+--   var redo = int1d(0)
+--   var half_box_x = 0.5 * space[0].dim_x
+--   var half_box_y = 0.5 * space[0].dim_y
+--   var half_box_z = 0.5 * space[0].dim_z
+--   for part1 in subset[redo].ispace do
+--     for part2 in parts.ispace do
+--       --Compute particle distance
+--       if(part1 ~= part2) then
+--         var dx = subset[redo][part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
+--         var dy = subset[redo][part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
+--         var dz = subset[redo][part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
+--         if (dx > half_box_x) then dx = dx - half_box_x end
+--         if (dy > half_box_y) then dy = dy - half_box_y end
+--         if (dz > half_box_z) then dz = dz - half_box_z end
+--         if (dx <-half_box_x) then dx = dx + half_box_x end
+--         if (dy <-half_box_y) then dy = dy + half_box_y end
+--         if (dz <-half_box_z) then dz = dz + half_box_z end
+--         var cutoff2 = subset[redo][part1].core_part_space.cutoff
+--         cutoff2 = cutoff2 * cutoff2
+--         var r2 = dx*dx + dy*dy + dz*dz
+--         if(r2 <= cutoff2) then
+--           [nonsym_density_kernel(rexpr subset[redo][part1] end, rexpr parts[part2] end, rexpr r2 end)]
+--         end
+--       end
+--     end
+--   end
+--end
+
 --The SPH task between density and force calculations is a special task, which for now is 
 --non-generalised.
-task update_cutoffs(parts1 : region(ispace(int1d),part), particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config) ) where reads(parts1, particles, space), writes(parts1) do
+task update_cutoffs(parts1 : region(ispace(int1d),part), particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config), this_cell : int3d ) where reads(parts1, particles, space), writes(parts1) do
 --Define some constants/import some math functions
 var no_redo = int1d(1)
 var redo = int1d(0)
@@ -162,13 +227,26 @@ for attempts = 1, 2 do
       --TODO: For particles that have a converged smoothing length, get ready for force loop.
   for particle in redo_partition2[no_redo] do
     --TODO Set timestep
-    --TODO: Prepare force
+    --TODO: Prepare force NOT FINISHED TODO
+    var rho_inv = 1.0 / redo_partition2[no_redo][particle].rho
+    var h_inv = 1.0 / redo_partition2[no_redo][particle].h
+    var curl_v = sqrt(redo_partition2[no_redo][particle].rot_v_x * redo_partition2[no_redo][particle].rot_v_x + 
+                      redo_partition2[no_redo][particle].rot_v_y * redo_partition2[no_redo][particle].rot_v_y + 
+                      redo_partition2[no_redo][particle].rot_v_z * redo_partition2[no_redo][particle].rot_v_z)
+    var div_v = redo_partition2[no_redo][particle].div_v
+    var abs_div_v = fabsd(div_v)
     --TODO: Reset acceleration
   end
   --TODO: Loop over the redo particles and rerun the density loops on this subset with all other cells.
   --FUTURE TODO: Can use a generated task to do this for an appropriate neighbour search algorithm 
-  run_subset_task(redo_partition2[redo], particles, cell_space, space )
+--  run_subset_task(redo_partition2[redo], particles, cell_space, space )
   --Wait on the subset task -- TODO: May not need this
+--  self_redo_density( parts1, redo_partition2, space )
+  for cells in cell_space.colors do
+    if cells ~= this_cell then
+      pair_redo_density( parts1 , redo_partition2, cell_space[cells], space )
+    end
+  end
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   __delete(redo_partition2)
 end

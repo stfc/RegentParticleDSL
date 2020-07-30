@@ -61,5 +61,8 @@ fspace part{
   --Signal velocity
   v_sig : double,
   --Time derivative of the smoothing length
-  h_dt : double
+  h_dt : double,
+  --Entropy term
+  entropy_dt : double,
+  entropy : double
 }
