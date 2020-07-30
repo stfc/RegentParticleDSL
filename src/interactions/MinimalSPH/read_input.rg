@@ -138,6 +138,7 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     particle_region[part].core_part_space.pos_z = coordinate_buffer[counter*3+2]
     counter = counter + 1
   end
+  --TODO: Remove print statements
   format.println("{}, {}, {}", coordinate_buffer[0], coordinate_buffer[1], coordinate_buffer[2])
   format.println("{}, {}, {}", particle_region[0].core_part_space.pos_x, particle_region[0].core_part_space.pos_y, particle_region[0].core_part_space.pos_z)
   --Clean up the coordinate buffer
@@ -145,6 +146,42 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
   h5lib.H5Sclose(memspace)
   h5lib.H5Dclose(coordinates)
   free_double_array(coordinate_buffer)
+
+  --Read the internal energies
+  var internal_energy_buffer : &float = [&float](create_float_array(particle_count))
+  regentlib.assert(internal_energy_buffer ~= [&float](0), "Failed to allocate the internal energy buffer")
+  var internal_energy = h5lib.H5Dopen2(parts_grp, "InternalEnergy", wrap.WRAP_H5P_DEFAULT)
+  regentlib.assert( internal_energy >= 0, "Failed to open the InternalEnergy Dataset")
+  shape[0] = particle_count
+  shape[1] = 1
+  offset[0] = 0
+  offset[1] = 0
+  rank = 1  
+  --Need to create a memory space so we can read in the shape of the array correctly
+  memspace = h5lib.H5Screate_simple(rank, shape, [&uint64](0))
+
+  --For future safety, we select the (full) hyperslab to read in
+  filespace = h5lib.H5Dget_space(internal_energy)
+  h5lib.H5Sselect_hyperslab( filespace, wrap.WRAP_H5S_SELECT_SET, offset, [&uint64](0), shape, [&uint64](0))
+
+  regentlib.assert( h5lib.H5Dread(internal_energy, wrap.WRAP_H5T_NATIVE_FLOAT,  memspace, filespace, wrap.WRAP_H5P_DEFAULT, internal_energy_buffer) >= 0,
+                   "Failed to read the internal energy")
+  counter = 0
+  for part in particle_region.ispace do
+    particle_region[part].u = internal_energy_buffer[counter]
+    counter = counter + 1
+  end
+  --TODO: Remove print statements
+  format.println("u {}", particle_region[0].u)
+  h5lib.H5Sclose(filespace)
+  h5lib.H5Sclose(memspace)
+  h5lib.H5Dclose(internal_energy)
+  free_float_array(internal_energy_buffer)
+
+
+
+  --Close the particles group
+  h5lib.H5Gclose(parts_grp)
 end
 
 task main()
