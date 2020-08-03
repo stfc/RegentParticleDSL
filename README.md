@@ -48,5 +48,5 @@ to pass regions, and that ends up too complex for how I envisage this.
 ## The DSL defining Particle structure ##
 Particles are defined using a field space. There is a `core_part` field space defined in src/particles
 which all particles must include, and then the `neighbour_part` field space defined in for 
-whichever neighbour search algorith the user wants to use. On top of this, any user-required variables can
+whichever neighbour search algorithm the user wants to use. On top of this, any user-required variables can
 be added, as shown in `example_types/example_part.rg`
