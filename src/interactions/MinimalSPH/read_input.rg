@@ -10,6 +10,7 @@ local h5lib = terralib.includec("hdf5.h")
 local wrap = terralib.includec("hdf5_wrapper.h")
 
 stdlib = terralib.includec("stdlib.h")
+stdio = terralib.includec("stdio.h")
 local c = regentlib.c
 
 terra create_double_array(size : int)
@@ -178,10 +179,129 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
   h5lib.H5Dclose(internal_energy)
   free_float_array(internal_energy_buffer)
 
+  var masses_buffer : &float = [&float](create_float_array(particle_count))
+  regentlib.assert(masses_buffer ~= [&float](0), "Failed to allocate the masses buffer")
+  var masses = h5lib.H5Dopen2(parts_grp, "Masses", wrap.WRAP_H5P_DEFAULT)
+  regentlib.assert( masses >= 0, "Failed to open the Masses dataset")
+  shape[0] = particle_count
+  shape[1] = 1
+  offset[0] = 0
+  offset[1] = 0
+  rank = 1
+  --Need to create a memory space so we can read in the shape of the array correctly
+  memspace = h5lib.H5Screate_simple(rank, shape, [&uint64](0))
 
+  --For future safety, we select the (full) hyperslab to read in
+  filespace = h5lib.H5Dget_space(masses)
+
+  regentlib.assert( h5lib.H5Dread(masses, wrap.WRAP_H5T_NATIVE_FLOAT,  memspace, filespace, wrap.WRAP_H5P_DEFAULT, masses_buffer) >= 0,
+                   "Failed to read the masses")
+  counter = 0
+  for part in particle_region.ispace do
+    particle_region[part].core_part_space.mass = masses_buffer[counter]
+    counter = counter + 1
+  end
+  --TODO: Remove print statements
+  stdio.printf("mass %e %e\n", particle_region[0].core_part_space.mass)
+  h5lib.H5Sclose(filespace)
+  h5lib.H5Sclose(memspace)
+  h5lib.H5Dclose(masses)
+  free_float_array(masses_buffer)
+
+  var ID_buffer : &uint64 = [&uint64](create_uint64_array(particle_count))
+  regentlib.assert(ID_buffer ~= [&uint64](0), "Failed to allocate the ID buffer")
+  var IDs = h5lib.H5Dopen2(parts_grp, "ParticleIDs", wrap.WRAP_H5P_DEFAULT)
+  regentlib.assert( IDs >= 0, "Failed to open the ParticleIDs dataset")
+  shape[0] = particle_count
+  shape[1] = 1
+  offset[0] = 0
+  offset[1] = 0
+  rank = 1
+  --Need to create a memory space so we can read in the shape of the array correctly
+  memspace = h5lib.H5Screate_simple(rank, shape, [&uint64](0))
+
+  --For future safety, we select the (full) hyperslab to read in
+  filespace = h5lib.H5Dget_space(IDs)
+  regentlib.assert( h5lib.H5Dread(IDs, wrap.WRAP_H5T_NATIVE_ULLONG,  memspace, filespace, wrap.WRAP_H5P_DEFAULT, ID_buffer) >= 0,
+                   "Failed to read the particle IDs")
+  counter = 0
+  for part in particle_region.ispace do
+    particle_region[part].core_part_space.id = ID_buffer[counter]
+    counter = counter + 1
+  end
+  --TODO: Remove print statements
+  format.println("ID {}", particle_region[0].core_part_space.id)
+  h5lib.H5Sclose(filespace)
+  h5lib.H5Sclose(memspace)
+  h5lib.H5Dclose(IDs)
+  free_uint64_array(ID_buffer)
+
+  var smoothing_length_buffer : &float = [&float](create_float_array(particle_count))
+  regentlib.assert( smoothing_length_buffer ~= [&float](0), "Failed to allocate the smoothing length buffer")
+  var smoothing_lengths = h5lib.H5Dopen2(parts_grp, "SmoothingLength", wrap.WRAP_H5P_DEFAULT)
+  regentlib.assert( smoothing_lengths >= 0, "Failed to open the smoothing lengths dataset")
+  shape[0] = particle_count
+  shape[1] = 1
+  offset[0] = 0
+  offset[1] = 0
+  rank = 1
+  --Need to create a memory space so we can read in the shape of the array correctly
+  memspace = h5lib.H5Screate_simple(rank, shape, [&uint64](0))
+
+  --For future safety, we select the (full) hyperslab to read in
+  filespace = h5lib.H5Dget_space(smoothing_lengths)
+  regentlib.assert( h5lib.H5Dread(smoothing_lengths, wrap.WRAP_H5T_NATIVE_FLOAT,  memspace, filespace, wrap.WRAP_H5P_DEFAULT, smoothing_length_buffer) >= 0,
+                   "Failed to read the smoothing lengths")
+
+    counter = 0
+  for part in particle_region.ispace do
+    particle_region[part].h = smoothing_length_buffer[counter]
+    counter = counter + 1
+  end
+  --TODO: Remove print statements
+  format.println("smoothing_length {}", particle_region[0].h)
+  h5lib.H5Sclose(filespace)
+  h5lib.H5Sclose(memspace)
+  h5lib.H5Dclose(smoothing_lengths)
+  free_float_array(smoothing_length_buffer)
+
+
+  var velocity_buffer : &float = [&float] (create_float_array(particle_count*3))
+  regentlib.assert( velocity_buffer ~= [&float](0), "Failed to allocate the velocity buffer")
+  var velocities = h5lib.H5Dopen2(parts_grp, "Velocities", wrap.WRAP_H5P_DEFAULT)
+  regentlib.assert(velocities >= 0, "Failed to open the velocities dataset")
+  --Nx3 array
+  shape[0] = particle_count
+  shape[1] = 3
+  offset[0] = 0
+  offset[1] = 0
+  rank = 2
+
+  --Need to create a memory space so we can read in the shape of the array correctly
+  memspace = h5lib.H5Screate_simple(rank, shape, [&uint64](0))
+
+  --For future safety, we select the (full) hyperslab to read in
+  filespace = h5lib.H5Dget_space(velocities)
+  regentlib.assert( h5lib.H5Dread(velocities, wrap.WRAP_H5T_NATIVE_FLOAT,  memspace, filespace, wrap.WRAP_H5P_DEFAULT, velocity_buffer) >= 0,
+                   "Failed to read the velocities")
+  counter = 0
+  for part in particle_region.ispace do
+    particle_region[part].core_part_space.vel_x = velocity_buffer[counter*3]
+    particle_region[part].core_part_space.vel_y = velocity_buffer[counter*3+1]
+    particle_region[part].core_part_space.vel_z = velocity_buffer[counter*3+2]
+    counter = counter + 1
+  end
+ 
+  --TODO: Remove print statements
+  format.println("vel {} {} {}\n", particle_region[0].core_part_space.vel_x, particle_region[0].core_part_space.vel_y, particle_region[0].core_part_space.vel_z)
+  h5lib.H5Sclose(filespace)
+  h5lib.H5Sclose(memspace)
+  h5lib.H5Dclose(velocities)
+  free_float_array(velocity_buffer)
 
   --Close the particles group
   h5lib.H5Gclose(parts_grp)
+  h5lib.H5Fclose(file_id)
 end
 
 task main()
