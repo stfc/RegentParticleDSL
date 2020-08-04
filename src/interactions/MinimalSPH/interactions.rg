@@ -3,13 +3,20 @@ import "regent"
 require("defaults")
 require("src/neighbour_search/cell_pair/neighbour_search")
 sqrt = regentlib.sqrt(double)
-
+cbrt = regentlib.cbrt(double)
 
 --Viscosity parameters
 local const_viscosity_beta = 3.0
 
 local hydro_gamma = 5.0/3.0
 local hydro_gamma_minus_one = hydro_gamma-1.0
+
+__demand(__inline)
+task pow_minus_gamma_minus_one(x : double)
+  var icbrt = 1.0 / cbrt(x)
+  return icbrt * icbrt  
+end
+
 --Ideal gas equation
 __demand(__inline)
 task gas_pressure_from_internal_energy(density : double, u : double)
@@ -20,6 +27,11 @@ __demand(__inline)
 task gas_soundspeed_from_pressure(density : double, P : double) 
   var density_inv = 1.0 / density
   return sqrt(hydro_gamma * P * density_inv)
+end
+
+__demand(__inline)
+task gas_entropy_from_internal_energy(density : double, u : double)
+  return hydro_gamma_minus_one * u *  pow_minus_gamma_minus_one(density)
 end
 
 --3Dimensions, so x^4

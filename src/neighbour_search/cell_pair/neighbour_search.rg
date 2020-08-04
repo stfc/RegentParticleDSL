@@ -198,6 +198,73 @@ end
 --End of Self Tasks ---------------------
 -----------------------------------------
 
+function create_symmetric_variable_cutoff_pair_task( kernel_name )
+
+local task pair_task(parts1 : region(ispace(int1d), part), parts2 : region(ispace(int1d), part), space : region(ispace(int1d), space_config)) where
+     reads(parts1, parts2, space), writes( parts1, parts2) do
+   var half_box_x = 0.5 * space[0].dim_x
+   var half_box_y = 0.5 * space[0].dim_y
+   var half_box_z = 0.5 * space[0].dim_z
+   for part1 in parts1.ispace do
+     for part2 in parts2.ispace do
+       --Compute particle distance
+       var dx = parts1[part1].core_part_space.pos_x - parts2[part2].core_part_space.pos_x
+       var dy = parts1[part1].core_part_space.pos_y - parts2[part2].core_part_space.pos_y
+       var dz = parts1[part1].core_part_space.pos_z - parts2[part2].core_part_space.pos_z
+       if (dx > half_box_x) then dx = dx - half_box_x end
+       if (dy > half_box_y) then dy = dy - half_box_y end
+       if (dz > half_box_z) then dz = dz - half_box_z end
+       if (dx <-half_box_x) then dx = dx + half_box_x end
+       if (dy <-half_box_y) then dy = dy + half_box_y end
+       if (dz <-half_box_z) then dz = dz + half_box_z end
+       var cutoff2 = parts1[part1].core_part_space.cutoff--TODO:regentlib.max(parts1[part1].core_part_space.cutoff, parts2[part2].core_part_space.cutoff)
+       cutoff2 = cutoff2 * cutoff2
+       var r2 = dx*dx + dy*dy + dz*dz
+       if(r2 <= cutoff2) then
+         [kernel_name(rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
+       end
+     end
+   end
+end
+return pair_task
+end
+
+function create_variable_cutoff_self_task( kernel_name )
+
+local task self_task(parts1 : region(ispace(int1d), part), space : region(ispace(int1d), space_config)) where 
+      reads(parts1, space), writes(parts1) do
+   var half_box_x = 0.5 * space[0].dim_x
+   var half_box_y = 0.5 * space[0].dim_y
+   var half_box_z = 0.5 * space[0].dim_z
+   for part1 in parts1.ispace do
+     for part2 in parts1.ispace do
+       --Compute particle distance
+       if(part1 < part2) then
+         var dx = parts1[part1].core_part_space.pos_x - parts1[part2].core_part_space.pos_x
+         var dy = parts1[part1].core_part_space.pos_y - parts1[part2].core_part_space.pos_y
+         var dz = parts1[part1].core_part_space.pos_z - parts1[part2].core_part_space.pos_z
+         if (dx > half_box_x) then dx = dx - half_box_x end
+         if (dy > half_box_y) then dy = dy - half_box_y end
+         if (dz > half_box_z) then dz = dz - half_box_z end
+         if (dx <-half_box_x) then dx = dx + half_box_x end
+         if (dy <-half_box_y) then dy = dy + half_box_y end
+         if (dz <-half_box_z) then dz = dz + half_box_z end
+         var cutoff2 = parts1[part1].core_part_space.cutoff
+         cutoff2 = cutoff2 * cutoff2
+         var r2 = dx*dx + dy*dy + dz*dz
+         if(r2 <= cutoff2) then
+           [kernel_name(rexpr parts1[part1] end, rexpr parts1[part2] end, rexpr r2 end)]
+         end
+       end
+     end 
+  end
+end
+
+return self_task
+end
+
+
+
 function create_symmetric_pairtask_runner( kernel_name )
 
 local cell_pair_task = generate_symmetric_pairwise_task( kernel_name )
@@ -289,7 +356,7 @@ end
 -----------------------------------------
 
 
-
+--TODO: The following functions are untested and may or may not be used. Use at own risk.
 
 
 --Here we have subset tasks. The idea here is that we have a subset of particles in a cell, and want to compute interactions for only those particles

@@ -7,7 +7,7 @@ require("src/neighbour_search/cell_pair/cell")
 require("src/interactions/MinimalSPH/interactions")
 require("src/interactions/MinimalSPH/timestep")
 
-local density_symmetric_task = generate_symmetric_pairwise_task(density_kernel)
+local density_symmetric_task = generate_asymmetric_pairwise_task(density_kernel)
 local c = regentlib.c
 
 --Some big number
