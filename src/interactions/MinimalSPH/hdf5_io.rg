@@ -14,6 +14,21 @@ stdlib = terralib.includec("stdlib.h")
 stdio = terralib.includec("stdio.h")
 local c = regentlib.c
 
+
+
+function initialisation(filename, particle_array, space)
+local initialisation_code = rquote
+  var count = read_particle_count(filename)
+  format.println("Initialising SPH from {} with {} hydro particles", filename, count)
+  var particles_space = ispace(int1d, count)
+  var [particle_array] = region(particles_space, part)
+  var [space] = region(ispace(int1d, 1), space_config)
+  fill([space].{dim_x, dim_y, dim_z}, 0.0)
+  read_hdf5_snapshot(filename, count, [particle_array], [space])
+end
+return initialisation_code
+end
+
 terra create_double_array(size : int)
   return stdlib.malloc(sizeof(double) * size)
 end
@@ -663,15 +678,15 @@ end
 
 
 
-task main()
-  var count = read_particle_count("/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5")
-  format.println("{}", count)
-  var particles_space = ispace(int1d, count)
-  var particle_region = region(particles_space, part)
-  var space = region(ispace(int1d, 1), space_config)
-  fill(space.{dim_x, dim_y, dim_z}, 0.0)
-  read_hdf5_snapshot("/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5", count, particle_region, space)
-  write_hdf5_snapshot("/home/aidan/test.hdf5", particle_region, space)
-end
+--task main()
+--  var count = read_particle_count("/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5")
+--  format.println("{}", count)
+--  var particles_space = ispace(int1d, count)
+--  var particle_region = region(particles_space, part)
+--  var space = region(ispace(int1d, 1), space_config)
+--  fill(space.{dim_x, dim_y, dim_z}, 0.0)
+--  read_hdf5_snapshot("/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5", count, particle_region, space)
+--  write_hdf5_snapshot("/home/aidan/test.hdf5", particle_region, space)
+--end
 
-regentlib.start(main)
+--regentlib.start(main)
