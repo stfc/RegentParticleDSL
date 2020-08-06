@@ -155,9 +155,6 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     particle_region[part].core_part_space.pos_z = coordinate_buffer[counter*3+2]
     counter = counter + 1
   end
-  --TODO: Remove print statements
-  format.println("{}, {}, {}", coordinate_buffer[0], coordinate_buffer[1], coordinate_buffer[2])
-  format.println("{}, {}, {}", particle_region[0].core_part_space.pos_x, particle_region[0].core_part_space.pos_y, particle_region[0].core_part_space.pos_z)
   --Clean up the coordinate buffer
   h5lib.H5Sclose(filespace)
   h5lib.H5Sclose(memspace)
@@ -188,8 +185,6 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     particle_region[part].u = internal_energy_buffer[counter]
     counter = counter + 1
   end
-  --TODO: Remove print statements
-  format.println("u {}", particle_region[0].u)
   h5lib.H5Sclose(filespace)
   h5lib.H5Sclose(memspace)
   h5lib.H5Dclose(internal_energy)
@@ -217,8 +212,6 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     particle_region[part].core_part_space.mass = masses_buffer[counter]
     counter = counter + 1
   end
-  --TODO: Remove print statements
-  stdio.printf("mass %e %e\n", particle_region[0].core_part_space.mass)
   h5lib.H5Sclose(filespace)
   h5lib.H5Sclose(memspace)
   h5lib.H5Dclose(masses)
@@ -245,8 +238,6 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     particle_region[part].core_part_space.id = ID_buffer[counter]
     counter = counter + 1
   end
-  --TODO: Remove print statements
-  format.println("ID {}", particle_region[0].core_part_space.id)
   h5lib.H5Sclose(filespace)
   h5lib.H5Sclose(memspace)
   h5lib.H5Dclose(IDs)
@@ -274,8 +265,6 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     particle_region[part].h = smoothing_length_buffer[counter]
     counter = counter + 1
   end
-  --TODO: Remove print statements
-  format.println("smoothing_length {}", particle_region[0].h)
   h5lib.H5Sclose(filespace)
   h5lib.H5Sclose(memspace)
   h5lib.H5Dclose(smoothing_lengths)
@@ -308,8 +297,6 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     counter = counter + 1
   end
  
-  --TODO: Remove print statements
-  format.println("vel {} {} {}\n", particle_region[0].core_part_space.vel_x, particle_region[0].core_part_space.vel_y, particle_region[0].core_part_space.vel_z)
   h5lib.H5Sclose(filespace)
   h5lib.H5Sclose(memspace)
   h5lib.H5Dclose(velocities)

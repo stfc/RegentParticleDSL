@@ -329,7 +329,7 @@ function generate_per_part_task( kernel_name )
 local task pairwise_task(parts1 : region(ispace(int1d),part), space : region(ispace(int1d), space_config)) where
    reads(parts1, space), writes(parts1) do
    for part1 in parts1.ispace do
-         [kernel_name(rexpr parts1[part1] end)]
+         [kernel_name(rexpr parts1[part1] end, rexpr space[0] end)]
    end
 end
 return pairwise_task

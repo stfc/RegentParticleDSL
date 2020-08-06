@@ -7,7 +7,7 @@ require("src/neighbour_search/cell_pair/cell")
 require("src/interactions/MinimalSPH/interactions")
 require("src/interactions/MinimalSPH/timestep")
 
-local density_symmetric_task = generate_asymmetric_pairwise_task(nonsym_density_kernel)
+local density_task = create_asymmetric_pairwise_runner(nonsym_density_kernel)
 local c = regentlib.c
 
 --Some big number
@@ -109,7 +109,7 @@ end
 
 --The SPH task between density and force calculations is a special task, which for now is 
 --non-generalised.
-task update_cutoffs(parts1 : region(ispace(int1d),part), particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config), this_cell : int3d ) where reads(parts1, particles, space), writes(parts1) do
+task update_cutoffs(parts1 : region(ispace(int1d),part), particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config), this_cell : int3d ) where parts1 <= particles, reads(parts1, particles, space), writes(parts1, particles) do
 --Define some constants/import some math functions
 var no_redo = int1d(1)
 var redo = int1d(0)
