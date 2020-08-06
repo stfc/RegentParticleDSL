@@ -7,6 +7,7 @@ task zero_neighbour_part(particle_region : region(ispace(int1d), part)) where wr
   fill(particle_region.neighbour_part_space.cell_id, int3d({0,0,0}))
 end
 
+__demand(__inline)
 task update_cell_partitions(particles : region(ispace(int1d), part), x_cells : int1d, y_cells : int1d, z_cells : int1d) where
   reads(particles.neighbour_part_space.cell_id) do
   var space_parameter = ispace(int3d, {x_cells, y_cells, z_cells}, {0,0,0})

@@ -6,17 +6,63 @@ require("defaults")
 --Each particle is sorted into a int3d cell value, with the cell with position 0.0, 0.0, 0.0 
 --being {0,0,0}.
 
-fspace cell_type{
-  id : int1d,
-  loc_x: double,
-  lox_y : double,
-  loc_z : double,
-  dim_x : double, 
-  dim_y : double, 
-  dim_z : double
-}
+task compute_cell_count(config : region(ispace(int1d), config_type),  cell_dim_x : double, cell_dim_y : double, cell_dim_z : double) where
+  reads(config) do
 
-task particles_to_cells(particles : region(ispace(int1d), part), cell_dim_x : double, cell_dim_y : double, cell_dim_z : double) where 
+  var x_space = config.space.dim_x
+  var y_space = config.space.dim_y
+  var z_space = config.space.dim_z
+
+  regentlib.assert( x_space > 0.0, "x_space not set")
+  regentlib.assert( y_space > 0.0, "y_space not set")
+  regentlib.assert( z_space > 0.0, "z_space not set")
+  regentlib.assert( cell_dim_x > 0.0, "cell_dim_x not set")
+  regentlib.assert( cell_dim_y > 0.0, "cell_dim_y not set")
+  regentlib.assert( cell_dim_z > 0.0, "cell_dim_z not set")
+
+
+  var x_cells : int = regentlib.ceil(x_space / cell_dim_x)
+  var y_cells : int = regentlib.ceil(y_space / cell_dim_y)
+  var z_cells : int = regentlib.ceil(z_space / cell_dim_z)
+
+  return x_cells * y_cells * z_cells
+  
+end
+
+task initialise_cells(config : region(ispace(int1d), config_type)
+                      cell_dim_x : double, cell_dim_y : double,
+                      cell_dim_z : double) where
+                      reads(config), writes(config.neighbour_config_type) do
+
+  var x_space = config.space.dim_x
+  var y_space = config.space.dim_y
+  var z_space = config.space.dim_z
+
+  regentlib.assert( x_space > 0.0, "x_space not set")
+  regentlib.assert( y_space > 0.0, "y_space not set")
+  regentlib.assert( z_space > 0.0, "z_space not set")
+  regentlib.assert( cell_dim_x > 0.0, "cell_dim_x not set")
+  regentlib.assert( cell_dim_y > 0.0, "cell_dim_y not set")
+  regentlib.assert( cell_dim_z > 0.0, "cell_dim_z not set")
+
+
+  var x_cells : int = regentlib.ceil(x_space / cell_dim_x)
+  var y_cells : int = regentlib.ceil(y_space / cell_dim_y)
+  var z_cells : int = regentlib.ceil(z_space / cell_dim_z)
+
+  --TODO: Create the cells and sort out their positions and dimensions correctly.
+end
+
+
+
+
+
+
+
+task particles_to_cells(particles : region(ispace(int1d), part),
+                        config : region(ispace(int1d), config_type),
+                        cell_dim_x : double, cell_dim_y : double,
+                        cell_dim_z : double) where 
   reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z),
   writes(particles.neighbour_part_space.cell_id) do
 

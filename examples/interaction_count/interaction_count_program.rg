@@ -23,10 +23,15 @@ task main_task()
   --to get this to work right now
   var particles_space = ispace(int1d, 9)
   var [variables.particle_array] = region(particles_space, part)
-  var [variables.space] = region(ispace(int1d, 1), space_config)
-  fill([variables.space].{dim_x, dim_y, dim_z}, 0.0)
-  init_space(3.0, 3.0, 3.0, [variables.space])
+  var [variables.config] = region(ispace(int1d, 1), config_type)
+  fill([variables.config].{space.dim_x, space.dim_y, space.dim_z}, 0.0)
+  init_space(3.0, 3.0, 3.0, [variables.config])
   particle_initialisation([variables.particle_array])
+  --We will set cell size to be 1.5 for now. 
+  --TODO: NYI: The task/library should choose the cell size itself.
+  var cell_count = compute_cell_count([variables.config], 1.5, 1.5, 1.5)
+  [variables.config].neighbour_config_type.cell_array = region(ispace(int1d, cell_count), cell_type)
+  particles_to_cell_launcher([variables.particle_array], 1.5, 1.5, 1.5)
   --[initialisation_function(variables.particle_array, variables.space)]
   --[initialise]
 
@@ -34,11 +39,8 @@ task main_task()
   --END OF BOILERPLATE INIT CODE --
   ---------------------------------
   
-  --We will set cell size to be 1.0 for now. Not periodic or anything for now so no idea of global cell size for now.
-  --TODO: NYI: The task/library should choose the cell size itself.
-  particles_to_cell_launcher([variables.particle_array], 1.5, 1.5, 1.5)
   --Generate the cell partition. This ideally will not be done by the user, or will be "hidden"
-  var cell_partition = update_cell_partitions([variables.particle_array], 2, 2, 2)
+  var cell_partition = update_cell_partitions([variables.particle_array], 2, 2, 2, [variables.config])
   
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
