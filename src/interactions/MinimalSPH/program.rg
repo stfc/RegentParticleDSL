@@ -40,7 +40,8 @@ task main()
   while time < endtime do
     var cell_partition = update_cell_partitions([variables.particle_array], 5, 5, 5)
     --density_task([variables.particle_array], cell_partition, [variables.space])
-    timestep_task([variables.particle_array], cell_partition, [variables.space])
+  --  timestep_task([variables.particle_array], cell_partition, [variables.space])
+    update_cutoffs_launcher([variables.particle_array], cell_partition, [variables.space])
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
     say_hello(time)
     time = time + 0.01
