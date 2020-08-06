@@ -107,173 +107,189 @@ task self_redo_density( parts : region(ispace(int1d), part), subset : partition(
    end
 end
 
---The SPH task between density and force calculations is a special task, which for now is 
---non-generalised.
-task update_cutoffs(parts1 : region(ispace(int1d),part), particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), space : region(ispace(int1d), space_config), this_cell : int3d ) where parts1 <= particles, reads(parts1, particles, space), writes(parts1, particles) do
---Define some constants/import some math functions
-var no_redo = int1d(1)
-var redo = int1d(0)
-var hydro_eta_3 = cube_val(hydro_eta)
-
-for particle in parts1 do
-  --Reset values
-  parts1[particle].cutoff_update_space.redo = redo
-  parts1[particle].cutoff_update_space.left = 0.0
-  parts1[particle].cutoff_update_space.right = hmax
-  parts1[particle].cutoff_update_space.h_0 = parts1[particle].h
+function reset_cutoff_update_space(part, space)
+  local kernel = rquote
+    var redo = int1d(0)
+    part.cutoff_update_space.redo = redo
+    part.cutoff_update_space.left = 0.0
+    part.cutoff_update_space.right = hmax
+    part.cutoff_update_space.h_0 = part.h
+  end
+  return kernel
 end
 
+function prepare_for_force(part, space)
+  local kernel = rquote
+    --Check if redo flag still active
+    regentlib.assert(part.cutoff_update_space.redo == int1d(0), 
+                     "A particle still needs redoing after redo stage done")
+    --TODO Set timestep
+    --Prepare for the force step
+    var rho_inv = 1.0 / part.rho
+    var h_inv = 1.0 / part.h
+    var curl_v = sqrt( part.rot_v_x * part.rot_v_x +
+                       part.rot_v_y * part.rot_v_y +
+                       part.rot_v_z * part.rot_v_z )
+    var div_v = part.div_v
+    var abs_div_v = fabsd(div_v)
+    var pressure = gas_pressure_from_internal_energy( part.rho, part.u )
+    var soundspeed = gas_soundspeed_from_pressure( part.rho, pressure )
+    var rho_dh = part.rho_dh
+    --Ignore kernel changing affects if h is ~= hmax
+    if(part.h > 0.9999 * hmax) then
+      rho_dh = 0.0
+    end 
+  
+    var grad_h_term = 1.0 / (1.0 + hydro_dimension_inv * part.h * rho_dh * rho_inv)
+    var balsara = alpha * abs_div_v / (abs_div_v * curl_v + 0.0001 * soundspeed * h_inv)
+    part.f = grad_h_term
+    part.pressure = pressure
+    part.soundspeed = soundspeed
+    part.balsara = balsara
+    regentlib.assert(1==0, "Updated h but not yet cutoff radius still")
+    --Reset acceleration
+    part.accel_x = 0.0
+    part.accel_y = 0.0
+    part.accel_z = 0.0
+    part.u_dt = 0.0
+    part.h_dt = 0.0
+    part.v_sig = 2.0 * soundspeed
+  end
+  return kernel
+end
 
---TODO: Loop more than once
-for attempts = 1, 2 do
-  var redo_partition = partition(parts1.cutoff_update_space.redo, ispace(int1d, 2))
-  --Loop through the particles and correct h
-  for particle in redo_partition[redo] do
-    var h_init = parts1[particle].cutoff_update_space.h_0
-    var h_old = parts1[particle].h
+function finish_density(part, space)
+  local kernel = rquote
+    var no_redo = int1d(1)
+    var redo = int1d(0)
+    var h_init = part.cutoff_update_space.h_0
+    var h_old = part.h
     var h_old_dim = cube_val(h_old)
     var h_old_dim_minus_one = h_old * h_old
     var h_new : double
     var has_no_neighbours : bool
-    parts1[particle].cutoff_update_space.redo = no_redo
+    var hydro_eta_3 = cube_val(hydro_eta)
+    --Mark particles as done unless proven otherwise
+    part.cutoff_update_space.redo = no_redo
 
-    if( parts1[particle].wcount == 0.0 ) then
+
+    if(part.wcount == 0.0 ) then
       has_no_neighbours = true
-      --Double the cutoff and retry
       h_new = 2.0 * h_old
-      regentlib.assert(1 == 0, "Not yet implementeds stuff happens here")
+      regentlib.assert( 1 == 0, "Not yet implemented behaviour for neighbourless particles")
     else
-      --TODO: Finish the density calculation
-      var inv_h = 1.0 / parts1[particle].h
+      --Finish the density calculation
+      var inv_h = 1.0 / part.h
       var inv_h_3 = cube_val(inv_h)
       var inv_h_4 = inv_h * inv_h_3
-   
       --Add self contribution
-      parts1[particle].rho = parts1[particle].rho + ( parts1[particle].core_part_space.mass * kernel_root)
-      parts1[particle].rho_dh = parts1[particle].rho_dh - ( kernel_dimension * parts1[particle].core_part_space.mass * kernel_root )
-      parts1[particle].wcount = parts1[particle].wcount + kernel_root
-      parts1[particle].wcount_dh = parts1[particle].wcount_dh - ( kernel_dimension * kernel_root )
-      --Insert the missing h factors
-      parts1[particle].rho = parts1[particle].rho * inv_h_3
-      parts1[particle].rho_dh = parts1[particle].rho_dh * inv_h_4
-      parts1[particle].wcount = parts1[particle].wcount * inv_h_3
-      parts1[particle].wcount_dh = parts1[particle].wcount_dh * inv_h_4 
+      part.rho = part.rho + (part.core_part_space.mass * kernel_root)
+      part.rho_dh = part.rho_dh - (kernel_dimension * part.core_part_space.mass * kernel_root)
+      part.wcount = part.wcount + kernel_root
+      part.wcount_dh = part.wcount_dh - (kernel_dimension * kernel_root)
+      --Insert the missing h factor
+      part.rho = part.rho * inv_h_3
+      part.rho_dh = part.rho_dh * inv_h_4
+      part.wcount = part.wcount * inv_h_3
+      part.wcount_dh = part.wcount_dh - (kernel_dimension * kernel_root)
       --Complete the curl calculation
-      var inv_rho = 1.0 / parts1[particle].rho
-      parts1[particle].rot_v_x = parts1[particle].rot_v_x * ( inv_h_4 * inv_rho)
-      parts1[particle].rot_v_y = parts1[particle].rot_v_y * ( inv_h_4 * inv_rho)
-      parts1[particle].rot_v_z = parts1[particle].rot_v_z * ( inv_h_4 * inv_rho)
-      parts1[particle].div_v = parts1[particle].div_v * ( inv_h_4 * inv_rho)
+     var inv_rho = 1.0 / part.rho
+     part.rot_v_x = part.rot_v_x * (inv_h_4 * inv_rho)
+     part.rot_v_y = part.rot_v_y * (inv_h_4 * inv_rho)
+     part.rot_v_z = part.rot_v_z * (inv_h_4 * inv_rho)
+     part.div_v = part.div_v * (inv_h_4 * inv_rho)
+ 
+     --Compute a Newton-Raphson step on h
+     var n_sum = part.wcount * h_old_dim
+     var n_target = hydro_eta_3
+     var f = n_sum - n_target
+     var f_prime = part.wcount_dh * h_old_dim + kernel_dimension * part.wcount * h_old_dim_minus_one
+     --Improve the bounds
+     if(n_sum < n_target) then
+       part.cutoff_update_space.left = fmaxd(part.cutoff_update_space.left, h_old)
+     elseif(n_sum > n_target) then
+       part.cutoff_update_space.right = fmind(part.cutoff_update_space.right, h_old)
+     end
+     if( ( part.h >= hmax and f < 0.0 ) or (part.h <= hmin and f> 0.0) ) then
+       regentlib.assert(1 == 0, "NYI: This should never happen as hmin is 0 and hmax is \"large\"")
+      --FUTURE TODO: Calculate timestep and prepare for the force step and this particle is done.
+     end
+     --Finish the Newton-Raphson step on h
+     h_new = h_old - f / (f_prime + 1e-128)
+     --Limit the change to a factor of 2
+     h_new = fmind(h_new, 2.0 * h_old)
+     h_new = fmaxd(h_new, 0.5 * h_old)
+     --Check for progression
+     h_new = fmaxd(h_new, part.cutoff_update_space.left)
+     h_new = fmind(h_new, part.cutoff_update_space.right)
+    end
 
-      --TODO: Compute a newton-raphson step on h
-      var n_sum = parts1[particle].wcount * h_old_dim
-      var n_target = hydro_eta_3
-      var f = n_sum - n_target
-      var f_prime = parts1[particle].wcount_dh * h_old_dim + kernel_dimension * parts1[particle].wcount * h_old_dim_minus_one
-        --Improve the bounds
-        if(n_sum < n_target) then
-          parts1[particle].cutoff_update_space.left = fmaxd(parts1[particle].cutoff_update_space.left, h_old)
-        elseif(n_sum > n_target) then
-          parts1[particle].cutoff_update_space.right = fmind(parts1[particle].cutoff_update_space.right, h_old)
-        end
-      --TODO: Finish with a particle if above hmax or below h_min sometimes
-      if( (parts1[particle].h >= hmax and f < 0.0 ) or (parts1[particle].h <= hmin and f > 0.0) ) then
-        regentlib.assert(1 == 0, "NYI: This should never happen as hmin is 0 and hmax is \"large\"")
-        --FUTURE TODO: Calculate timestep and prepare for the force step and this particle is done.
+    --Now check whether the particle has an inappropriate smoothing length
+    --If so, fix this and add the particle to the redo partition and reset the density parameters
+    if( fabsd(h_new - h_old) > hydro_eps * h_old) then
+      --Bisect if oscillating
+      if( (h_new ==part.cutoff_update_space.left and h_old == part.cutoff_update_space.right) or (h_old == part.cutoff_update_space.left and h_new == part.cutoff_update_space.right)) then
+        part.h = cbrtd( 0.5 * (cube_val(part.cutoff_update_space.left) + cube_val(part.cutoff_update_space.right) ) )
+      else --Not oscillating
+        part.h = h_new
+      end --End of oscillation check
+      --If the h is in an allowed range, then redo this part
+      if(part.h < hmax and part.h > hmin) then
+        --Make sure we know this needs redoing
+        part.cutoff_update_space.redo = redo
+        --Reset the properties we need for the density calculation
+        part.rho = 0.0
+        part.wcount = 0.0
+        part.wcount_dh = 0.0
+        part.rho_dh = 0.0
+        part.div_v = 0.0
+        part.rot_v_x = 0.0
+        part.rot_v_y = 0.0
+        part.rot_v_z = 00
+        --TODO: Fix cutoff from H
+        regentlib.assert(1 == 0, "Updated h but not yet cutoff radius")
+      else
+        --TODO: NYI as all particles should do previous check with current values
+        regentlib.assert(1==0, "NYI: Particles outside acceptable range")
       end
-
-      --TODO: Finish the newton-raphson step on h
-          h_new = h_old - f / (f_prime + 1e-128);
-         --Limit the change to a factor of 2
-         h_new = fmind(h_new, 2.0 * h_old)
-         h_new = fmaxd(h_new, 0.5 * h_old)
-         --Check for progression
-         h_new = fmaxd(h_new, parts1[particle].cutoff_update_space.left)
-         h_new = fmind(h_new, parts1[particle].cutoff_update_space.right)
-
     end
-      --TODO: Check whether the particle has an inappropriate smoothing length
-      --If so fix this and add the particle to the redo partition. Reset the density parameters
-      if( fabsd(h_new - h_old) > hydro_eps * h_old) then
-        --Bisect if we're oscillating
-        if( (h_new == parts1[particle].cutoff_update_space.left and h_old == parts1[particle].cutoff_update_space.right) or
-             (h_old == parts1[particle].cutoff_update_space.left and h_new == parts1[particle].cutoff_update_space.right) ) then
-           parts1[particle].h = cbrtd( 0.5 * (cube_val(parts1[particle].cutoff_update_space.left) + cube_val(parts1[particle].cutoff_update_space.right) ) )
-        else
-           parts1[particle].h = h_new
-        end
-        --If in acceptable range then redo this part
-        if( parts1[particle].h <hmax and parts1[particle].h > hmin) then
-          parts1[particle].cutoff_update_space.redo = redo
-          --Reset the particle properties
-          parts1[particle].rho = 0.0
-          parts1[particle].wcount = 0.0
-          parts1[particle].wcount_dh = 0.0
-          parts1[particle].rho_dh = 0.0
-          parts1[particle].div_v = 0.0
-          parts1[particle].rot_v_x = 0.0
-          parts1[particle].rot_v_y = 0.0
-          parts1[particle].rot_v_z = 0.0
-          --TODO FIX CUTOFF FROM H
-          regentlib.assert(1 == 0, "Updated h but not yet cutoff radius")
-          else
-            --TODO: NYI as all particles should do previous check for now
-            regentlib.assert(1==0, "NYI: Particles outside acceptable range")
-        end
-      end
 
   end
-
-  --Recreate the redo partition
-  __delete(redo_partition)
-  var redo_partition2 = partition(parts1.cutoff_update_space.redo, ispace(int1d, 2))  
-      --TODO: For particles that have a converged smoothing length, get ready for force loop.
-  for particle in redo_partition2[no_redo] do
-    --TODO Set timestep
-    --Prepare force
-    var rho_inv = 1.0 / redo_partition2[no_redo][particle].rho
-    var h_inv = 1.0 / redo_partition2[no_redo][particle].h
-    var curl_v = sqrt(redo_partition2[no_redo][particle].rot_v_x * redo_partition2[no_redo][particle].rot_v_x + 
-                      redo_partition2[no_redo][particle].rot_v_y * redo_partition2[no_redo][particle].rot_v_y + 
-                      redo_partition2[no_redo][particle].rot_v_z * redo_partition2[no_redo][particle].rot_v_z)
-    var div_v = redo_partition2[no_redo][particle].div_v
-    var abs_div_v = fabsd(div_v)
-    var pressure = gas_pressure_from_internal_energy( redo_partition2[no_redo][particle].rho, redo_partition2[no_redo][particle].u )
-    var soundspeed = gas_soundspeed_from_pressure(  redo_partition2[no_redo][particle].rho, pressure )
-    var rho_dh = redo_partition2[no_redo][particle].rho_dh
-    --Ignore kernel changing effects if h approx equal hmax
-    if(redo_partition2[no_redo][particle].h > 0.9999 * hmax) then
-       rho_dh = 0.0
-    end
-    
-    var grad_h_term = 1.0 / (1.0 + hydro_dimension_inv * redo_partition2[no_redo][particle].h * rho_dh * rho_inv)
-    var balsara = alpha * abs_div_v / ( abs_div_v * curl_v + 0.0001 * soundspeed * h_inv)
-    redo_partition2[no_redo][particle].f = grad_h_term
-    redo_partition2[no_redo][particle].pressure = pressure
-    redo_partition2[no_redo][particle].soundspeed = soundspeed
-    redo_partition2[no_redo][particle].balsara = balsara 
-
-          regentlib.assert(1 == 0, "Updated h but not yet cutoff radius")
-    --TODO: Reset acceleration
-    redo_partition2[no_redo][particle].accel_x = 0.0
-    redo_partition2[no_redo][particle].accel_y = 0.0
-    redo_partition2[no_redo][particle].accel_z = 0.0
-    redo_partition2[no_redo][particle].u_dt = 0.0
-    redo_partition2[no_redo][particle].h_dt = 0.0
-    redo_partition2[no_redo][particle].v_sig = 2.0 * soundspeed
-  end
-  --TODO: Loop over the redo particles and rerun the density loops on this subset with all other cells.
-  --FUTURE TODO: Can use a generated task to do this for an appropriate neighbour search algorithm 
---  run_subset_task(redo_partition2[redo], particles, cell_space, space )
-  --Wait on the subset task -- TODO: May not need this
---  self_redo_density( parts1, redo_partition2, space )
-  for cells in cell_space.colors do
-    if cells ~= this_cell then
-      pair_redo_density( parts1 , redo_partition2, cell_space[cells], space )
-    end
-  end
-  c.legion_runtime_issue_execution_fence(__runtime(), __context())
-  __delete(redo_partition2)
+  --At the end of this kernel, particles redo values are either:
+  --1) redo, with 0d density values ready to be redone
+  --2) no_redo, ready to have the values for the force loop computed.
+  return kernel
 end
 
+
+local reset_cutoff_update_task_runner = run_per_particle_task( reset_cutoff_update_space )
+local prepare_for_force_runner = run_per_particle_task(  prepare_for_force )
+
+local sort_redo_task = generate_per_part_task( finish_density )
+
+--The SPH task between density and force calculations is a special task, which for now is 
+--non-generalised.
+task update_cutoffs_launcher(particles : region(ispace(int1d), part),
+                             cell_space : partition(disjoint, particles, ispace(int3d)),
+                             space : region(ispace(int1d), space_config)) where
+                             reads(particles, space), writes(particles) do
+    var no_redo = int1d(1)
+    var redo = int1d(0)
+
+    --First we reset all the particle's cutoffs
+    reset_cutoff_update_task_runner( particles, cell_space, space)
+    --Loop over particles with redo set until all particles are redone
+    for attempts = 1, 5 do
+      var redo_partition = partition(particles.cutoff_update_space.redo, ispace(int1d, 2))
+      --We have two partitions, redo partition and the cell partition, we want the cross product of this.
+      var cell_redo = cross_product(cell_space, redo_partition)
+      for cell in cell_space.colors do
+        sort_redo_task(cell_redo[cell][redo], space)
+      end
+      __delete(redo_partition)
+    end
+
+    --At the end of the loop everyone should be redone succesfully
+    prepare_for_force_runner(particles, cell_space, space)
 end
+
