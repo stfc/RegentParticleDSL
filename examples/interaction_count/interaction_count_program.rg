@@ -18,56 +18,24 @@ local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_i
 
 task main_task()
 
-  --We will use 9 particles, with a large cutoff. Various of these functions will not be user-implemented later.
-  --TODO: These lines should become a single call to initialisation, however having issues with the metaprogramming
-  --to get this to work right now
-  var particles_space = ispace(int1d, 9)
-  var [variables.particle_array] = region(particles_space, part)
-  var [variables.space] = region(ispace(int1d, 1), space_config)
-  fill([variables.space].{dim_x, dim_y, dim_z}, 0.0)
-  init_space(3.0, 3.0, 3.0, [variables.space])
-  particle_initialisation([variables.particle_array])
-  --[initialisation_function(variables.particle_array, variables.space)]
-  --[initialise]
-
-  ---------------------------------
-  --END OF BOILERPLATE INIT CODE --
-  ---------------------------------
+  --We will use 9 particles, with a large cutoff. The initialisation is currently declared in the interaction_count_init file.
+  --In the future much of this will be abstracted into the DSL, though user-specified particles can be done easily enough, and
+  --example code to do this will be added.
+  [initialisation_function(variables.particle_array, variables.space)];
   
   --We will set cell size to be 1.0 for now. Not periodic or anything for now so no idea of global cell size for now.
-  --TODO: NYI: The task/library should choose the cell size itself.
-  particles_to_cell_launcher([variables.particle_array], 1.5, 1.5, 1.5)
+  --TODO: NYI: The DSL library should choose the cell size itself.
+  --This code will be abstracted into a new function on a per-neighbour finding system later, but with the same structure.
+  particles_to_cell_launcher([variables.particle_array], 1.5, 1.5, 1.5);
   --Generate the cell partition. This ideally will not be done by the user, or will be "hidden"
-  var cell_partition = update_cell_partitions([variables.particle_array], 2, 2, 2)
+  var cell_partition = update_cell_partitions([variables.particle_array], 2, 2, 2);
   
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
-  interaction_tasks_runner([variables.particle_array], cell_partition, [variables.space])
-  
-  -----------------------------------
-  --START OF BOIILERPLATE FIN CODE --
-  -----------------------------------
-  --TODO: This will be replaced with a finalisation call, however having issues with the metaprogramming
-  --to get this to work right now
-  --[finalisation(variables.particle_array, variables.space)]
-  c.legion_runtime_issue_execution_fence(__runtime(), __context())
-  format.println("{}", [variables.particle_array][0].interactions)
-  for point in [variables.particle_array].ispace do
-    regentlib.assert([variables.particle_array][point].interactions == 8, "test failed")
-  end
-  
-  write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [variables.particle_array], [variables.space])
-  c.legion_runtime_issue_execution_fence(__runtime(), __context())
-  var read_count = read_particle_count("examples/interaction_count/basic_test.hdf5")
-  var copy_region = region(ispace(int1d, read_count), part)
-  read_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", copy_region)
-  
-  for point in copy_region do
-  regentlib.assert(copy_region[point].core_part_space.pos_x == [variables.particle_array][point].core_part_space.pos_x, "failed on pos_x")
-  regentlib.assert(copy_region[point].core_part_space.pos_y == [variables.particle_array][point].core_part_space.pos_y, "failed on pos_y")
-  regentlib.assert(copy_region[point].core_part_space.pos_z == [variables.particle_array][point].core_part_space.pos_z, "failed on pos_z")
-  regentlib.assert(copy_region[point].core_part_space.cutoff == [variables.particle_array][point].core_part_space.cutoff, "failed on cutoff")
-  end
+  interaction_tasks_runner([variables.particle_array], cell_partition, [variables.space]);
+
+  --This finalisation function is declared in the interaction_count_init file  
+  [finalisation_function(variables.particle_array, variables.space)];
 end
 
 regentlib.start(main_task)

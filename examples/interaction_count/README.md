@@ -48,3 +48,6 @@ Before the `main_task`, we create the tasks used for the program using the appro
 functions. In the `main_task`, we create the particles (which the IO system will do in future) do a small amount of housekeeping, and
 then launch the tasks. We use an assert to check correctness for now, and then do some HDF5 testing. The correctness checking and HDF5 business
 will be moved into the infrastructure at a later date.
+
+The only rule for the main task itself (or anywhere else the user code requires `[function]` style syntax) is that each line must end in a `;` 
+to ensure Regent can correctly parse the code
