@@ -40,8 +40,6 @@ terra fmaxd(val1 : double, val2 : double)
   return regentlib.fmax(val1, val2)
 end
 
-local run_subset_task = run_asymmetric_subset_task(nonsym_density_kernel)
-
 task pair_redo_density( parts_self : region(ispace(int1d), part), 
                         subset: partition(disjoint, parts_self, ispace(int1d)), 
                         parts_far : region(ispace(int1d), part),
@@ -49,21 +47,24 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
    where reads(parts_self, parts_far, space), writes( parts_self ) do
    var no_redo = int1d(1)
    var redo = int1d(0)
-   var half_box_x = 0.5 * space[0].dim_x
-   var half_box_y = 0.5 * space[0].dim_y
-   var half_box_z = 0.5 * space[0].dim_z
+   var box_x = space[0].dim_x
+   var box_y = space[0].dim_y
+   var box_z = space[0].dim_z
+   var half_box_x = 0.5 * box_x
+   var half_box_y = 0.5 * box_y
+   var half_box_z = 0.5 * box_z
    for part1 in subset[redo].ispace do
      for part2 in parts_far.ispace do
        --Compute particle distance
          var dx = subset[redo][part1].core_part_space.pos_x - parts_far[part2].core_part_space.pos_x
          var dy = subset[redo][part1].core_part_space.pos_y - parts_far[part2].core_part_space.pos_y
          var dz = subset[redo][part1].core_part_space.pos_z - parts_far[part2].core_part_space.pos_z
-         if (dx > half_box_x) then dx = dx - half_box_x end
-         if (dy > half_box_y) then dy = dy - half_box_y end
-         if (dz > half_box_z) then dz = dz - half_box_z end
-         if (dx <-half_box_x) then dx = dx + half_box_x end
-         if (dy <-half_box_y) then dy = dy + half_box_y end
-         if (dz <-half_box_z) then dz = dz + half_box_z end
+         if (dx > half_box_x) then dx = dx - box_x end
+         if (dy > half_box_y) then dy = dy - box_y end
+         if (dz > half_box_z) then dz = dz - box_z end
+         if (dx <-half_box_x) then dx = dx + box_x end
+         if (dy <-half_box_y) then dy = dy + box_y end
+         if (dz <-half_box_z) then dz = dz + box_z end
          var cutoff2 = subset[redo][part1].core_part_space.cutoff
          cutoff2 = cutoff2 * cutoff2
          var r2 = dx*dx + dy*dy + dz*dz
@@ -79,9 +80,12 @@ task self_redo_density( parts : region(ispace(int1d), part), subset : partition(
    where reads(parts, space), writes(parts) do
    var no_redo = int1d(1)
    var redo = int1d(0)
-   var half_box_x = 0.5 * space[0].dim_x
-   var half_box_y = 0.5 * space[0].dim_y
-   var half_box_z = 0.5 * space[0].dim_z
+   var box_x = space[0].dim_x
+   var box_y = space[0].dim_y
+   var box_z = space[0].dim_z
+   var half_box_x = 0.5 * box_x
+   var half_box_y = 0.5 * box_y
+   var half_box_z = 0.5 * box_z
    for part1 in subset[redo].ispace do
      for part2 in parts.ispace do
        --Compute particle distance
@@ -89,12 +93,12 @@ task self_redo_density( parts : region(ispace(int1d), part), subset : partition(
          var dx = subset[redo][part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
          var dy = subset[redo][part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
          var dz = subset[redo][part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
-         if (dx > half_box_x) then dx = dx - half_box_x end
-         if (dy > half_box_y) then dy = dy - half_box_y end
-         if (dz > half_box_z) then dz = dz - half_box_z end
-         if (dx <-half_box_x) then dx = dx + half_box_x end
-         if (dy <-half_box_y) then dy = dy + half_box_y end
-         if (dz <-half_box_z) then dz = dz + half_box_z end
+         if (dx > half_box_x) then dx = dx - box_x end
+         if (dy > half_box_y) then dy = dy - box_y end
+         if (dz > half_box_z) then dz = dz - box_z end
+         if (dx <-half_box_x) then dx = dx + box_x end
+         if (dy <-half_box_y) then dy = dy + box_y end
+         if (dz <-half_box_z) then dz = dz + box_z end
          var cutoff2 = subset[redo][part1].core_part_space.cutoff
          cutoff2 = cutoff2 * cutoff2
          var r2 = dx*dx + dy*dy + dz*dz
@@ -287,6 +291,7 @@ task update_cutoffs_launcher(particles : region(ispace(int1d), part),
         sort_redo_task(cell_redo[cell][redo], space)
       end
       __delete(redo_partition)
+      regentlib.assert(1 == 0, "NOT YET FINISHED. Redos set but redo tasks not executed.")
     end
 
     --At the end of the loop everyone should be redone succesfully
