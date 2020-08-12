@@ -29,9 +29,9 @@ task main_task()
   particle_initialisation([variables.particle_array])
   --We will set cell size to be 1.5 for now. 
   --TODO: NYI: The task/library should choose the cell size itself.
-  var cell_count = compute_cell_count([variables.config], 1.5, 1.5, 1.5)
-  [variables.config].neighbour_config_type.cell_array = region(ispace(int1d, cell_count), cell_type)
-  particles_to_cell_launcher([variables.particle_array], 1.5, 1.5, 1.5)
+ -- var cell_count = compute_cell_count([variables.config], 1.5, 1.5, 1.5)
+initialise_cells(variables.config , variables.particle_array)
+  particles_to_cell_launcher( variables.particle_array, variables.config)
   --[initialisation_function(variables.particle_array, variables.space)]
   --[initialise]
 
@@ -40,11 +40,11 @@ task main_task()
   ---------------------------------
   
   --Generate the cell partition. This ideally will not be done by the user, or will be "hidden"
-  var cell_partition = update_cell_partitions([variables.particle_array], 2, 2, 2, [variables.config])
+  var cell_partition = update_cell_partitions([variables.particle_array], [variables.config])
   
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
-  interaction_tasks_runner([variables.particle_array], cell_partition, [variables.space])
+  interaction_tasks_runner([variables.particle_array], cell_partition, [variables.config])
   
   -----------------------------------
   --START OF BOIILERPLATE FIN CODE --
@@ -58,7 +58,7 @@ task main_task()
     regentlib.assert([variables.particle_array][point].interactions == 8, "test failed")
   end
   
-  write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [variables.particle_array], [variables.space])
+  write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [variables.particle_array], [variables.config])
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var read_count = read_particle_count("examples/interaction_count/basic_test.hdf5")
   var copy_region = region(ispace(int1d, read_count), part)

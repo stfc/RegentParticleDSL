@@ -43,13 +43,13 @@ end
 task pair_redo_density( parts_self : region(ispace(int1d), part), 
                         subset: partition(disjoint, parts_self, ispace(int1d)), 
                         parts_far : region(ispace(int1d), part),
-                        space : region(ispace(int1d), space_config) )
-   where reads(parts_self, parts_far, space), writes( parts_self ) do
+                        config : region(ispace(int1d), config_type) )
+   where reads(parts_self, parts_far, config), writes( parts_self ) do
    var no_redo = int1d(1)
    var redo = int1d(0)
-   var box_x = space[0].dim_x
-   var box_y = space[0].dim_y
-   var box_z = space[0].dim_z
+   var box_x = config[0].space.dim_x
+   var box_y = config[0].space.dim_y
+   var box_z = config[0].space.dim_z
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
@@ -76,13 +76,13 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
 end
 
 
-task self_redo_density( parts : region(ispace(int1d), part), subset : partition(disjoint, parts, ispace(int1d)), space : region(ispace(int1d), space_config) )
-   where reads(parts, space), writes(parts) do
+task self_redo_density( parts : region(ispace(int1d), part), subset : partition(disjoint, parts, ispace(int1d)), config : region(ispace(int1d), config_type) )
+   where reads(parts, config), writes(parts) do
    var no_redo = int1d(1)
    var redo = int1d(0)
-   var box_x = space[0].dim_x
-   var box_y = space[0].dim_y
-   var box_z = space[0].dim_z
+   var box_x = config[0].space.dim_x
+   var box_y = config[0].space.dim_y
+   var box_z = config[0].space.dim_z
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
@@ -275,26 +275,26 @@ local sort_redo_task = generate_per_part_task( finish_density )
 --non-generalised.
 task update_cutoffs_launcher(particles : region(ispace(int1d), part),
                              cell_space : partition(disjoint, particles, ispace(int3d)),
-                             space : region(ispace(int1d), space_config)) where
-                             reads(particles, space), writes(particles) do
+                             config : region(ispace(int1d), config_type)) where
+                             reads(particles, config), writes(particles) do
     var no_redo = int1d(1)
     var redo = int1d(0)
 
     --First we reset all the particle's cutoffs
-    reset_cutoff_update_task_runner( particles, cell_space, space)
+    reset_cutoff_update_task_runner( particles, cell_space, config)
     --Loop over particles with redo set until all particles are redone
     for attempts = 1, 5 do
       var redo_partition = partition(particles.cutoff_update_space.redo, ispace(int1d, 2))
       --We have two partitions, redo partition and the cell partition, we want the cross product of this.
       var cell_redo = cross_product(cell_space, redo_partition)
       for cell in cell_space.colors do
-        sort_redo_task(cell_redo[cell][redo], space)
+        sort_redo_task(cell_redo[cell][redo], config)
       end
       __delete(redo_partition)
       regentlib.assert(1 == 0, "NOT YET FINISHED. Redos set but redo tasks not executed.")
     end
 
     --At the end of the loop everyone should be redone succesfully
-    prepare_for_force_runner(particles, cell_space, space)
+    prepare_for_force_runner(particles, cell_space, config)
 end
 

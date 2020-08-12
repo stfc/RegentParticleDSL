@@ -84,7 +84,7 @@ task read_particle_count(filename : rawstring) : uint64
   return count
 end
 
-task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle_region : region(ispace(int1d), part), space_region : region(ispace(int1d), space_config) ) where writes(particle_region, space_region) 
+task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle_region : region(ispace(int1d), part), config_region : region(ispace(int1d), config_type) ) where writes(particle_region, config_region) 
   ,reads(particle_region) do --read access for debugging
   --This must be called at the start of every function involving hdf5 right now
   wrap.init_wrapper()
@@ -102,9 +102,9 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
   var boxsize : double[3]
   regentlib.assert( h5lib.H5Aread(boxsize_attr, wrap.WRAP_H5T_IEEE_F64LE, &boxsize) >= 0, "Failed to get the BoxSize attribute")
   format.println("boxsize {} {} {}", boxsize[0], boxsize[1], boxsize[2])
-  space_region[0].dim_x = boxsize[0]
-  space_region[0].dim_y = boxsize[1]
-  space_region[0].dim_z = boxsize[2]
+  config_region[0].space.dim_x = boxsize[0]
+  config_region[0].space.dim_y = boxsize[1]
+  config_region[0].space.dim_z = boxsize[2]
   h5lib.H5Aclose(boxsize_attr)
   
 --Check dimensionality (We can only do 3D tests at the moment
@@ -263,6 +263,8 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
     counter = 0
   for part in particle_region.ispace do
     particle_region[part].h = smoothing_length_buffer[counter]
+    --TODO NB. THIS IS A GUESS DO NOT USE PRODUCTION
+    particle_region[part].core_part_space.cutoff = 2.0 * particle_region[part].h
     counter = counter + 1
   end
   h5lib.H5Sclose(filespace)
@@ -405,8 +407,8 @@ terra write_field_F(file_id: h5lib.hid_t, group : h5lib.hid_t, fieldname : rawst
 end
 
 
-task write_hdf5_snapshot(filename : rawstring, particle_region : region(ispace(int1d), part), space : region(ispace(int1d), space_config)) where
-    reads(particle_region, space) do
+task write_hdf5_snapshot(filename : rawstring, particle_region : region(ispace(int1d), part), config : region(ispace(int1d), config_type)) where
+    reads(particle_region, config) do
 
   --This must be called at the start of every function involving hdf5 right now
   wrap.init_wrapper()
@@ -426,9 +428,9 @@ task write_hdf5_snapshot(filename : rawstring, particle_region : region(ispace(i
   h5lib.H5Sset_extent_simple(h_space, 1, dims, [&uint64](0))
   var h_attr = h5lib.H5Acreate1(h_grp, "BoxSize", wrap.WRAP_H5T_IEEE_F64LE, h_space, wrap.WRAP_H5P_DEFAULT)
   var boxsize : double[3]
-  boxsize[0] = space[0].dim_x
-  boxsize[1] = space[0].dim_y
-  boxsize[2] = space[0].dim_z
+  boxsize[0] = config[0].space.dim_x
+  boxsize[1] = config[0].space.dim_y
+  boxsize[2] = config[0].space.dim_z
   h5lib.H5Awrite(h_attr,  wrap.WRAP_H5T_NATIVE_DOUBLE, &boxsize)
   h5lib.H5Sclose(h_space)
   h5lib.H5Aclose(h_attr)

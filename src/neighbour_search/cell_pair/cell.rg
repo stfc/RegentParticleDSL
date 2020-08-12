@@ -2,7 +2,7 @@ import "regent"
 
 require("defaults")
 
-
+local format = require("std/format")
 
 local stdlib = terralib.includec("stdlib.h")
 
@@ -20,6 +20,7 @@ task find_cutoff(particles : region(ispace(int1d), part)) : double where
   for part in particles.ispace do
     max_cutoff = regentlib.fmax(max_cutoff, particles[part].core_part_space.cutoff)
   end
+  return max_cutoff
 end
 
 task find_max_cutoff_launcher(particles : region(ispace(int1d), part)) : double where
@@ -72,7 +73,10 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   var cell_x_dim : double = x_space / ([double](x_cells))
   var cell_y_dim : double = y_space / ([double](y_cells))
   var cell_z_dim : double = z_space / ([double](z_cells))
-
+  config[0].neighbour_config.x_cells = x_cells
+  config[0].neighbour_config.y_cells = y_cells
+  config[0].neighbour_config.z_cells = z_cells
+  format.println("Cell counts: {} {} {}", x_cells, y_cells, z_cells)
   config[0].neighbour_config.cell_dim_x = cell_x_dim
   config[0].neighbour_config.cell_dim_y = cell_y_dim
   config[0].neighbour_config.cell_dim_z = cell_z_dim

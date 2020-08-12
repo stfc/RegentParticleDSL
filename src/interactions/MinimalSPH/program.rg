@@ -25,23 +25,24 @@ task main()
   format.println("Initialising SPH from {} with {} hydro particles", filename, count)
   var particles_space = ispace(int1d, count)
   var [variables.particle_array] = region(particles_space, part)
-  var [variables.space] = region(ispace(int1d, 1), space_config)
-  fill([variables.space].{dim_x, dim_y, dim_z, timestep}, 0.0)
-  read_hdf5_snapshot(filename, count, [variables.particle_array], [variables.space])
+  var [variables.config] = region(ispace(int1d, 1), config_type)
+  fill([variables.config].{space.dim_x, space.dim_y, space.dim_z, space.timestep}, 0.0)
+  read_hdf5_snapshot(filename, count, [variables.particle_array], [variables.config])
 
-  format.println("{} {} {}", [variables.space][0].dim_x, [variables.space][0].dim_y, [variables.space][0].dim_z)
+  format.println("{} {} {}", [variables.config][0].space.dim_x, [variables.config][0].space.dim_y, [variables.config][0].space.dim_z)
   --Make 5x5x5 cells for now (chosen arbitrarily). NB This wouldn't not be sensible for optimised version, but the neighbour search will
   --be involved in cell size choices for real cases
-  particles_to_cell_launcher([variables.particle_array],  [variables.space][0].dim_x/5.0,  [variables.space][0].dim_y/5.0,  [variables.space][0].dim_z/5.0)
+initialise_cells(variables.config , variables.particle_array)
+  particles_to_cell_launcher( variables.particle_array, variables.config)
 
   var time : double = 0.0
   var endtime : double = 1.0
-  [variables.space][0].timestep = 0.01
+  [variables.config][0].space.timestep = 0.01
   while time < endtime do
-    var cell_partition = update_cell_partitions([variables.particle_array], 5, 5, 5)
-    --density_task([variables.particle_array], cell_partition, [variables.space])
+    var cell_partition = update_cell_partitions([variables.particle_array], [variables.config])
+    density_task([variables.particle_array], cell_partition, [variables.config])
   --  timestep_task([variables.particle_array], cell_partition, [variables.space])
-    update_cutoffs_launcher([variables.particle_array], cell_partition, [variables.space])
+--    update_cutoffs_launcher([variables.particle_array], cell_partition, [variables.space])
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
     say_hello(time)
     time = time + 0.01
