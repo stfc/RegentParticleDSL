@@ -17,6 +17,7 @@ task update_cell_partitions(particles : region(ispace(int1d), part), config : re
 end
 
 local abs = regentlib.fabs(double)
+local ceil = regentlib.ceil(double)
 __demand(__inline)
 task cells_in_range( cell1 : int3d, cell2 : int3d, config : config_type, cutoff2 : double) : bool
   var in_range : bool = false
@@ -338,20 +339,40 @@ local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), pa
     --Not optimised, it does all cell pairs in the domain, doesn't check
     --cutoff radii or anything.
     var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
+    var x_count = config[0].neighbour_config.x_cells
+    var y_count = config[0].neighbour_config.y_cells
+    var z_count = config[0].neighbour_config.z_cells
+ 
+    --Compute cell radii
+    var cutoff = config[0].neighbour_config.max_cutoff
+    var x_radii : int = ceil( config[0].neighbour_config.cell_dim_x / cutoff )
+    var y_radii : int = ceil( config[0].neighbour_config.cell_dim_y / cutoff )
+    var z_radii : int = ceil( config[0].neighbour_config.cell_dim_z / cutoff )
     for cell1 in cell_space.colors do
-        cell_self_task(cell_space[cell1], space)
-        for cell2 in cell_space.colors do
-          var in_range : bool = cells_in_range( cell1 , cell2 , config[0], cutoff2 )
-          if( in_range ) then
-            if(cell2.x > cell1.x ) then
-              cell_pair_task( cell_space[cell1], cell_space[cell2], config )
-            elseif( cell2.x == cell1.x and cell2.y > cell1.y ) then
-              cell_pair_task( cell_space[cell1], cell_space[cell2], config )
-            elseif( cell2.x == cell1.x and cell2.y == cell1.y and cell2.z > cell1.z) then
-              cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        cell_self_task(cell_space[cell1], config)
+        --Loops non inclusive, positive only direction.
+        for x = 0, x_radii+1 do
+          for y = 0, y_radii+1 do
+            for z = 0, z_radii + 1 do
+              if(not (x == 0 and y == 0 and z == 0) ) then
+                var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
+                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+              end 
             end
           end
         end
+        --for cell2 in cell_space.colors do
+        --  var in_range : bool = cells_in_range( cell1 , cell2 , config[0], cutoff2 )
+        --  if( in_range ) then
+        --    if(cell2.x > cell1.x ) then
+        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        --    elseif( cell2.x == cell1.x and cell2.y > cell1.y ) then
+        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        --    elseif( cell2.x == cell1.x and cell2.y == cell1.y and cell2.z > cell1.z) then
+        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        --    end
+        --  end
+        --end
     end
 end
 return run_symmetric_pairwise_task_code
@@ -365,19 +386,47 @@ local cell_self_task = generate_asymmetric_self_task( kernel_name )
 local task run_asymmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type))
     where reads(particles, config), writes(particles) do
 
+    --Do all cell2s in the positive direction
     --Not optimised, it does all cell pairs in the domain, doesn't check
     --cutoff radii or anything.
     var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
-    for cell1 in cell_space.colors do
-      cell_self_task(cell_space[cell1], config)
-      for cell2 in cell_space.colors do
-        var in_range : bool = cells_in_range( cell1 , cell2 , config[0], cutoff2 )
-        if(in_range and cell1 ~= cell2) then
-          cell_pair_task(cell_space[cell1], cell_space[cell2], config)
-        end
-      end
-    end
+    var x_count = config[0].neighbour_config.x_cells
+    var y_count = config[0].neighbour_config.y_cells
+    var z_count = config[0].neighbour_config.z_cells
 
+    --Compute cell radii
+    var cutoff = config[0].neighbour_config.max_cutoff
+    var x_radii : int = ceil( config[0].neighbour_config.cell_dim_x / cutoff )
+    var y_radii : int = ceil( config[0].neighbour_config.cell_dim_y / cutoff )
+    var z_radii : int = ceil( config[0].neighbour_config.cell_dim_z / cutoff )
+    for cell1 in cell_space.colors do
+        cell_self_task(cell_space[cell1], config)
+        --Loops non inclusive, positive only direction.
+        for x = 0, x_radii+1 do
+          for y = 0, y_radii+1 do
+            for z = 0, z_radii + 1 do
+              if(not (x == 0 and y == 0 and z == 0) ) then
+                var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
+                --Asymmetric, launch tasks both ways
+                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+              end
+            end
+          end
+        end
+        --for cell2 in cell_space.colors do
+        --  var in_range : bool = cells_in_range( cell1 , cell2 , config[0], cutoff2 )
+        --  if( in_range ) then
+        --    if(cell2.x > cell1.x ) then
+        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        --    elseif( cell2.x == cell1.x and cell2.y > cell1.y ) then
+        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        --    elseif( cell2.x == cell1.x and cell2.y == cell1.y and cell2.z > cell1.z) then
+        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
+        --    end
+        --  end
+        --end
+    end
 
 end
 return run_asymmetric_pairwise_task_code 

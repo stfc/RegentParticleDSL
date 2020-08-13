@@ -69,10 +69,30 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   var x_cells : int = floord(x_space / config[0].neighbour_config.max_cutoff)
   var y_cells : int = floord(y_space / config[0].neighbour_config.max_cutoff)
   var z_cells : int = floord(z_space / config[0].neighbour_config.max_cutoff)
-  
+
+  --Aim for at least 200 PPC  
+  var count = particles.bounds.hi - particles.bounds.lo
+  var n_cells = x_cells * y_cells * z_cells
+  var avg_ppc : int32 = int32(count / n_cells)
+  while avg_ppc < 200 do
+    if x_cells > y_cells and x_cells > z_cells then
+      x_cells = x_cells / 2
+    else
+      if y_cells > z_cells then
+        y_cells = y_cells / 2
+      else
+        z_cells = z_cells / 2
+      end 
+    end
+    n_cells = x_cells * y_cells * z_cells
+    avg_ppc = count / n_cells
+  end
+
   var cell_x_dim : double = x_space / ([double](x_cells))
   var cell_y_dim : double = y_space / ([double](y_cells))
   var cell_z_dim : double = z_space / ([double](z_cells))
+
+
   config[0].neighbour_config.x_cells = x_cells
   config[0].neighbour_config.y_cells = y_cells
   config[0].neighbour_config.z_cells = z_cells
