@@ -69,19 +69,23 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   var x_cells : int = floord(x_space / config[0].neighbour_config.max_cutoff)
   var y_cells : int = floord(y_space / config[0].neighbour_config.max_cutoff)
   var z_cells : int = floord(z_space / config[0].neighbour_config.max_cutoff)
+  --Always have to have 2x2x2
+  x_cells = regentlib.fmax(x_cells, 3)
+  y_cells = regentlib.fmax(y_cells, 3)
+  z_cells = regentlib.fmax(z_cells, 3)
 
   --Aim for at least 200 PPC  
   var count = particles.bounds.hi - particles.bounds.lo
   var n_cells = x_cells * y_cells * z_cells
   var avg_ppc : int32 = int32(count / n_cells)
-  while avg_ppc < 200 do
+  while avg_ppc < 200 and (x_cells > 3 or y_cells > 3 or z_cells > 3) do
     if x_cells > y_cells and x_cells > z_cells then
-      x_cells = x_cells / 2
+      x_cells = regentlib.fmax(x_cells / 2, 3)
     else
       if y_cells > z_cells then
-        y_cells = y_cells / 2
+        y_cells = regentlib.fmax(y_cells / 2, 3)
       else
-        z_cells = z_cells / 2
+        z_cells = regentlib.fmax(z_cells / 2, 3)
       end 
     end
     n_cells = x_cells * y_cells * z_cells
