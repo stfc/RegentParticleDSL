@@ -97,6 +97,8 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   config[0].neighbour_config.y_cells = y_cells
   config[0].neighbour_config.z_cells = z_cells
   format.println("Cell counts: {} {} {}", x_cells, y_cells, z_cells)
+  format.println("Max cutoff: {}", config[0].neighbour_config.max_cutoff)
+  format.println("Cell dimensions: {} {} {}", cell_x_dim, cell_y_dim, cell_z_dim)
   config[0].neighbour_config.cell_dim_x = cell_x_dim
   config[0].neighbour_config.cell_dim_y = cell_y_dim
   config[0].neighbour_config.cell_dim_z = cell_z_dim

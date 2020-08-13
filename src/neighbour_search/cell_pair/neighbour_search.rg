@@ -396,9 +396,9 @@ local task run_asymmetric_pairwise_task_code( particles: region(ispace(int1d), p
 
     --Compute cell radii
     var cutoff = config[0].neighbour_config.max_cutoff
-    var x_radii : int = ceil( config[0].neighbour_config.cell_dim_x / cutoff )
-    var y_radii : int = ceil( config[0].neighbour_config.cell_dim_y / cutoff )
-    var z_radii : int = ceil( config[0].neighbour_config.cell_dim_z / cutoff )
+    var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
+    var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
+    var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z )
     for cell1 in cell_space.colors do
         cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
@@ -414,18 +414,6 @@ local task run_asymmetric_pairwise_task_code( particles: region(ispace(int1d), p
             end
           end
         end
-        --for cell2 in cell_space.colors do
-        --  var in_range : bool = cells_in_range( cell1 , cell2 , config[0], cutoff2 )
-        --  if( in_range ) then
-        --    if(cell2.x > cell1.x ) then
-        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
-        --    elseif( cell2.x == cell1.x and cell2.y > cell1.y ) then
-        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
-        --    elseif( cell2.x == cell1.x and cell2.y == cell1.y and cell2.z > cell1.z) then
-        --      cell_pair_task( cell_space[cell1], cell_space[cell2], config )
-        --    end
-        --  end
-        --end
     end
 
 end
