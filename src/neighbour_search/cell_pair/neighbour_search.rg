@@ -172,7 +172,7 @@ end
 --This function assumes the cutoff is the same for both particles
 function generate_symmetric_self_task( kernel_name )
 
-local task self_task(parts1 : region(ispace(int1d), part), space : region(ispace(int1d),space_config)) where
+local task self_task(parts1 : region(ispace(int1d), part), config : region(ispace(int1d),config_type)) where
   reads(parts1, config), writes(parts1) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
@@ -333,7 +333,7 @@ local cell_self_task = generate_symmetric_self_task( kernel_name )
 
 
 local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type))
-    where reads(particles, space), writes(particles) do
+    where reads(particles, config), writes(particles) do
 
     --Do all cell2s in the positive direction
     --Not optimised, it does all cell pairs in the domain, doesn't check
@@ -345,9 +345,9 @@ local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), pa
  
     --Compute cell radii
     var cutoff = config[0].neighbour_config.max_cutoff
-    var x_radii : int = ceil( config[0].neighbour_config.cell_dim_x / cutoff )
-    var y_radii : int = ceil( config[0].neighbour_config.cell_dim_y / cutoff )
-    var z_radii : int = ceil( config[0].neighbour_config.cell_dim_z / cutoff )
+    var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
+    var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
+    var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z )
     for cell1 in cell_space.colors do
         cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
@@ -356,7 +356,14 @@ local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), pa
             for z = 0, z_radii + 1 do
               if(not (x == 0 and y == 0 and z == 0) ) then
                 var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                --Weird if statement to handle max_cutoff >= half the boxsize
+                if( (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) and
+                   (cell1.x - x_radii <= cell2.x and cell1.y - y_radii <= cell2.y and cell1.z - y_radii <= cell2.z) ) then
+
+                else
+                  --symmetric
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                end
               end 
             end
           end
@@ -407,9 +414,15 @@ local task run_asymmetric_pairwise_task_code( particles: region(ispace(int1d), p
             for z = 0, z_radii + 1 do
               if(not (x == 0 and y == 0 and z == 0) ) then
                 var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
-                --Asymmetric, launch tasks both ways
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
-                cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+                --Weird if statement to handle max_cutoff >= half the boxsize
+                if( (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) and 
+                   (cell1.x - x_radii <= cell2.x and cell1.y - y_radii <= cell2.y and cell1.z - y_radii <= cell2.z) ) then
+
+                else
+                  --Asymmetric, launch tasks both ways
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                  cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+                end
               end
             end
           end

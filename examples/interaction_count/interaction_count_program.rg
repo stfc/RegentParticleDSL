@@ -11,10 +11,11 @@ require("examples/interaction_count/infrastructure/interaction_count_IO")
 local c = regentlib.c
 format = require("std/format")
 variables = require("examples/interaction_count/infrastructure/interaction_count_variables")
+local stdlib = terralib.includec("stdlib.h")
 
 --Create the tasks and runner from the kernel. You can choose to use symmetric or asymmetric as desired here.
---local interaction_tasks_runner = create_symmetric_pairtask_runner( symmetric_interaction_count_kernel )
-local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel )
+local interaction_tasks_runner = create_symmetric_pairtask_runner( symmetric_interaction_count_kernel )
+--local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel )
 
 task main_task()
 
@@ -55,7 +56,11 @@ initialise_cells(variables.config , variables.particle_array)
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   format.println("{}", [variables.particle_array][0].interactions)
   for point in [variables.particle_array].ispace do
-    regentlib.assert([variables.particle_array][point].interactions == 8, "test failed")
+    var s : rawstring
+    s = [rawstring] (stdlib.malloc(256))
+    format.snprintln(s,256, "test failed for {}: value {}", point, [variables.particle_array][point].interactions)
+    regentlib.assert([variables.particle_array][point].interactions == 8, s)
+    stdlib.free(s)
   end
   
   write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [variables.particle_array], [variables.config])

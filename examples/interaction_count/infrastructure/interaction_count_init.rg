@@ -96,4 +96,16 @@ particle_region[7].core_part_space.cutoff = 1.75
 particle_region[8].core_part_space.pos_x = 2.0
 particle_region[8].core_part_space.pos_y = 2.0
 particle_region[8].core_part_space.cutoff = 1.75
+
+
+
+particle_region[0].core_part_space.id = 0
+particle_region[1].core_part_space.id = 1
+particle_region[2].core_part_space.id = 2
+particle_region[3].core_part_space.id = 3
+particle_region[4].core_part_space.id = 4
+particle_region[5].core_part_space.id = 5
+particle_region[6].core_part_space.id = 6
+particle_region[7].core_part_space.id = 7
+particle_region[8].core_part_space.id = 8
 end

@@ -18,6 +18,11 @@ task say_hello(time : float)
   format.println("HELLO TIME {}", time)
 end
 
+task get_time() : double
+
+  return c.legion_get_current_time_in_micros()
+end
+
 task main()
 --[initialisation("/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5", variables.particle_array, variables.space)]
   var filename = "/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5"
@@ -36,8 +41,11 @@ initialise_cells(variables.config , variables.particle_array)
   particles_to_cell_launcher( variables.particle_array, variables.config)
 
   var time : double = 0.0
-  var endtime : double = 1.0
+  var endtime : double = 0.01
   [variables.config][0].space.timestep = 0.01
+  c.legion_runtime_issue_execution_fence(__runtime(), __context())
+  var start_time = get_time()
+  c.legion_runtime_issue_execution_fence(__runtime(), __context())
   while time < endtime do
     var cell_partition = update_cell_partitions([variables.particle_array], [variables.config])
     density_task([variables.particle_array], cell_partition, [variables.config])
@@ -48,7 +56,11 @@ initialise_cells(variables.config , variables.particle_array)
     time = time + 0.01
 --    __delete(cell_partition)
   end  
-  
+    c.legion_runtime_issue_execution_fence(__runtime(), __context())
+  var end_time = get_time()
+ 
+  format.println("Computation took {} seconds.", (end_time - start_time)/1000000.0)
+ 
 end
 
 regentlib.start(main)
