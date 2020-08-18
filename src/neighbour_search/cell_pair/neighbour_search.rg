@@ -326,7 +326,7 @@ end
 
 
 
-function create_symmetric_pairtask_runner( kernel_name )
+function create_symmetric_pairwise_runner( kernel_name )
 
 local cell_pair_task = generate_symmetric_pairwise_task( kernel_name )
 local cell_self_task = generate_symmetric_self_task( kernel_name )
