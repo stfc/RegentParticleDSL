@@ -4,7 +4,7 @@ require("defaults")
 
 local variables = {}
 
-variables.space = regentlib.newsymbol("space")
+variables.config = regentlib.newsymbol("config")
 variables.particle_array = regentlib.newsymbol("particle_region")
 
 return variables
