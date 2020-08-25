@@ -49,31 +49,38 @@ initialise_cells(variables.config , variables.particle_array)
   reset_force_task(variables.particle_array, cell_partition1, variables.config)
 
   --Do the zero timestep to setup the IC
+  variables.config[0].space.timestep = 0.00
   density_task(variables.particle_array, cell_partition1, variables.config)
   update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
-  var timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
-
+  timestep_task(variables.particle_array, cell_partition, variables.config)
+  variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
+  
   var time : double = 0.0
   var endtime : double = 0.0001
-  [variables.config][0].space.timestep = 0.01
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var start_time = get_time()
+  format.println("timestep computed is {}", variables.config[0].space.timestep)
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   __delete(cell_partition1)
   while time < endtime do
+    --TODO Fix update_cell_partitions
     var cell_partition = update_cell_partitions(variables.particle_array, variables.config)
+    --first kick
+    timestep_task(variables.particle_array, cell_partition, variables.config)
     reset_density_task(variables.particle_array, cell_partition, variables.config)
     density_task(variables.particle_array, cell_partition, variables.config)
     update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
     reset_force_task(variables.particle_array, cell_partition, variables.config)
     force_task( variables.particle_array, cell_partition, variables.config)
+    --2nd kick
+    timestep_task(variables.particle_array, cell_partition, variables.config)
   --  timestep_task([variables.particle_array], cell_partition, [variables.space])
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
     say_hello(time)
-    time = time + config[0].space.timestep
-    config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
+    time = time + variables.config[0].space.timestep
+    variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
     if(endtime - time > config[0].space.timestep) then
-      config[0].space.timestep = endtime - time
+      variables.config[0].space.timestep = endtime - time
     end
     format.println("timestep is {}", timestep)
     __delete(cell_partition)
