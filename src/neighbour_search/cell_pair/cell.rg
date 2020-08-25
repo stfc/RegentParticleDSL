@@ -78,7 +78,8 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   var count = particles.bounds.hi - particles.bounds.lo
   var n_cells = x_cells * y_cells * z_cells
   var avg_ppc : int32 = int32(count / n_cells)
-  while avg_ppc < 200 and (x_cells > 3 or y_cells > 3 or z_cells > 3) do
+  while avg_ppc < 800 and (x_cells > 3 or y_cells > 3 or z_cells > 3) do
+--  while avg_ppc < 200 and (x_cells > 3 or y_cells > 3 or z_cells > 3) do
     if x_cells > y_cells and x_cells > z_cells then
       x_cells = regentlib.fmax(x_cells / 2, 3)
     else

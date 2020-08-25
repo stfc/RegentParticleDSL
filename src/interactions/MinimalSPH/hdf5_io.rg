@@ -264,7 +264,7 @@ task read_hdf5_snapshot(filename : rawstring, particle_count : uint64 , particle
   for part in particle_region.ispace do
     particle_region[part].h = smoothing_length_buffer[counter]
     --TODO NB. THIS IS A GUESS DO NOT USE PRODUCTION
-    particle_region[part].core_part_space.cutoff = 2.0 * particle_region[part].h
+    particle_region[part].core_part_space.cutoff = kernel_gamma * particle_region[part].h
     counter = counter + 1
   end
   h5lib.H5Sclose(filespace)

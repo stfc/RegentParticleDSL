@@ -10,8 +10,11 @@ local variables = require("src/interactions/MinimalSPH/variables")
 local format = require("std/format")
 local c = regentlib.c
 
-local density_task = create_asymmetric_pairwise_runner(nonsym_density_kernel)
+local density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel )
+local force_task = create_symmetric_pairwise_runner( force_kernel )
 local timestep_task = run_per_particle_task( kick_kernel )
+local reset_density_task = run_per_particle_task( reset_density )
+local reset_force_task = run_per_particle_task( reset_acceleration )
 
 __forbid(__inline)
 task say_hello(time : float)
@@ -40,21 +43,40 @@ task main()
 initialise_cells(variables.config , variables.particle_array)
   particles_to_cell_launcher( variables.particle_array, variables.config)
 
+  var cell_partition1 = update_cell_partitions([variables.particle_array], [variables.config])
+  --Initialisation
+  reset_density_task(variables.particle_array, cell_partition1, variables.config)
+  reset_force_task(variables.particle_array, cell_partition1, variables.config)
+
+  --Do the zero timestep to setup the IC
+  density_task(variables.particle_array, cell_partition1, variables.config)
+  update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
+  var timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
+
   var time : double = 0.0
-  var endtime : double = 0.01
+  var endtime : double = 0.0001
   [variables.config][0].space.timestep = 0.01
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var start_time = get_time()
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
+  __delete(cell_partition1)
   while time < endtime do
-    var cell_partition = update_cell_partitions([variables.particle_array], [variables.config])
-    density_task([variables.particle_array], cell_partition, [variables.config])
+    var cell_partition = update_cell_partitions(variables.particle_array, variables.config)
+    reset_density_task(variables.particle_array, cell_partition, variables.config)
+    density_task(variables.particle_array, cell_partition, variables.config)
+    update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
+    reset_force_task(variables.particle_array, cell_partition, variables.config)
+    force_task( variables.particle_array, cell_partition, variables.config)
   --  timestep_task([variables.particle_array], cell_partition, [variables.space])
---    update_cutoffs_launcher([variables.particle_array], cell_partition, [variables.space])
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
     say_hello(time)
-    time = time + 0.01
---    __delete(cell_partition)
+    time = time + config[0].space.timestep
+    config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
+    if(endtime - time > config[0].space.timestep) then
+      config[0].space.timestep = endtime - time
+    end
+    format.println("timestep is {}", timestep)
+    __delete(cell_partition)
   end  
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var end_time = get_time()

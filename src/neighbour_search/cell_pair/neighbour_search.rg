@@ -451,6 +451,20 @@ end
 return pairwise_task
 end
 
+function generate_per_part_task_bool_return ( kernel_name )
+
+local task pairwise_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) : bool where
+   reads(parts1, config), writes(parts1) do
+   var return_val : bool = false
+   for part1 in parts1.ispace do
+         [kernel_name(rexpr parts1[part1] end, rexpr config[0] end, rexpr return_val end)]
+   end
+   return return_val
+end
+return pairwise_task
+end
+
+
 function run_per_particle_task( kernel_name )
 
 local per_part_task = generate_per_part_task( kernel_name )
@@ -465,7 +479,6 @@ end
 
 return run_per_particle_task_code
 end
-
 
 -----------------------------------------
 --End of Per Part Tasks------------------

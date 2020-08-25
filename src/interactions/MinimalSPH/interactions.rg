@@ -2,74 +2,131 @@ import "regent"
 
 require("defaults")
 require("src/neighbour_search/cell_pair/neighbour_search")
-sqrt = regentlib.sqrt(double)
-cbrt = regentlib.cbrt(double)
+sqrt = regentlib.sqrt(float)
+cbrt = regentlib.cbrt(float)
 
 --Viscosity parameters
 local const_viscosity_beta = 3.0
 
-local hydro_gamma = 5.0/3.0
-local hydro_gamma_minus_one = hydro_gamma-1.0
+--Moved to constants.rg
+--Cubic spline kernel
+--local kernel_gamma = 1.732051
+--local kernel_const = 8.0 / 3.0
+----Adiabatic index
+--local hydro_gamma = 5.0/3.0
+--local hydro_gamma_minus_one = hydro_gamma-1.0
 
 __demand(__inline)
-task pow_minus_gamma_minus_one(x : double)
+task pow_minus_gamma_minus_one(x : float)
   var icbrt = 1.0 / cbrt(x)
   return icbrt * icbrt  
 end
 
 --Ideal gas equation
 __demand(__inline)
-task gas_pressure_from_internal_energy(density : double, u : double)
+task gas_pressure_from_internal_energy(density : float, u : float)
   return hydro_gamma_minus_one * u * density
 end
 
 __demand(__inline)
-task gas_soundspeed_from_pressure(density : double, P : double) 
+task gas_soundspeed_from_pressure(density : float, P : float) 
   var density_inv = 1.0 / density
   return sqrt(hydro_gamma * P * density_inv)
 end
 
 __demand(__inline)
-task gas_entropy_from_internal_energy(density : double, u : double)
+task gas_entropy_from_internal_energy(density : float, u : float)
   return hydro_gamma_minus_one * u *  pow_minus_gamma_minus_one(density)
 end
 
 --3Dimensions, so x^4
-terra pow_dimension_plus_one( val : double)
+terra pow_dimension_plus_one( val : float)
   var x2 = val * val
   return x2 * x2
 end
 
 --TODO: Optimise kernel evaluation (Could use C code?)
 --Think this should be cubic spline, 3 Dimension form only.
-terra eval_kernel_func( ui : double, wi : double[2] )
-  var kernel_gamma_inv = 1.0 / 1.825742
+terra eval_kernel_func( ui : float, wi : &float, wi_dx : &float )
+  var kernel_gamma_inv = 1.0 / kernel_gamma
   var q3 = 0.0
   var q2 = 0.0
   var q1 = 0.0
   var q0 = 0.0
   var x = ui * kernel_gamma_inv
-
+  var w :float = 0.0
+  var w_dx : float = 0.0
   if ui <= 0.5 then
-    q3 = 0.75
-    q2 = 1.5
+    q3 = 3. 
+    q2 = -3.0
     q1 = 0
-    q0 = 1.0
+    q0 = 0.5
   else
-    q3 = -0.25
-    q2 = 1.5
+    q3 = -1.0
+    q2 = 3.0
     q1 = -3.0
-    q0 = 2
+    q0 = 1.0
   end
 
-  wi[0] = q3 * x + q2
-  wi[1] = q3
-  --
-  wi[1] = wi[1] * x + wi[0]
-  wi[0] = wi[0] * x + q1
-  --
-  wi[1] = wi[1] * x + wi[0]
-  wi[0] = wi[0] * x + q0
+  w = q3 * x + q2
+  w_dx = q3
+
+  w_dx = w_dx * x + w
+  w = w * x + q1
+
+  w_dx = w_dx * x + w
+  w = w * x + q0
+
+  if (w < 0.0) then w = 0.0 end
+  if (w_dx > 0.0) then w_dx = 0.0 end
+  w = w * kernel_constant * kernel_gamma_inv_dim 
+  w_dx = w_dx * kernel_constant * kernel_gamma_inv_dim_plus_one
+
+  @wi = w
+  @wi_dx = w_dx
+--  @wi = q3 * x + q2
+--  @wi_dx = q3
+--  --
+--  @wi_dx = @wi_dx * x + @wi
+--  @wi = @wi * x + q1
+--  --
+--  @wi_dx = @wi_dx * x + @wi
+--  @wi = @wi * x + q0
+end
+
+function reset_density(part1, config)
+  local kernel = rquote
+     part1.wcount = 0.0
+     part1.wcount_dh = 0.0
+     part1.rho = 0.0
+     part1.rho_dh = 0.0
+     part1.div_v = 0.0
+     part1.rot_v_x = 0.0 
+     part1.rot_v_y = 0.0 
+     part1.rot_v_z = 0.0 
+  end
+  return kernel
+end
+
+function reset_acceleration(part1, config)
+  local kernel = rquote
+    part1.accel_x = 0.0
+    part1.accel_y = 0.0
+    part1.accel_z = 0.0
+
+    part1.u_dt = 0.0
+    part1.h_dt = 0.0
+    part1.v_sig = 2.0 * part1.soundspeed 
+  end
+  return kernel
+
+end
+
+function end_force(part1, config)
+  local kernel = rquote
+    part1.h_dt = part1.h * hydro_dimension_inv
+  end
+  return kernel
 end
 
 function nonsym_density_kernel(part1, part2, r2)
@@ -81,16 +138,21 @@ local kernel = rquote
   var ir = 1.0 / sqrt(r2)
   var r = r2 * ir
 
-  var hi_inv = 1.0 / part1.core_part_space.cutoff
+  var hi_inv = 1.0 / part1.h
   var ui = r * hi_inv
-  var wi_array : double[2]
-  eval_kernel_func(ui, wi_array)
-  var wi : double = wi_array[0]
-  var wi_dx : double = wi_array[1]
+  var wi : float
+  var wi_dx : float
+  eval_kernel_func(ui, &wi, &wi_dx)
 
   part1.rho = (part1.rho + mj * wi)
   part1.rho_dh = part1.rho_dh - (mj * (hydro_dimension * wi + ui * wi_dx))
+  --if(part1.core_part_space.id == int1d(136970)) then
+  --  format.println("wi = {} wcount = {} ui = {} h = {} p2 = {} x = {} kgi = {} redo = {}", wi, part1.wcount, ui, part1.h, part2.core_part_space.id, ui / kernel_gamma, 1.0 / kernel_gamma, part1.cutoff_update_space.redo)
+--  end
   part1.wcount = part1.wcount + wi
+--  if(part1.core_part_space.id == int1d(136970)) then
+--    format.println("wi = {} wcount = {}", wi, part1.wcount)
+--  end
   part1.wcount_dh = part1.wcount_dh - (hydro_dimension * wi + ui * wi_dx)
 
   var faci = mj * wi_dx * ir
@@ -129,24 +191,22 @@ local kernel = rquote
   var ir = 1.0 / sqrt(r2)
   var r = r2 * ir
 
-  var hi_inv = 1.0 / part1.core_part_space.cutoff
+  var hi_inv = 1.0 / part1.h
   var ui = r * hi_inv
-  var wi_array : double[2]
-  eval_kernel_func(ui, wi_array)
-  var wi : double = wi_array[0]
-  var wi_dx : double = wi_array[1]
+  var wi : float
+  var wi_dx : float
+  eval_kernel_func(ui, &wi, &wi_dx)
 
   part1.rho = (part1.rho + mj * wi)
   part1.rho_dh = part1.rho_dh - (mj * (hydro_dimension * wi + ui * wi_dx))
   part1.wcount = part1.wcount + wi
   part1.wcount_dh = part1.wcount_dh - (hydro_dimension * wi + ui * wi_dx)
 
-  var hj_inv = 1.0 / part2.core_part_space.cutoff
+  var hj_inv = 1.0 / part2.h
   var uj = r * hj_inv
-  var wj_array : double[2]
-  eval_kernel_func(uj, wj_array)
-  var wj : double = wj_array[0]
-  var wj_dx : double = wj_array[1]
+  var wj : float
+  var wj_dx : float
+  eval_kernel_func(uj, &wj, &wj_dx)
   part2.rho = part2.rho + mi * wj
   part2.rho_dh = part2.rho_dh - (mi * (hydro_dimension * wj + uj * wj_dx))
   part2.wcount = part2.wcount + wj
@@ -187,7 +247,7 @@ end
 
 function nonsym_force_kernel(part1, part2, r2)
 
-local fmind = regentlib.fmin(double)
+local fmind = regentlib.fmin(float)
 local kernel = rquote
 
   var mi = part1.core_part_space.mass
@@ -201,23 +261,21 @@ local kernel = rquote
   var r = r2 * ir
 
 --Compute kernel i
-  var hi_inv = 1.0 / part1.core_part_space.cutoff
+  var hi_inv = 1.0 / part1.h
   var hid_inv = pow_dimension_plus_one(hi_inv)
   var ui = r * hi_inv
-  var wi_array : double[2]
-  eval_kernel_func(ui, wi_array)
-  var wi : double = wi_array[0]
-  var wi_dx : double = wi_array[1]
+  var wi : float
+  var wi_dx : float
+  eval_kernel_func(ui, &wi, &wi_dx)
   var wi_dr = hid_inv * wi_dx
 
 --Compute kernel j
-  var hj_inv = 1.0 / part2.core_part_space.cutoff
+  var hj_inv = 1.0 / part2.h
   var hjd_inv = pow_dimension_plus_one(hj_inv)
   var uj = r * hj_inv
-  var wj_array : double[2]
-  eval_kernel_func(uj, wj_array)
-  var wj : double = wj_array[0]
-  var wj_dx : double = wj_array[1]
+  var wj : float = wj_array[0]
+  var wj_dx : float = wj_array[1]
+  eval_kernel_func(uj, &wj, &wj_dx)
   var wj_dr = hjd_inv * wj_dx
 
 --h-gradient terms
@@ -286,7 +344,7 @@ end
 
 function force_kernel(part1, part2, r2)
 
-local fmind = regentlib.fmin(double)
+local fmind = regentlib.fmin(float)
 local kernel = rquote
 
   var mi = part1.core_part_space.mass
@@ -300,23 +358,21 @@ local kernel = rquote
   var r = r2 * ir
 
 --Compute kernel i
-  var hi_inv = 1.0 / part1.core_part_space.cutoff
+  var hi_inv = 1.0 / part1.h
   var hid_inv = pow_dimension_plus_one(hi_inv)
   var ui = r * hi_inv
-  var wi_array : double[2]
-  eval_kernel_func(ui, wi_array)
-  var wi : double = wi_array[0]
-  var wi_dx : double = wi_array[1]
+  var wi : float
+  var wi_dx : float
+  eval_kernel_func(ui, &wi, &wi_dx)
   var wi_dr = hid_inv * wi_dx
 
 --Compute kernel j
-  var hj_inv = 1.0 / part2.core_part_space.cutoff
+  var hj_inv = 1.0 / part2.h
   var hjd_inv = pow_dimension_plus_one(hj_inv)
   var uj = r * hj_inv
-  var wj_array : double[2]
-  eval_kernel_func(uj, wj_array)
-  var wj : double = wj_array[0]
-  var wj_dx : double = wj_array[1]
+  var wj : float
+  var wj_dx : float
+  eval_kernel_func(uj, &wj, &wj_dx)
   var wj_dr = hjd_inv * wj_dx
 
 --h-gradient terms

@@ -9,39 +9,95 @@ require("src/interactions/MinimalSPH/timestep")
 
 local density_task = create_asymmetric_pairwise_runner(nonsym_density_kernel)
 local c = regentlib.c
+local stdlib = terralib.includec("stdlib.h")
+
+local ceil = regentlib.ceil(float)
 
 --Some big number
 local hmax = 12345678.0
 local hmin = 0.0
 --Rough estimate at the moment
-local kernel_root = 0.4184291064739227294921875
-local kernel_dimension = 3.0
-local hydro_dimension_inv = 1.0 / kernel_dimension
-local hydro_eta = 1.2348
-local hydro_eps = 1e-4
-local alpha = 0.8
+--Moved to constants.rg
+--local kernel_root = 0.4184291064739227294921875
+--local kernel_dimension = 3.0
+--local hydro_dimension_inv = 1.0 / kernel_dimension
+--local hydro_eta = 1.2348
+--local hydro_eps = 1e-4
+--local alpha = 0.8
 
-local fabsd = regentlib.fabs(double)
-local cbrtd = regentlib.cbrt(double)
-local sqrt = regentlib.sqrt(double)
+local fabsd = regentlib.fabs(float)
+local cbrtd = regentlib.cbrt(float)
+local sqrt = regentlib.sqrt(float)
 --local fmind = regentlib.fmin()
 --local fmaxd = regentlib.fmax()
 --3D case
-terra cube_val(value : double)
+terra cube_val(value : float)
   var x2 = value * value
   return x2 * value
 end
 
-terra fmind(val1 : double, val2 : double)
+terra fmind(val1 : float, val2 : float)
   return regentlib.fmin(val1, val2)
 end
 
-terra fmaxd(val1 : double, val2 : double)
+terra fmaxd(val1 : float, val2 : float)
   return regentlib.fmax(val1, val2)
 end
 
+terra allocate_bool_array( count : int ) 
+  return stdlib.malloc(count * sizeof(bool) )
+end
+
+local terra create_temp_array(size : int)
+  return stdlib.malloc(size * sizeof(double))
+end
+
+local terra free_array(array : &double)
+  return stdlib.free(array)
+end
+                       
+task compute_timesteps(particles: region(ispace(int1d), part)) : double where
+  reads(particles.h, particles.v_sig) do
+  var min_timestep = 1000000000.0
+  for part in particles.ispace do
+   var dt_cfl = 2.0 * kernel_gamma * CFL_condition * particles[part].h / ( particles[part].v_sig)
+    min_timestep = regentlib.fmin(min_timestep, dt_cfl)
+  end
+  return min_timestep
+end
+
+task compute_timestep_launcher( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type) ) : double
+    where reads(particles.h, particles.v_sig) do
+   
+   var dx = cell_space.colors.bounds.hi.x - cell_space.colors.bounds.lo.x + 1
+   var dy = cell_space.colors.bounds.hi.y - cell_space.colors.bounds.lo.y + 1
+   var dz = cell_space.colors.bounds.hi.z - cell_space.colors.bounds.lo.z + 1
+
+   var count = dx*dy*dz
+   var array : &double = [&double](create_temp_array(count))
+
+    count = 0
+    --For each cell, call the task!
+    for cell1 in cell_space.colors do
+       array[count] = compute_timesteps(cell_space[cell1])
+       count = count + 1
+    end
+
+     count = 0
+    var min_timestep = 1000000000.0
+    --For each cell, call the task!
+    for cell1 in cell_space.colors do
+       min_timestep = regentlib.fmin(min_timestep, array[count])
+       count = count + 1
+    end
+
+    free_array(array)
+    return min_timestep
+end
+
+--__demand(__inline)
 task pair_redo_density( parts_self : region(ispace(int1d), part), 
-                        subset: partition(disjoint, parts_self, ispace(int1d)), 
+--                        subset: partition(disjoint, parts_self, ispace(int1d)), 
                         parts_far : region(ispace(int1d), part),
                         config : region(ispace(int1d), config_type) )
    where reads(parts_self, parts_far, config), writes( parts_self ) do
@@ -53,30 +109,32 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
-   for part1 in subset[redo].ispace do
-     for part2 in parts_far.ispace do
-       --Compute particle distance
-         var dx = subset[redo][part1].core_part_space.pos_x - parts_far[part2].core_part_space.pos_x
-         var dy = subset[redo][part1].core_part_space.pos_y - parts_far[part2].core_part_space.pos_y
-         var dz = subset[redo][part1].core_part_space.pos_z - parts_far[part2].core_part_space.pos_z
-         if (dx > half_box_x) then dx = dx - box_x end
-         if (dy > half_box_y) then dy = dy - box_y end
-         if (dz > half_box_z) then dz = dz - box_z end
-         if (dx <-half_box_x) then dx = dx + box_x end
-         if (dy <-half_box_y) then dy = dy + box_y end
-         if (dz <-half_box_z) then dz = dz + box_z end
-         var cutoff2 = subset[redo][part1].core_part_space.cutoff
-         cutoff2 = cutoff2 * cutoff2
-         var r2 = dx*dx + dy*dy + dz*dz
-         if(r2 <= cutoff2) then
-           [nonsym_density_kernel(rexpr subset[redo][part1] end, rexpr parts_far[part2] end, rexpr r2 end)]
-         end
+   for part1 in parts_self.ispace do
+     if(parts_self[part1].cutoff_update_space.redo == redo) then
+       for part2 in parts_far.ispace do
+         --Compute particle distance
+           var dx = parts_self[part1].core_part_space.pos_x - parts_far[part2].core_part_space.pos_x
+           var dy = parts_self[part1].core_part_space.pos_y - parts_far[part2].core_part_space.pos_y
+           var dz = parts_self[part1].core_part_space.pos_z - parts_far[part2].core_part_space.pos_z
+           if (dx > half_box_x) then dx = dx - box_x end
+           if (dy > half_box_y) then dy = dy - box_y end
+           if (dz > half_box_z) then dz = dz - box_z end
+           if (dx <-half_box_x) then dx = dx + box_x end
+           if (dy <-half_box_y) then dy = dy + box_y end
+           if (dz <-half_box_z) then dz = dz + box_z end
+           var cutoff2 = parts_self[part1].core_part_space.cutoff
+           cutoff2 = cutoff2 * cutoff2
+           var r2 = dx*dx + dy*dy + dz*dz
+           if(r2 <= cutoff2) then
+             [nonsym_density_kernel(rexpr parts_self[part1] end, rexpr parts_far[part2] end, rexpr r2 end)]
+           end
+       end
      end
    end
 end
 
-
-task self_redo_density( parts : region(ispace(int1d), part), subset : partition(disjoint, parts, ispace(int1d)), config : region(ispace(int1d), config_type) )
+--__demand(__inline)
+task self_redo_density( parts : region(ispace(int1d), part), config : region(ispace(int1d), config_type) )
    where reads(parts, config), writes(parts) do
    var no_redo = int1d(1)
    var redo = int1d(0)
@@ -86,25 +144,27 @@ task self_redo_density( parts : region(ispace(int1d), part), subset : partition(
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
-   for part1 in subset[redo].ispace do
-     for part2 in parts.ispace do
-       --Compute particle distance
-       if(int1d(part1) ~= int1d(part2)) then
-         var dx = subset[redo][part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
-         var dy = subset[redo][part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
-         var dz = subset[redo][part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
-         if (dx > half_box_x) then dx = dx - box_x end
-         if (dy > half_box_y) then dy = dy - box_y end
-         if (dz > half_box_z) then dz = dz - box_z end
-         if (dx <-half_box_x) then dx = dx + box_x end
-         if (dy <-half_box_y) then dy = dy + box_y end
-         if (dz <-half_box_z) then dz = dz + box_z end
-         var cutoff2 = subset[redo][part1].core_part_space.cutoff
-         cutoff2 = cutoff2 * cutoff2
-         var r2 = dx*dx + dy*dy + dz*dz
-         regentlib.assert(r2 > 0.0, "Distance of 0 between particles")
-         if(r2 <= cutoff2) then
-           [nonsym_density_kernel(rexpr subset[redo][part1] end, rexpr parts[part2] end, rexpr r2 end)]
+   for part1 in parts.ispace do
+     if(parts[part1].cutoff_update_space.redo == redo) then
+       for part2 in parts.ispace do
+         --Compute particle distance
+         if(int1d(part1) ~= int1d(part2)) then
+           var dx = parts[part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
+           var dy = parts[part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
+           var dz = parts[part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
+           if (dx > half_box_x) then dx = dx - box_x end
+           if (dy > half_box_y) then dy = dy - box_y end
+           if (dz > half_box_z) then dz = dz - box_z end
+           if (dx <-half_box_x) then dx = dx + box_x end
+           if (dy <-half_box_y) then dy = dy + box_y end
+           if (dz <-half_box_z) then dz = dz + box_z end
+           var cutoff2 = parts[part1].core_part_space.cutoff
+           cutoff2 = cutoff2 * cutoff2
+           var r2 = dx*dx + dy*dy + dz*dz
+           regentlib.assert(r2 > 0.0, "Distance of 0 between particles")
+           if(r2 <= cutoff2) then
+             [nonsym_density_kernel(rexpr parts[part1] end, rexpr parts[part2] end, rexpr r2 end)]
+           end
          end
        end
      end
@@ -125,8 +185,12 @@ end
 function prepare_for_force(part, space)
   local kernel = rquote
     --Check if redo flag still active
-    regentlib.assert(part.cutoff_update_space.redo == int1d(0), 
-                     "A particle still needs redoing after redo stage done")
+    var string : rawstring
+    string = [rawstring](stdlib.malloc( 512 )) 
+    format.snprintln(string, 512, "A particle still needs redoing after redo stage done id = {}", part.core_part_space.id)
+    regentlib.assert(part.cutoff_update_space.redo == int1d(1), 
+                     string)
+    stdlib.free(string)
     --TODO Set timestep
     --Prepare for the force step
     var rho_inv = 1.0 / part.rho
@@ -150,7 +214,7 @@ function prepare_for_force(part, space)
     part.pressure = pressure
     part.soundspeed = soundspeed
     part.balsara = balsara
-    regentlib.assert(1==0, "Updated h but not yet cutoff radius still")
+    part.core_part_space.cutoff = kernel_gamma * part.h
     --Reset acceleration
     part.accel_x = 0.0
     part.accel_y = 0.0
@@ -162,39 +226,53 @@ function prepare_for_force(part, space)
   return kernel
 end
 
-function finish_density(part, space)
+function finish_density(part, space, return_bool)
   local kernel = rquote
-    var no_redo = int1d(1)
-    var redo = int1d(0)
-    var h_init = part.cutoff_update_space.h_0
-    var h_old = part.h
-    var h_old_dim = cube_val(h_old)
-    var h_old_dim_minus_one = h_old * h_old
-    var h_new : double
+  var no_redo = int1d(1)
+  var redo = int1d(0)
+  if(part.cutoff_update_space.redo == redo) then 
+    var h_init : float = part.cutoff_update_space.h_0
+    var h_old : float = part.h
+    var h_old_dim : float = cube_val(h_old)
+    var h_old_dim_minus_one : float = h_old * h_old
+    var h_new : float
     var has_no_neighbours : bool
     var hydro_eta_3 = cube_val(hydro_eta)
     --Mark particles as done unless proven otherwise
     part.cutoff_update_space.redo = no_redo
-
+--    format.println("finish density task")
 
     if(part.wcount == 0.0 ) then
       has_no_neighbours = true
       h_new = 2.0 * h_old
-      regentlib.assert( 1 == 0, "Not yet implemented behaviour for neighbourless particles")
+      var string : rawstring
+      string = [rawstring](stdlib.malloc( 512 )) 
+      format.snprintln(string, 512, "neighbourless particles wcount = {} cutoff  = {} h_init = {} id = {}", part.wcount, h_old, part.cutoff_update_space.h_0, part.core_part_space.id)
+      regentlib.assert( 1 == 0, string )--"Not yet implemented behaviour for neighbourless particles")
+      stdlib.free(string)
     else
       --Finish the density calculation
-      var inv_h = 1.0 / part.h
-      var inv_h_3 = cube_val(inv_h)
-      var inv_h_4 = inv_h * inv_h_3
+      var inv_h : float = 1.0 / part.h
+      var inv_h_3 : float = cube_val(inv_h)
+      var inv_h_4 : float = inv_h * inv_h_3
       --Add self contribution
       part.rho = part.rho + (part.core_part_space.mass * kernel_root)
       part.rho_dh = part.rho_dh - (kernel_dimension * part.core_part_space.mass * kernel_root)
+--      if( part.core_part_space.id == int1d(524312)) then
+--        format.println("wcount before self contribution {}",  part.wcount)
+--      end
       part.wcount = part.wcount + kernel_root
+--      if( part.core_part_space.id == int1d(524312)) then
+--        format.println("wcount after self contribution {}, self contribution {}",  part.wcount, kernel_root)
+--      end
       part.wcount_dh = part.wcount_dh - (kernel_dimension * kernel_root)
       --Insert the missing h factor
       part.rho = part.rho * inv_h_3
       part.rho_dh = part.rho_dh * inv_h_4
       part.wcount = part.wcount * inv_h_3
+--      if( part.core_part_space.id == int1d(524312)) then
+--        format.println("wcount after h factor {} inv_h_3 {} inv_h {} ",  part.wcount, inv_h_3, inv_h)
+--      end
       part.wcount_dh = part.wcount_dh - (kernel_dimension * kernel_root)
       --Complete the curl calculation
      var inv_rho = 1.0 / part.rho
@@ -227,20 +305,25 @@ function finish_density(part, space)
      h_new = fmaxd(h_new, part.cutoff_update_space.left)
      h_new = fmind(h_new, part.cutoff_update_space.right)
     end
-
+--    if( part.core_part_space.id == int1d(524312)) then
+--      format.println("found part {} with h_new {} h_old {} h {} wcount {} hydro_eps * h_old {}", part.core_part_space.id, h_new, h_old, part.h, part.wcount, hydro_eps * h_old)
+--    end
     --Now check whether the particle has an inappropriate smoothing length
     --If so, fix this and add the particle to the redo partition and reset the density parameters
     if( fabsd(h_new - h_old) > hydro_eps * h_old) then
       --Bisect if oscillating
       if( (h_new ==part.cutoff_update_space.left and h_old == part.cutoff_update_space.right) or (h_old == part.cutoff_update_space.left and h_new == part.cutoff_update_space.right)) then
         part.h = cbrtd( 0.5 * (cube_val(part.cutoff_update_space.left) + cube_val(part.cutoff_update_space.right) ) )
+        part.core_part_space.cutoff = kernel_gamma * part.h
       else --Not oscillating
         part.h = h_new
+        part.core_part_space.cutoff = kernel_gamma * part.h
       end --End of oscillation check
       --If the h is in an allowed range, then redo this part
       if(part.h < hmax and part.h > hmin) then
         --Make sure we know this needs redoing
         part.cutoff_update_space.redo = redo
+        return_bool = true
         --Reset the properties we need for the density calculation
         part.rho = 0.0
         part.wcount = 0.0
@@ -251,13 +334,13 @@ function finish_density(part, space)
         part.rot_v_y = 0.0
         part.rot_v_z = 00
         --TODO: Fix cutoff from H
-        regentlib.assert(1 == 0, "Updated h but not yet cutoff radius")
+        part.core_part_space.cutoff = kernel_gamma * part.h
       else
         --TODO: NYI as all particles should do previous check with current values
         regentlib.assert(1==0, "NYI: Particles outside acceptable range")
       end
     end
-
+  end
   end
   --At the end of this kernel, particles redo values are either:
   --1) redo, with 0d density values ready to be redone
@@ -269,7 +352,7 @@ end
 local reset_cutoff_update_task_runner = run_per_particle_task( reset_cutoff_update_space )
 local prepare_for_force_runner = run_per_particle_task(  prepare_for_force )
 
-local sort_redo_task = generate_per_part_task( finish_density )
+local sort_redo_task = generate_per_part_task_bool_return( finish_density )
 
 --The SPH task between density and force calculations is a special task, which for now is 
 --non-generalised.
@@ -279,21 +362,75 @@ task update_cutoffs_launcher(particles : region(ispace(int1d), part),
                              reads(particles, config), writes(particles) do
     var no_redo = int1d(1)
     var redo = int1d(0)
-
+    --Compute cell radii
+    var x_count = config[0].neighbour_config.x_cells
+    var y_count = config[0].neighbour_config.y_cells
+    var z_count = config[0].neighbour_config.z_cells
+    var cutoff = config[0].neighbour_config.max_cutoff
+    --Hacky fix to deal with increasing cutoffs
+    var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x ) +1
+    var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y ) +1
+    var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z ) +1
+    var nr_cells = x_count * y_count * z_count
+    var bool_array : &bool = [&bool](allocate_bool_array(nr_cells) )
+    for i=0,nr_cells do
+      bool_array[i] = true
+    end
     --First we reset all the particle's cutoffs
     reset_cutoff_update_task_runner( particles, cell_space, config)
     --Loop over particles with redo set until all particles are redone
-    for attempts = 1, 5 do
-      var redo_partition = partition(particles.cutoff_update_space.redo, ispace(int1d, 2))
-      --We have two partitions, redo partition and the cell partition, we want the cross product of this.
-      var cell_redo = cross_product(cell_space, redo_partition)
+    for attempts = 1, 10 do
+      var counter = 0
+      var launches = 0
       for cell in cell_space.colors do
-        sort_redo_task(cell_redo[cell][redo], config)
+        if(bool_array[counter]) then
+          bool_array[counter] = sort_redo_task(cell_space[cell], config)
+          launches = launches + 1
+        end
+        counter = counter + 1
       end
-      __delete(redo_partition)
-      regentlib.assert(1 == 0, "NOT YET FINISHED. Redos set but redo tasks not executed.")
+      format.println("Launched {} redo tasks", launches)
+c.legion_runtime_issue_execution_fence(__runtime(), __context())
+--      __delete(cell_redo)
+--     var redo_partition2 = partition(particles.cutoff_update_space.redo, ispace(int1d, 2))
+--     var cell_redo2 = cross_product(cell_space, redo_partition2)
+      counter = 0
+      for cell1 in cell_space.colors do
+--        self_redo_density(cell_space[cell1], cell_redo2[cell1], config)
+        if(bool_array[counter]) then
+          self_redo_density(cell_space[cell1], config)
+        end
+        for x = 0, x_radii+1 do
+          for y = 0, y_radii+1 do
+            for z = 0, z_radii + 1 do
+              if(not (x == 0 and y == 0 and z == 0) ) then
+                var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
+                --Weird if statement to handle max_cutoff >= half the boxsize
+                if( (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) and
+                   (cell1.x - x_radii <= cell2.x and cell1.y - y_radii <= cell2.y and cell1.z - y_radii <= cell2.z) ) then
+           
+                else
+                  --Asymmetric, launch tasks both ways
+                  pair_redo_density( cell_space[cell1], cell_space[cell2], config)
+                  pair_redo_density( cell_space[cell2], cell_space[cell1], config)
+                end
+              end
+            end
+          end
+        end
+        counter = counter + 1
+      end
     end
-
+    stdlib.free(bool_array)
+      var counter = 0
+      for cell in cell_space.colors do
+        if(bool_array[counter]) then
+          bool_array[counter] = sort_redo_task(cell_space[cell], config)
+        end
+        counter = counter + 1
+      end
+      format.println("Launched {} redo tasks", counter)
+c.legion_runtime_issue_execution_fence(__runtime(), __context())
     --At the end of the loop everyone should be redone succesfully
     prepare_for_force_runner(particles, cell_space, config)
 end

@@ -6,9 +6,9 @@ require("src/neighbour_search/cell_pair/import_cell_pair")
 --Extra data required for the cutoff update
 fspace cutoff_update{
   redo : int1d,
-  left : double,
-  right : double,
-  h_0 : double
+  left : float,
+  right : float,
+  h_0 : float
 }
 
 
@@ -19,37 +19,37 @@ fspace part{
   cutoff_update_space : cutoff_update,
   --SPH h - used to compute the cutoff radius since the cutoff
   --in the core part space is technically the search radius
-  h : double,
+  h : float,
   --Particle acceleration
-  accel_x : double,
-  accel_y : double,
-  accel_z : double,
+  accel_x : float,
+  accel_y : float,
+  accel_z : float,
   --internal energy
-  u : double,
-  u_dt : double,
+  u : float,
+  u_dt : float,
   --density
-  rho : double,
+  rho : float,
   --weighted neighbour count and derivative
-  wcount : double,
-  wcount_dh : double,
+  wcount : float,
+  wcount_dh : float,
   --derivate of density w.r.t to h
-  rho_dh : double,
+  rho_dh : float,
   --Velocity divergence
-  div_v : double,
+  div_v : float,
   --velocity curl
-  rot_v_x : double,
-  rot_v_y : double,
-  rot_v_z : double,
+  rot_v_x : float,
+  rot_v_y : float,
+  rot_v_z : float,
   --Balsara switch
-  balsara : double,
+  balsara : float,
   --"Grad h term"
-  f : double,
+  f : float,
   --Pressure
-  pressure : double,
+  pressure : float,
   --Particle soundspeed
-  soundspeed : double,
+  soundspeed : float,
   --Signal velocity
-  v_sig : double,
+  v_sig : float,
   --Time derivative of the smoothing length
-  h_dt : double,
+  h_dt : float,
 }
