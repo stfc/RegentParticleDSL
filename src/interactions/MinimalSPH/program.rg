@@ -56,7 +56,7 @@ initialise_cells(variables.config , variables.particle_array)
   variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition1, variables.config)
   
   var time : double = 0.0
-  var endtime : double = 0.0001
+  var endtime : double = 0.02
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var start_time = get_time()
   format.println("timestep computed is {}", variables.config[0].space.timestep)
@@ -89,7 +89,7 @@ initialise_cells(variables.config , variables.particle_array)
   var end_time = get_time()
  
   format.println("Computation took {} seconds.", (end_time - start_time)/1000000.0)
- 
+  write_hdf5_snapshot("output.hdf5", variables.particle_array, variables.config)
 end
 
 regentlib.start(main)
