@@ -1,7 +1,6 @@
 import "regent"
 
 require("defaults")
---require("src/neighbour_search/cell_pair/import_cell_pair")
 require("src/neighbour_search/cell_pair/neighbour_search")
 require("src/neighbour_search/cell_pair/cell")
 require("src/interactions/MinimalSPH/interactions")
@@ -16,20 +15,10 @@ local ceil = regentlib.ceil(float)
 --Some big number
 local hmax = 12345678.0
 local hmin = 0.0
---Rough estimate at the moment
---Moved to constants.rg
---local kernel_root = 0.4184291064739227294921875
---local kernel_dimension = 3.0
---local hydro_dimension_inv = 1.0 / kernel_dimension
---local hydro_eta = 1.2348
---local hydro_eps = 1e-4
---local alpha = 0.8
 
 local fabsd = regentlib.fabs(float)
 local cbrtd = regentlib.cbrt(float)
 local sqrt = regentlib.sqrt(float)
---local fmind = regentlib.fmin()
---local fmaxd = regentlib.fmax()
 --3D case
 terra cube_val(value : float)
   var x2 = value * value
@@ -95,9 +84,7 @@ task compute_timestep_launcher( particles: region(ispace(int1d), part), cell_spa
     return min_timestep
 end
 
---__demand(__inline)
 task pair_redo_density( parts_self : region(ispace(int1d), part), 
---                        subset: partition(disjoint, parts_self, ispace(int1d)), 
                         parts_far : region(ispace(int1d), part),
                         config : region(ispace(int1d), config_type) )
    where reads(parts_self, parts_far, config), writes( parts_self ) do
@@ -133,7 +120,6 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
    end
 end
 
---__demand(__inline)
 task self_redo_density( parts : region(ispace(int1d), part), config : region(ispace(int1d), config_type) )
    where reads(parts, config), writes(parts) do
    var no_redo = int1d(1)
@@ -240,7 +226,6 @@ function finish_density(part, space, return_bool)
     var hydro_eta_3 = cube_val(hydro_eta)
     --Mark particles as done unless proven otherwise
     part.cutoff_update_space.redo = no_redo
---    format.println("finish density task")
 
     if(part.wcount == 0.0 ) then
       has_no_neighbours = true
@@ -258,21 +243,12 @@ function finish_density(part, space, return_bool)
       --Add self contribution
       part.rho = part.rho + (part.core_part_space.mass * kernel_root)
       part.rho_dh = part.rho_dh - (kernel_dimension * part.core_part_space.mass * kernel_root)
---      if( part.core_part_space.id == int1d(524312)) then
---        format.println("wcount before self contribution {}",  part.wcount)
---      end
       part.wcount = part.wcount + kernel_root
---      if( part.core_part_space.id == int1d(524312)) then
---        format.println("wcount after self contribution {}, self contribution {}",  part.wcount, kernel_root)
---      end
       part.wcount_dh = part.wcount_dh - (kernel_dimension * kernel_root)
       --Insert the missing h factor
       part.rho = part.rho * inv_h_3
       part.rho_dh = part.rho_dh * inv_h_4
       part.wcount = part.wcount * inv_h_3
---      if( part.core_part_space.id == int1d(524312)) then
---        format.println("wcount after h factor {} inv_h_3 {} inv_h {} ",  part.wcount, inv_h_3, inv_h)
---      end
       part.wcount_dh = part.wcount_dh - (kernel_dimension * kernel_root)
       --Complete the curl calculation
      var inv_rho = 1.0 / part.rho
@@ -294,7 +270,6 @@ function finish_density(part, space, return_bool)
      end
      if( ( part.h >= hmax and f < 0.0 ) or (part.h <= hmin and f> 0.0) ) then
        regentlib.assert(1 == 0, "NYI: This should never happen as hmin is 0 and hmax is \"large\"")
-      --FUTURE TODO: Calculate timestep and prepare for the force step and this particle is done.
      end
      --Finish the Newton-Raphson step on h
      h_new = h_old - f / (f_prime + 1e-128)
@@ -305,9 +280,6 @@ function finish_density(part, space, return_bool)
      h_new = fmaxd(h_new, part.cutoff_update_space.left)
      h_new = fmind(h_new, part.cutoff_update_space.right)
     end
---    if( part.core_part_space.id == int1d(524312)) then
---      format.println("found part {} with h_new {} h_old {} h {} wcount {} hydro_eps * h_old {}", part.core_part_space.id, h_new, h_old, part.h, part.wcount, hydro_eps * h_old)
---    end
     --Now check whether the particle has an inappropriate smoothing length
     --If so, fix this and add the particle to the redo partition and reset the density parameters
     if( fabsd(h_new - h_old) > hydro_eps * h_old) then
@@ -333,7 +305,6 @@ function finish_density(part, space, return_bool)
         part.rot_v_x = 0.0
         part.rot_v_y = 0.0
         part.rot_v_z = 00
-        --TODO: Fix cutoff from H
         part.core_part_space.cutoff = kernel_gamma * part.h
       else
         --TODO: NYI as all particles should do previous check with current values
@@ -376,28 +347,25 @@ task update_cutoffs_launcher(particles : region(ispace(int1d), part),
     for i=0,nr_cells do
       bool_array[i] = true
     end
+    for cell in cell_space.colors do
+      var point = cell.x + cell.y * x_count + cell.z * x_count * y_count
+    end
     --First we reset all the particle's cutoffs
     reset_cutoff_update_task_runner( particles, cell_space, config)
     --Loop over particles with redo set until all particles are redone
     for attempts = 1, 10 do
-      var counter = 0
       var launches = 0
       for cell in cell_space.colors do
-        if(bool_array[counter]) then
-          bool_array[counter] = sort_redo_task(cell_space[cell], config)
+        var point = cell.x + cell.y * x_count + cell.z * x_count * y_count
+        if(bool_array[point]) then
+          bool_array[point] = sort_redo_task(cell_space[cell], config)
           launches = launches + 1
         end
-        counter = counter + 1
       end
-      format.println("Launched {} redo tasks", launches)
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
---      __delete(cell_redo)
---     var redo_partition2 = partition(particles.cutoff_update_space.redo, ispace(int1d, 2))
---     var cell_redo2 = cross_product(cell_space, redo_partition2)
-      counter = 0
       for cell1 in cell_space.colors do
---        self_redo_density(cell_space[cell1], cell_redo2[cell1], config)
-        if(bool_array[counter]) then
+        var point = cell1.x + cell1.y * x_count + cell1.z * x_count * y_count
+        if(bool_array[point]) then
           self_redo_density(cell_space[cell1], config)
         end
         for x = 0, x_radii+1 do
@@ -405,32 +373,34 @@ c.legion_runtime_issue_execution_fence(__runtime(), __context())
             for z = 0, z_radii + 1 do
               if(not (x == 0 and y == 0 and z == 0) ) then
                 var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
+                var point2 = cell2.x + cell2.y * x_count + cell2.z * x_count * y_count
                 --Weird if statement to handle max_cutoff >= half the boxsize
                 if( (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) and
                    (cell1.x - x_radii <= cell2.x and cell1.y - y_radii <= cell2.y and cell1.z - y_radii <= cell2.z) ) then
            
                 else
                   --Asymmetric, launch tasks both ways
-                  pair_redo_density( cell_space[cell1], cell_space[cell2], config)
-                  pair_redo_density( cell_space[cell2], cell_space[cell1], config)
+                  if(bool_array[point]) then
+                    pair_redo_density( cell_space[cell1], cell_space[cell2], config)
+                  end
+                  if(bool_array[point2]) then
+                    pair_redo_density( cell_space[cell2], cell_space[cell1], config)
+                  end
                 end
               end
             end
           end
         end
-        counter = counter + 1
       end
     end
-    stdlib.free(bool_array)
-      var counter = 0
       for cell in cell_space.colors do
-        if(bool_array[counter]) then
-          bool_array[counter] = sort_redo_task(cell_space[cell], config)
+        var point = cell.x + cell.y * x_count + cell.z * x_count * y_count
+        if(bool_array[point]) then
+          bool_array[point] = sort_redo_task(cell_space[cell], config)
         end
-        counter = counter + 1
       end
-      format.println("Launched {} redo tasks", counter)
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
+    stdlib.free(bool_array)
     --At the end of the loop everyone should be redone succesfully
     prepare_for_force_runner(particles, cell_space, config)
 end

@@ -51,9 +51,9 @@ initialise_cells(variables.config , variables.particle_array)
   --Do the zero timestep to setup the IC
   variables.config[0].space.timestep = 0.00
   density_task(variables.particle_array, cell_partition1, variables.config)
-  update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
-  timestep_task(variables.particle_array, cell_partition, variables.config)
-  variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
+  update_cutoffs_launcher(variables.particle_array, cell_partition1, variables.config)
+  timestep_task(variables.particle_array, cell_partition1, variables.config)
+  variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition1, variables.config)
   
   var time : double = 0.0
   var endtime : double = 0.0001
@@ -79,10 +79,10 @@ initialise_cells(variables.config , variables.particle_array)
     say_hello(time)
     time = time + variables.config[0].space.timestep
     variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
-    if(endtime - time > config[0].space.timestep) then
+    if(endtime - time > variables.config[0].space.timestep) then
       variables.config[0].space.timestep = endtime - time
     end
-    format.println("timestep is {}", timestep)
+    format.println("timestep is {}", variables.config[0].space.timestep)
     __delete(cell_partition)
   end  
     c.legion_runtime_issue_execution_fence(__runtime(), __context())

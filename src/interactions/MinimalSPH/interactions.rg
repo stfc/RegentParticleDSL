@@ -247,7 +247,6 @@ end
 
 function nonsym_force_kernel(part1, part2, r2)
 
-local fmind = regentlib.fmin(float)
 local kernel = rquote
 
   var mi = part1.core_part_space.mass
@@ -304,11 +303,11 @@ local kernel = rquote
   var balsara_j = part2.balsara
 
 --Are particles moving towards each other
-  var omega_ij = fmind(dvdr, 0.0)
+  var omega_ij = regentlib.fmin(dvdr, 0.0)
   var mu_ij = ir * omega_ij
 
 --Compute the signal velocity
-  var v_sig = ci + cj - const_velocity_beta * mu_ij
+  var v_sig = ci + cj - const_viscosity_beta * mu_ij
 
 --Construct the viscosity term
   var rho_ij = 0.5 * ( rhoi + rhoj)
@@ -344,7 +343,6 @@ end
 
 function force_kernel(part1, part2, r2)
 
-local fmind = regentlib.fmin(float)
 local kernel = rquote
 
   var mi = part1.core_part_space.mass
@@ -388,9 +386,9 @@ local kernel = rquote
   var cj = part2.soundspeed
 
 --Compute dvdr
-  var dv_x = part1.vel_x - part2.vel_x
-  var dv_y = part1.vel_y - part2.vel_y
-  var dv_z = part1.vel_z - part2.vel_z
+  var dv_x = part1.core_part_space.vel_x - part2.core_part_space.vel_x
+  var dv_y = part1.core_part_space.vel_y - part2.core_part_space.vel_y
+  var dv_z = part1.core_part_space.vel_z - part2.core_part_space.vel_z
   var dx_x = part1.core_part_space.pos_x - part2.core_part_space.pos_x
   var dx_y = part1.core_part_space.pos_y - part2.core_part_space.pos_y
   var dx_z = part1.core_part_space.pos_z - part2.core_part_space.pos_z
@@ -401,11 +399,11 @@ local kernel = rquote
   var balsara_j = part2.balsara
 
 --Are particles moving towards each other
-  var omega_ij = fmind(dvdr, 0.0)
+  var omega_ij = regentlib.fmin(dvdr, 0.0)
   var mu_ij = ir * omega_ij
 
 --Compute the signal velocity
-  var v_sig = ci + cj - const_velocity_beta * mu_ij
+  var v_sig = ci + cj - const_viscosity_beta * mu_ij
 
 --Construct the viscosity term
   var rho_ij = 0.5 * ( rhoi + rhoj)
