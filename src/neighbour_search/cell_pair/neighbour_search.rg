@@ -119,7 +119,7 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(is
        if (dx <-half_box_x) then dx = dx + box_x end
        if (dy <-half_box_y) then dy = dy + box_y end
        if (dz <-half_box_z) then dz = dz + box_z end
-       var cutoff2 = parts1[part1].core_part_space.cutoff
+       var cutoff2 = regentlib.max(parts1[part1].core_part_space.cutoff, parts2[part2].core_part_space.cutoff)
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
        if(r2 <= cutoff2) then
