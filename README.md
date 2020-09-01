@@ -1,6 +1,10 @@
 # RegentParticleDSL
 (Working name)
 
+## Documentation ##
+[![Documentation Status](https://readthedocs.org/projects/regentparticledsldocs/badge/?version=latest)](https://regentparticledsldocs.readthedocs.io/en/latest/?badge=latest)
+Documentation is available at https://regentparticledsldocs.readthedocs.io/en/latest/
+
 ## Idea ##
 This repository is to cover the goal of building a particle-method DSL using Regent 
 metaprogramming. The repository at current contains a few mini examples proving that
