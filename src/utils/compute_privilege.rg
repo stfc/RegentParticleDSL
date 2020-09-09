@@ -45,6 +45,9 @@ local function two_region_privilege_map(node, sym1, sym2, read_sym1, read_sym2, 
   --Second case - For all field accesses we assume they are read from (though in some cases they are only
   --written to, I don't think that adding a read requirement should cause any issues)
   elseif(node:is(ast.specialized.expr.FieldAccess)) then
+--      if(node.field_name == "core_part_space") then
+--        print(node)
+--      end
       if(node.value.value == sym1) then
         read_sym1:insert(node.field_name)
       elseif(node.value.value == sym2) then
@@ -227,6 +230,7 @@ function compute_privileges.two_region_privileges(kernel_name)
 --  print(kernel_name(part1, part2, r2))
 --  print(kernel_name)
   local z = kernel_name(part1, part2, r2)
+--  print(z.ast)
   local read_p1 = terralib.newlist()
   local read_p2 = terralib.newlist()
   local write_p1 = terralib.newlist()
