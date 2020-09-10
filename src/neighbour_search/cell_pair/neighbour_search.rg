@@ -99,9 +99,15 @@ end
 --Generate the classic MD-style symmetric update pairwise task.
 --This function assumes the cutoff is the same for both particles
 function generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
-
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) where 
-   reads(parts1.[read1], parts2.[read2], parts1.core_part_space, parts2.core_part_space, config), writes(parts1.[write1], parts2.[write2]) do
+print("read1: ", read1)
+print("read2: ", read2)
+print("write1: ", write1)
+print("write2: ",write2)
+print("child task ----")
+local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), config : region(ispace(int1d), config_type))  
+ where reads(parts1.[read1]), reads( parts2.[read2]), reads( parts1.core_part_space), reads( parts2.core_part_space) ,reads (config), writes(parts1.[write1]) ,writes( parts2.[write2]) do
+-- where reads(parts1.{interactions,i2,i3,i4,i5,i6,core_part_space}, parts1.core_part_space, config), writes(parts1.{interactions,i2,i3,i4,i5,i6}),
+-- reads(parts2.{i2,interactions}, parts2.core_part_space), writes(parts2.{interactions,i2}) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
@@ -137,7 +143,7 @@ function generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1 )
 --Asymmetric kernel can only write to part1
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part),  config : region(ispace(int1d), config_type)) where 
-   reads(parts1.core_part_space, parts2.core_part_space, parts1.[read1], parts2.[read2], config), writes(parts1.[write1]) do
+   reads(parts1.core_part_space) ,reads( parts2.core_part_space), reads( parts1.[read1]), reads(parts2.[read2]), reads(config), writes(parts1.[write1]) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
@@ -178,7 +184,7 @@ end
 function generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
 
 local task self_task(parts1 : region(ispace(int1d), part), config : region(ispace(int1d),config_type)) where
-  reads(parts1.[read1], parts1.[read2], parts1.core_part_space, config), writes(parts1.[write1], parts1.[write2]) do
+  reads(parts1.[read1]), reads( parts1.[read2]), reads(parts1.core_part_space), reads(config), writes(parts1.[write1]),writes(parts1.[write2]) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
@@ -217,7 +223,7 @@ end
 function generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
 
 local task self_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) where
-   reads(parts1.core_part_space, parts1.[read1], parts1.[read2], config), writes(parts1.[write1]) do
+   reads(parts1.core_part_space), reads(parts1.[read1]),reads( parts1.[read2]), reads(config), writes(parts1.[write1]) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
@@ -334,15 +340,18 @@ end
 function create_symmetric_pairwise_runner( kernel_name )
 
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel_name )
+--write2:insert("i2")
 local cell_pair_task = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
 local cell_self_task = generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
-print(read1)
-print(read2)
-print(write1)
-print(write2)
+print("read1: ", read1)
+print("read2: ", read2)
+print("write1: ", write1)
+print("write2: ",write2)
 
 local task run_symmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type))
-    where reads(particles.[read1], particles.[read2], particles.core_part_space, config), writes(particles.[write1], particles.[write2]) do
+    where reads(particles.[read1]) ,reads (particles.[read2]), reads(particles.core_part_space),reads(config), writes(particles.[write1]),writes(particles.[write2]) do
+--    where reads(particles.{interactions,i2,i3,i4,i5,i6,core_part_space}, particles.core_part_space, config), writes(particles.{interactions,i2,i3,i4,i5,i6}) do
+--   where reads(particles, config), writes(particles) do
 
     --Do all cell2s in the positive direction
     --Not optimised, it does all cell pairs in the domain, doesn't check
@@ -402,7 +411,7 @@ local cell_pair_task = generate_asymmetric_pairwise_task( kernel_name, read1, re
 local cell_self_task = generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
 
 local task run_asymmetric_pairwise_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type))
-    where reads(particles.core_part_space, particles.[read1], particles.[read2], config), writes(particles.[write1]) do
+    where reads(particles.core_part_space),reads( particles.[read1]), reads( particles.[read2]), reads( config), writes(particles.[write1]) do
 
     --Do all cell2s in the positive direction
     --Not optimised, it does all cell pairs in the domain, doesn't check
@@ -454,7 +463,7 @@ end
 function generate_per_part_task( kernel_name, read1, write1 )
 
 local task pairwise_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) where
-   reads(parts1.[read1], config), writes(parts1.[write1]) do
+   reads(parts1.[read1]), reads(config), writes(parts1.[write1]) do
    for part1 in parts1.ispace do
          [kernel_name(rexpr parts1[part1] end, rexpr config[0] end)]
    end
@@ -464,7 +473,7 @@ end
 
 function generate_per_part_task_bool_return ( kernel_name )
 
-local task pairwise_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) : bool where
+local task per_part_bool_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) : bool where
    reads(parts1, config), writes(parts1) do
    var return_val : bool = false
    for part1 in parts1.ispace do
@@ -472,7 +481,7 @@ local task pairwise_task(parts1 : region(ispace(int1d),part), config : region(is
    end
    return return_val
 end
-return pairwise_task
+return per_part_bool_task
 end
 
 
@@ -481,7 +490,7 @@ function run_per_particle_task( kernel_name )
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges(kernel_name)
 local per_part_task = generate_per_part_task( kernel_name, read1, write1 )
 local task run_per_particle_task_code( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type) )
-    where reads(particles.[read1], config), writes(particles.[write1]) do
+    where reads(particles.[read1]), reads(config), writes(particles.[write1]) do
 
     --For each cell, call the task!
     for cell1 in cell_space.colors do
