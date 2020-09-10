@@ -1,3 +1,8 @@
+-------------------------------------------------------------
+--Copyright 2020 Science and Technologies Facilities Council
+--Licensed under the MIT License
+--Author Aidan Chalk, STFC Hartree Centre
+
 import "regent"
 
 --This shows an example construction of a custom particle type, used in a computation

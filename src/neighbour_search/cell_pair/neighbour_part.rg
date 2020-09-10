@@ -1,3 +1,8 @@
+-------------------------------------------------------------
+--Copyright 2020 Science and Technologies Facilities Council
+--Licensed under the MIT License
+--Author Aidan Chalk, STFC Hartree Centre
+
 import "regent"
 
 --This file contains the neighbour_part type definition for the
