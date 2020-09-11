@@ -10,10 +10,9 @@ RUN apt-get update && \
     apt-get install -y build-essential clang-3.5 git libclang-3.5-dev libncurses5-dev llvm-3.5-dev wget zlib1g-dev libhdf5-dev cmake3 vim && \
     apt-get clean
     
-RUN git clone https://github.com/StanfordLegion/legion.git
+RUN git clone -b master https://github.com/StanfordLegion/legion.git
 
 RUN cd legion/language
-RUN git checkout master
 RUN LLVM_CONFIG=llvm-config-3.5 python3 legion/language/install.py --rdir=auto --hdf5 --no-terra-cmake
 RUN ln -s /legion/language/regent.py /usr/local/bin/regent
 RUN cd /
