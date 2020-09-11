@@ -1,3 +1,9 @@
+/*-----------------------------------------------------------
+Copyright 2020 Science and Technologies Facilities Council
+Licensed under the MIT License
+Author Aidan Chalk, STFC Hartree Centre
+------------------------------------------------------------*/
+
 #include <hdf5.h>
 
 
