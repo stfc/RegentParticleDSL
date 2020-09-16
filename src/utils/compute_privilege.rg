@@ -5,17 +5,108 @@ format = require("std/format")
 
 compute_privileges = {}
 
+local function return_true(node) return true end
+local function return_false(node) return false end
+
+local is_specialized_table = {
+  [ast.specialized.expr] = return_true,
+  [ast.specialized.stat] = return_true,
+  [ast.specialized.top] = return_true,
+  [ast.specialized.Block] = return_true,
+}
+
+local is_specialized_node = ast.make_single_dispatch(is_specialized_table, {}, return_false)()
+
+local function traverse_fieldaccess_postorder_two_region( node, sym1, sym2)
+  local name = nil
+  local symbol = 0
+  ast.traverse_node_postorder(
+    function(node)
+        if(node:is(ast.specialized.expr.FieldAccess)) then
+          if(node.value.value == sym1) then
+            symbol = 1 
+          elseif(node.value.value == sym2) then
+            symbol = 2
+          end
+          if( name == nil) then
+            name = node.field_name
+--          else
+--            name = name .. "." .. node.field_name
+          end
+        end
+    end,
+    node, is_specialized_node)
+    if symbol == 0 then
+      print("Error finding which symbol the FieldAccess equates to")
+    end
+    return name, symbol
+end
+
+local function traverse_fieldaccess_postorder_three_region( node, sym1, sym2, sym3)
+  local name = nil
+  local symbol = 0
+  ast.traverse_node_postorder(
+    function(node)
+        if(node:is(ast.specialized.expr.FieldAccess)) then
+          if(node.value.value == sym1) then
+            symbol = 1
+          elseif(node.value.value == sym2) then
+            symbol = 2
+          elseif(node.value.value == sym3) then
+            symbol = 3
+          end
+          if( name == nil) then
+            name = node.field_name
+--          else
+--            name = name .. "." .. node.field_name
+          end
+        end
+    end,
+    node, is_specialized_node)
+    if symbol == 0 then
+      print("Error finding which symbol the FieldAccess equates to")
+    end
+    return name, symbol
+
+end
+
+local function traverse_fieldaccess_postorder_one_region( node, sym1)
+  local name = nil
+  local symbol = 0
+  ast.traverse_node_postorder(
+    function(node)
+        if(node:is(ast.specialized.expr.FieldAccess)) then
+          if(node.value.value == sym1) then
+            symbol = 1
+          end
+          if( name == nil) then
+            name = node.field_name
+          else
+            name = name .. "." .. node.field_name
+          end
+        end
+    end,
+    node, is_specialized_node)
+    if symbol == 0 then
+      print("Error finding which symbol the FieldAccess equates to")
+    end
+    return name, symbol
+
+end
+
+
 local function three_region_privilege_map(node, sym1, sym2, sym3, read_sym1, read_sym2, read_sym3, write_sym1, write_sym2, write_sym3)
   --First case - we have an assignment. If we have an assignment and the lhs is a FieldAccess, then
   --this is a written to part of our region
   if(node:is(ast.specialized.stat.Assignment)) then
     if(node.lhs[1]:is(ast.specialized.expr.FieldAccess)) then
-      if(node.lhs[1].value.value == sym1) then
-        write_sym1:insert(node.lhs[1].field_name)
-      elseif(node.lhs[1].value.value == sym2) then
-        write_sym2:insert(node.lhs[1].field_name)
-      elseif(node.lhs[1].value.value == sym3) then
-        write_sym3:insert(node.lhs[1].field_name)
+        local name, symbol = traverse_fieldaccess_postorder_three_region(node.lhs[1], sym1, sym2)
+      if(symbol == 1) then
+        write_sym1:insert(name)
+      elseif(symbol == 2) then
+        write_sym2:insert(name)
+      elseif(symbol == 3) then
+        write_sym3:insert(name)
       end
     end
   --Second case - For all field accesses we assume they are read from (though in some cases they are only
@@ -36,18 +127,16 @@ local function two_region_privilege_map(node, sym1, sym2, read_sym1, read_sym2, 
   --this is a written to part of our region
   if(node:is(ast.specialized.stat.Assignment)) then
     if(node.lhs[1]:is(ast.specialized.expr.FieldAccess)) then
-      if(node.lhs[1].value.value == sym1) then
-        write_sym1:insert(node.lhs[1].field_name)
-      elseif(node.lhs[1].value.value == sym2) then
-        write_sym2:insert(node.lhs[1].field_name)
+        local name, symbol = traverse_fieldaccess_postorder_two_region(node.lhs[1],sym1, sym2)
+      if(symbol == 1) then
+        write_sym1:insert(name)
+      elseif(symbol == 2) then
+        write_sym2:insert(name)
       end
     end
   --Second case - For all field accesses we assume they are read from (though in some cases they are only
   --written to, I don't think that adding a read requirement should cause any issues)
   elseif(node:is(ast.specialized.expr.FieldAccess)) then
---      if(node.field_name == "core_part_space") then
---        print(node)
---      end
       if(node.value.value == sym1) then
         read_sym1:insert(node.field_name)
       elseif(node.value.value == sym2) then
@@ -61,8 +150,9 @@ local function one_region_privilege_map(node, sym, read_sym, write_sym)
   --this is a written to part of our region
   if(node:is(ast.specialized.stat.Assignment)) then
     if(node.lhs[1]:is(ast.specialized.expr.FieldAccess)) then
-      if(node.lhs[1].value.value == sym) then
-        write_sym:insert(node.lhs[1].field_name)
+      local name, symbol = traverse_fieldaccess_postorder_one_region(node.lhs[1],sym)
+      if(symbol == 1) then
+        write_sym:insert(name)
       end
     end
   --Second case - For all field accesses we assume they are read from (though in some cases they are only
@@ -74,24 +164,11 @@ local function one_region_privilege_map(node, sym, read_sym, write_sym)
   end
 end
 
-local function return_true(node) return true end
-local function return_false(node) return false end
-
-local is_specialized_table = {
-  [ast.specialized.expr] = return_true,
-  [ast.specialized.stat] = return_true,
-  [ast.specialized.top] = return_true,
-  [ast.specialized.Block] = return_true,
-}
-
-local is_specialized_node = ast.make_single_dispatch(is_specialized_table, {}, return_false)()
 
 local function traverse_specialized_postorder_two_region(fn, node, sym1, sym2, read_sym1, read_sym2, write_sym1, write_sym2)
   ast.traverse_node_postorder(
     function(node)
---      if node:is(ast.specialized.expr) then
         fn(node, sym1, sym2, read_sym1, read_sym2, write_sym1, write_sym2)
---      end
     end,
     node, is_specialized_node)
 end

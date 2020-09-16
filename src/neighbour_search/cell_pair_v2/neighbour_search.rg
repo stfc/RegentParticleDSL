@@ -258,27 +258,25 @@ end
 return self_task
 end
 
-function create_symmetric_pairwise_runner( kernel_name, variables )
+function create_symmetric_pairwise_runner( kernel_name, config, cell_space )
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel_name )
 local cell_pair_task = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
 local cell_self_task = generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
 
 local runner = rquote
     --Do all cell2s in the positive direction
-    --Not optimised, it does all cell pairs in the domain, doesn't check
-    --cutoff radii or anything.
-    var cutoff2 = variables.config[0].neighbour_config.max_cutoff * variables.config[0].neighbour_config.max_cutoff
-    var x_count = variables.config[0].neighbour_config.x_cells
-    var y_count = variables.config[0].neighbour_config.y_cells
-    var z_count = variables.config[0].neighbour_config.z_cells
+    var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
+    var x_count = config[0].neighbour_config.x_cells
+    var y_count = config[0].neighbour_config.y_cells
+    var z_count = config[0].neighbour_config.z_cells
 
     --Compute cell radii
-    var cutoff = variables.config[0].neighbour_config.max_cutoff
+    var cutoff = config[0].neighbour_config.max_cutoff
     var x_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_x )
     var y_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_y )
     var z_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_z )
-    for cell1 in variables.cell_space.colors do
-        cell_self_task(variables.cell_space[cell1], variables.config)
+    for cell1 in cell_space.colors do
+        cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
         for x = 0, x_radii+1 do
           for y = 0, y_radii+1 do
@@ -291,7 +289,7 @@ local runner = rquote
 
                 else
                   --symmetric
-                  cell_pair_task(variables.cell_space[cell1], variables.cell_space[cell2], variables.config)
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
                 end
               end
             end
@@ -303,7 +301,7 @@ return runner
 
 end
 
-function create_asymmetric_pairwise_runner( kernel_name, variables )
+function create_asymmetric_pairwise_runner( kernel_name, config, cell_space )
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel_name )
 --While write2 is computed, asymmetric kernels are not allowed to write to write2
 local cell_pair_task = generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1 )
@@ -311,18 +309,18 @@ local cell_self_task = generate_asymmetric_self_task( kernel_name, read1, read2,
 
 local runner = rquote
     --Do all cell2s in the positive direction
-    var cutoff2 = variables.config[0].neighbour_config.max_cutoff * variables.config[0].neighbour_config.max_cutoff
-    var x_count = variables.config[0].neighbour_config.x_cells
-    var y_count = variables.config[0].neighbour_config.y_cells
-    var z_count = variables.config[0].neighbour_config.z_cells
+    var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
+    var x_count = config[0].neighbour_config.x_cells
+    var y_count = config[0].neighbour_config.y_cells
+    var z_count = config[0].neighbour_config.z_cells
 
     --Compute cell radii
-    var cutoff = variables.config[0].neighbour_config.max_cutoff
-    var x_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_x )
-    var y_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_y )
-    var z_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_z )
-    for cell1 in variables.cell_space.colors do
-        cell_self_task(variables.cell_space[cell1], variables.config)
+    var cutoff = config[0].neighbour_config.max_cutoff
+    var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
+    var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
+    var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z )
+    for cell1 in cell_space.colors do
+        cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
         for x = 0, x_radii+1 do
           for y = 0, y_radii+1 do
@@ -335,8 +333,8 @@ local runner = rquote
 
                 else
                   --Asymmetric, launch tasks both ways
-                  cell_pair_task(variables.cell_space[cell1], variables.cell_space[cell2], variables.config)
-                  cell_pair_task(variables.cell_space[cell2], variables.cell_space[cell1], variables.config)
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                  cell_pair_task(cell_space[cell2], cell_space[cell1], config)
                 end
               end
             end
@@ -357,9 +355,11 @@ end
 
 --Generate a task to be executed on every particle in the system
 function generate_per_part_task( kernel_name, read1, write1 )
-
+print("reads: ", read1)
+print("parts1.", write1)
 local task pairwise_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) where
-   reads(parts1.[read1]), reads(config), writes(parts1.[write1]) do
+   reads(parts1.[read1]), reads(config),  writes(parts1.[write1]) do
+   --writes(parts1.{cutoff_update_space.redo, cutoff_update_space.left, cutoff_update_space.right, cutoff_update_space.h_0}) do
    for part1 in parts1.ispace do
          [kernel_name(rexpr parts1[part1] end, rexpr config[0] end)]
    end
@@ -381,15 +381,15 @@ return per_part_bool_task
 end
 
 
-function run_per_particle_task( kernel_name, variables )
+function run_per_particle_task( kernel_name, cell_space, config )
 
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges(kernel_name)
 local per_part_task = generate_per_part_task( kernel_name, read1, write1 )
 local runner = rquote
 
     --For each cell, call the task!
-    for cell1 in variables.cell_space.colors do
-       per_part_task(variables.cell_space[cell1], variables.config)
+    for cell1 in cell_space.colors do
+       per_part_task(cell_space[cell1], config)
     end
 end
 

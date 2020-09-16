@@ -15,11 +15,17 @@ local variables = require("src/interactions/MinimalSPH/variables")
 local format = require("std/format")
 local c = regentlib.c
 
-local density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel )
-local force_task = create_symmetric_pairwise_runner( force_kernel )
-local timestep_task = run_per_particle_task( kick_kernel )
-local reset_density_task = run_per_particle_task( reset_density )
-local reset_force_task = run_per_particle_task( reset_acceleration )
+local density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel, variables.config, variables.cell_partition )
+local force_task = create_symmetric_pairwise_runner( force_kernel, variables.config, variables.cell_partition )
+local timestep_task = run_per_particle_task( kick_kernel, variables.config, variables.cell_partition )
+local kick1_task = run_per_particle_task( kick_kernel, variables.config, variables.cell_partition2 )
+local reset_density_task = run_per_particle_task( reset_density, variables.config, variables.cell_partition )
+local reset_force_task = run_per_particle_task( reset_acceleration, variables.config, variables.cell_partition )
+
+local initial_density_reset = run_per_particle_task( reset_density, variables.config, variables.cell_space )
+local initial_force_reset = run_per_particle_task( reset_density, variables.config, variables.cell_space )
+local initial_density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel, variables.config, variables.cell_space )
+local initial_timestep_task = run_per_particle_task( kick_kernel, variables.config, variables.cell_space )
 
 __forbid(__inline)
 task say_hello(time : float)
@@ -48,16 +54,16 @@ task main()
 initialise_cells(variables.config , variables.particle_array)
   particles_to_cell_launcher( variables.particle_array, variables.config)
 
-  var cell_partition1 = update_cell_partitions([variables.particle_array], [variables.config])
+  var [variables.cell_space] = update_cell_partitions([variables.particle_array], [variables.config])
   --Initialisation
-  reset_density_task(variables.particle_array, cell_partition1, variables.config)
-  reset_force_task(variables.particle_array, cell_partition1, variables.config)
+  [initial_density_reset]
+  [initial_force_reset]
 
   --Do the zero timestep to setup the IC
   variables.config[0].space.timestep = 0.00
-  density_task(variables.particle_array, cell_partition1, variables.config)
-  update_cutoffs_launcher(variables.particle_array, cell_partition1, variables.config)
-  timestep_task(variables.particle_array, cell_partition1, variables.config)
+  [initial_density_task]
+  update_cutoffs_launcher(variables.particle_array, variables.cell_space, variables.config)
+  [initial_timestep_task]
   variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition1, variables.config)
   
   var time : double = 0.0
@@ -69,16 +75,18 @@ initialise_cells(variables.config , variables.particle_array)
   __delete(cell_partition1)
   while time < endtime do
     --TODO Fix update_cell_partitions
-    var cell_partition = update_cell_partitions(variables.particle_array, variables.config)
+    var [variables.cell_partition2] = update_cell_partitions(variables.particle_array, variables.config)
     --first kick
-    timestep_task(variables.particle_array, cell_partition, variables.config)
-    reset_density_task(variables.particle_array, cell_partition, variables.config)
-    density_task(variables.particle_array, cell_partition, variables.config)
+    [kick1_task]
+    __delete([variables.cell_partition2])
+    var [variables.cell_partition] = update_cell_partitions(variables.particle_array, variables.config)
+    [reset_density_task]
+    [density_task]
     update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
-    reset_force_task(variables.particle_array, cell_partition, variables.config)
-    force_task( variables.particle_array, cell_partition, variables.config)
+    [reset_force_task]
+    [force_task]
     --2nd kick
-    timestep_task(variables.particle_array, cell_partition, variables.config)
+    [timestep_task]
   --  timestep_task([variables.particle_array], cell_partition, [variables.space])
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
     say_hello(time)
@@ -88,7 +96,7 @@ initialise_cells(variables.config , variables.particle_array)
       variables.config[0].space.timestep = endtime - time
     end
     format.println("timestep is {}", variables.config[0].space.timestep)
-    __delete(cell_partition)
+    __delete([variables.cell_partition])
   end  
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var end_time = get_time()

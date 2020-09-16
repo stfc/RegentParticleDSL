@@ -6,12 +6,13 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/cell_pair/neighbour_search")
-require("src/neighbour_search/cell_pair/cell")
+require("src/neighbour_search/cell_pair_v2/neighbour_search")
+require("src/neighbour_search/cell_pair_v2/cell")
 require("src/interactions/MinimalSPH/interactions")
 require("src/interactions/MinimalSPH/timestep")
+local variables = require("src/interactions/MinimalSPH/variables")
 
-local density_task = create_asymmetric_pairwise_runner(nonsym_density_kernel)
+--local density_task = create_asymmetric_pairwise_runner(nonsym_density_kernel)
 local c = regentlib.c
 local stdlib = terralib.includec("stdlib.h")
 
@@ -325,8 +326,8 @@ function finish_density(part, space, return_bool)
 end
 
 
-local reset_cutoff_update_task_runner = run_per_particle_task( reset_cutoff_update_space )
-local prepare_for_force_runner = run_per_particle_task(  prepare_for_force )
+local reset_cutoff_update_task_runner = run_per_particle_task( reset_cutoff_update_space, variables.cell_space, variables.config )
+local prepare_for_force_runner = run_per_particle_task(  prepare_for_force, variables.cell_space, variables.config )
 
 local sort_redo_task = generate_per_part_task_bool_return( finish_density )
 
@@ -356,7 +357,8 @@ task update_cutoffs_launcher(particles : region(ispace(int1d), part),
       var point = cell.x + cell.y * x_count + cell.z * x_count * y_count
     end
     --First we reset all the particle's cutoffs
-    reset_cutoff_update_task_runner( particles, cell_space, config)
+--    reset_cutoff_update_task_runner( particles, cell_space, config)
+    [reset_cutoff_update_task_runner];
     --Loop over particles with redo set until all particles are redone
     for attempts = 1, 10 do
       var launches = 0
@@ -405,8 +407,9 @@ c.legion_runtime_issue_execution_fence(__runtime(), __context())
         end
       end
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
-    stdlib.free(bool_array)
+    stdlib.free(bool_array);
     --At the end of the loop everyone should be redone succesfully
-    prepare_for_force_runner(particles, cell_space, config)
+    [prepare_for_force_runner];
+    --prepare_for_force_runner(particles, cell_space, config)
 end
 
