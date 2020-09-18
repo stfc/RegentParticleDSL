@@ -94,4 +94,17 @@ end
 return write_string
 end
 
+--fspace hdf5_io_space{
+--  Position_x : double,
+--  Position_y : double,
+--  Velocity_x : double,
+--  Velocity_y : double
+--}
+
+isph_module.hdf5_mapper = {}
+isph_module.hdf5_mapper["Position_x"] = "core_part_space.pos_x"
+isph_module.hdf5_mapper["Position_y"] = "core_part_space.pos_y"
+isph_module.hdf5_mapper["Velocity_x"] = "core_part_space.vel_x"
+isph_module.hdf5_mapper["Velocity_y"] = "core_part_space.vel_y"
+
 return isph_module
