@@ -10,9 +10,17 @@ require("defaults")
 local format = require("std/format")
 --local h5lib = terralib.includec(os.getenv("HDF_HEADER") or "h5lib.h")
 terralib.includepath = ".;"..terralib.includepath
-local h5lib = terralib.includec("hdf5.h")
+terralib.includepath = "/home/aidan/hdf5/hdf5-1.12.0/hdf5/include/;"..terralib.includepath
+if(h5lib == nil) then
+ h5lib = terralib.includec("hdf5.h")
+end
 --HDF5 wrapper header as terra can't see some "defines" from hdf5.h.
-local wrap = terralib.includec("hdf5_wrapper.h")
+if (wrap == nil) then
+ wrap = terralib.includec("hdf5_wrapper.h")
+end
+--local h5lib = terralib.includec("hdf5.h")
+--HDF5 wrapper header as terra can't see some "defines" from hdf5.h.
+--local wrap = terralib.includec("hdf5_wrapper.h")
 
 stdlib = terralib.includec("stdlib.h")
 local c = regentlib.c

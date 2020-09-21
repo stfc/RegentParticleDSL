@@ -1,10 +1,11 @@
 import "regent"
 
---require("defaults")
---require("src/particles/init_part")
---require("src/neighbour_search/cell_pair/neighbour_search")
---require("src/io_modules/HDF5/spaces")
 
+require("defaults")
+require("src/particles/init_part")
+require("src/neighbour_search/cell_pair/neighbour_search")
+
+string_to_field_path = require("src/utils/string_to_fieldpath")
 format = require("std/format")
 local c = regentlib.c
 
@@ -15,59 +16,19 @@ local h5lib = terralib.includec("hdf5.h")
 local wrap = terralib.includec("hdf5_wrapper.h")
 
 
---fspace part{
---  test1 : int,
---  test2 : double
---}
---
---fspace hdf5_io_space{
---  name1 : int,
---  name2 : double
---}
-
 simple_hdf5_module = {}
 
 wrap.init_wrapper()
 local type_mapping = {}
 type_mapping["int"] = wrap.WRAP_H5T_STD_I32LE
 type_mapping["int32"] = wrap.WRAP_H5T_STD_I32LE
+type_mapping["uint32"] = wrap.WRAP_H5T_STD_U32LE
 type_mapping["int64"] = wrap.WRAP_H5T_STD_I64LE
+type_mapping["uint64"] = wrap.WRAP_H5T_STD_U64LE
 type_mapping["double"] = wrap.WRAP_H5T_NATIVE_DOUBLE
 type_mapping["float"] = wrap.WRAP_H5T_NATIVE_FLOAT
 
 local hdf5_io_space = {}
-
---local variables = {}
---variables.particle_array = regentlib.newsymbol("parts")
-
---local function create_hdf5_file2(filename, particle_array, hdf5_io_space)
---  local io_fields = terralib.newlist()
---  for k, v in pairs(hdf5_io_space.fields) do
---    io_fields:insert({string=v.field.symbol_name, hdftype=type_mapping[v.field.symbol_type.name]})
---  end
---local create_code = rquote
---  wrap.init_wrapper()
---
---  var file_id = h5lib.H5Fcreate(filename, wrap.WRAP_H5F_ACC_TRUNC, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
---  regentlib.assert(file_id > 0, "Failed to create file")
---
---  var h_dims : h5lib.hsize_t[1]
---  h_dims[0] = particle_array.bounds.hi - particle_array.bounds.lo + 1
---  var dim = h5lib.H5Screate_simple(1, h_dims, [&uint64](0))
---  regentlib.assert(dim > 0, "Failed to create dimensions");
---
-----    return rquote format.println("{} {}", [field.string], [field.hdftype]) end
---  [io_fields:map(function(field)
---    return rquote
---       var namething = h5lib.H5Dcreate2(file_id, [field.string], [field.hdftype], dim, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT);
---       regentlib.assert(namething > 0, "Failed to create dataset for [field.string]");
---       h5lib.H5Dclose(namething);
---   end 
---   end)];
---  h5lib.H5Fclose(file_id)
---end
---return create_code
---end
 
 --This local function creates the io field space needed for IO from a given mapper.
 local function create_io_fspace(mapper)
@@ -99,28 +60,65 @@ local function create_io_fspace(mapper)
  return io_type, mapper_fields
 end
 
---This function creates and writes a HDF5 file output, according to the mapper (and corresponding IO_field declaration)
---Arguments: 
---filename : string -- Filename to write to
---mapper : table -- Mapping between IO fields and part type
---particle_array : symbol -- The regent symbol (usually variables.particle_array) representing the particle array.
-function simple_hdf5_module.write_output(filename, mapper, particle_array)
+
+--This function creates a task that computes how many particles in the file.
+--On top of this, it checks that the mapper provided is legal, i.e. that 
+--all the fields expected in the file are present.
+local function get_particle_count_task(filename, init_mapping)
+
+local task check_file_struc() 
+  --Open the file
+  wrap.init_wrapper()
+
+  var file_id = h5lib.H5Fopen(filename, wrap.WRAP_H5F_ACC_RDONLY, wrap.WRAP_H5P_DEFAULT)
+  regentlib.assert(file_id >= 0, "Failed to open file");
+
+  [init_mapping:map(function(field)
+    return rquote
+       var namething = h5lib.H5Dopen2(file_id, [field.string], wrap.WRAP_H5P_DEFAULT)
+       if(namething <= 0) then
+         var buffer = [rawstring](regentlib.c.malloc(512))
+         format.snprintln(buffer, 512, "Failed to find dataset: {}", [field.string])
+         regentlib.assert(namething > 0, buffer)
+         regentlib.c.free(buffer)
+       end
+       h5lib.H5Dclose(namething)
+   end
+   end)];
+ 
+   var firstelem = h5lib.H5Dopen2(file_id, [init_mapping[1].string], wrap.WRAP_H5P_DEFAULT)
+   var space = h5lib.H5Dget_space(firstelem)
+   var ndims = h5lib.H5Sget_simple_extent_ndims(space)
+   regentlib.assert(ndims == 1, "Multi dimensional dataset detected, which we can't handle at this time")
+   var dims : h5lib.hsize_t[1]
+   regentlib.assert(h5lib.H5Sget_simple_extent_dims(space, dims, [&uint64](0)) > 0, "Failed to read the particle count")
+  
+   h5lib.H5Dclose(firstelem)
+   h5lib.H5Fclose(file_id) 
+   format.println("HDF5 read {} parts", dims[0])
+   return dims[0]
+end
+return check_file_struc
+end
+
+--Particle initialisation task - clears out the core_part and neighbour_part values
+local task particle_initialisation(particle_region : region(ispace(int1d), part), filename : rawstring) where writes(particle_region) do
+
+zero_core_part(particle_region)
+zero_neighbour_part(particle_region)
+end
+
+
+
+
+function simple_hdf5_module.initialisation(filename, mapper, particle_array, space_x, space_y, space_z)
   --Create the field space and the io_type_mapping from create_io_fspace
   local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
   --Mapper fields creates a mapping between the io fspace and part fspace.
-  --Due to https://github.com/StanfordLegion/legion/issues/932 we can't just
-  --use fields such as core_part_space.pos_x directly, so we check if the part space
-  --is a member of core_part_space, and if so store that information and workaround it.
+  --We use the string_to_fieldpath code to allow nested field space accesses
   local mapper_fields = terralib.newlist()
   for k, v in pairs(mapper) do
-    local starts_core = (string.sub(v,1,string.len("core_part_space.")) == "core_part_space.")
-    local subfield = ""
-    if(starts_core) then
-      subfield = string.sub(v, string.len("core.part_space.")+1)
-    else
-      subfield = v
-    end
-    mapper_fields:insert({io_field=k, part_field=subfield, core_part_field=starts_core})
+    mapper_fields:insert({io_field=string_to_field_path.get_field_path(k), part_field=string_to_field_path.get_field_path(v)})
   end
   --io_fields just stores a list of the fields in the io fspace. We need this for
   --attaching the region correctly
@@ -131,7 +129,99 @@ function simple_hdf5_module.write_output(filename, mapper, particle_array)
   --init_mapping is created from the io_type_mapping, and stores the hdf5 field name (the same as the io space name)
   --and the corresponding hdf5type declaration (taken from the type_mapping)
   local init_mapping = terralib.newlist()
-  io_type_mapping:map(function(field) init_mapping:insert({string=field.field_name, hdftype=type_mapping[field.field_type.name] }) end)
+  io_type_mapping:map(function(field)
+  if type_mapping[field.field_type.name] == nil then
+    print("Type "..field.field_type.name.." does not have a known HDF5 conversion type. Please"..
+          " open an issue to get this added.")
+    os.exit()
+  end
+  init_mapping:insert({string=field.field_name, hdftype=type_mapping[field.field_type.name] })
+  end)
+
+  local get_part_count = get_particle_count_task(filename,  init_mapping)
+
+  --Allow 2D input spaces
+  if space_z == nil then
+    space_z = 0.0
+  end
+ 
+  --The copy between the hdf5 region and the particle array needs to be done in a task to work. This is created here
+  local task copy_task( hdfreg : region(ispace(int1d), hdf5_io_space), particle_array : region(ispace(int1d), part) ) where
+    writes(particle_array), reads(hdfreg) do
+    --Loop over the elements of the regions
+    for i in particle_array.ispace do
+      --Copy every element from the particle_array to the corresponding field in the io_region.
+      --Due to https://github.com/StanfordLegion/legion/issues/932 we check if the field is
+      --a member of the core_part_space, and if so use the corresponding branch
+      [mapper_fields:map(function(field)
+           return rquote
+           particle_array[i].[field.part_field] = hdfreg[i].[field.io_field]
+           end
+      end)];
+    end
+
+end
+
+  local test = rquote
+   regentlib.assert(space_x > 0.0, "X dimension of the space hasn't been set")
+   regentlib.assert(space_y > 0.0, "Y dimension of the space hasn't been set")
+   var part_count = get_part_count()
+   format.println("Reading {} particles from the HDF5 file", part_count)
+   var particle_space = ispace(int1d, part_count)
+   var [variables.particle_array] = region(particle_space, part)
+   var [variables.config] = region(ispace(int1d, 1), config_type)
+   fill([variables.config].{space.dim_x, space.dim_y, space.dim_z}, 0.0)
+   
+   init_space(space_x, space_y, space_z, [variables.config])
+   particle_initialisation([variables.particle_array], filename)
+
+   --Once the other initialisation is done, we read in the particles from the hdf5 file.
+   var hdfreg = region(ispace(int1d, part_count), hdf5_io_space)
+   attach(hdf5, hdfreg.[io_fields], filename, regentlib.file_read_write)
+   acquire(hdfreg)
+   copy_task(hdfreg, particle_array)
+   release(hdfreg)
+   detach(hdf5, hdfreg)
+   c.legion_runtime_issue_execution_fence(__runtime(), __context())
+  end
+  return test
+end
+
+
+
+
+--This function creates and writes a HDF5 file output, according to the mapper (and corresponding IO_field declaration)
+--This function is used from user code.
+--Arguments: 
+--filename : string -- Filename to write to
+--mapper : table -- Mapping between IO fields and part type
+--particle_array : symbol -- The regent symbol (usually variables.particle_array) representing the particle array.
+function simple_hdf5_module.write_output(filename, mapper, particle_array)
+  --Create the field space and the io_type_mapping from create_io_fspace
+  local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
+  --Mapper fields creates a mapping between the io fspace and part fspace.
+  --We use the string_to_fieldpath code to allow nested field space accesses
+  local mapper_fields = terralib.newlist()
+  for k, v in pairs(mapper) do
+    mapper_fields:insert({io_field=string_to_field_path.get_field_path(k), part_field=string_to_field_path.get_field_path(v)})
+  end
+  --io_fields just stores a list of the fields in the io fspace. We need this for
+  --attaching the region correctly
+  local io_fields = terralib.newlist()
+  for k, v in pairs(mapper) do
+    io_fields:insert(k)
+  end
+  --init_mapping is created from the io_type_mapping, and stores the hdf5 field name (the same as the io space name)
+  --and the corresponding hdf5type declaration (taken from the type_mapping)
+  local init_mapping = terralib.newlist()
+  io_type_mapping:map(function(field)
+  if type_mapping[field.field_type.name] == nil then
+    print("Type "..field.field_type.name.." does not have a known HDF5 conversion type. Please"..
+          " open an issue to get this added.")
+    os.exit()
+  end
+  init_mapping:insert({string=field.field_name, hdftype=type_mapping[field.field_type.name] })
+  end)
 
   --The copy between the hdf5 region and the particle array needs to be done in a task to work. This is created here
   local task copy_task( hdfreg : region(ispace(int1d), hdf5_io_space), particle_array : region(ispace(int1d), part) ) where
@@ -142,15 +232,9 @@ function simple_hdf5_module.write_output(filename, mapper, particle_array)
       --Due to https://github.com/StanfordLegion/legion/issues/932 we check if the field is
       --a member of the core_part_space, and if so use the corresponding branch
       [mapper_fields:map(function(field)
-         if(field.core_part_field) then
-           return rquote
-             hdfreg[i].[field.io_field] = particle_array[i].core_part_space.[field.part_field]
-           end
-         else
            return rquote
            hdfreg[i].[field.io_field] = particle_array[i].[field.part_field]
            end
-         end
       end)];
     end
   
@@ -171,7 +255,12 @@ end
     [init_mapping:map(function(field)
       return rquote
          var namething = h5lib.H5Dcreate2(file_id, [field.string], [field.hdftype], dim, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT);
-         regentlib.assert(namething > 0, "Failed to create dataset for [field.string]");
+         if(namething <= 0) then
+           var buffer = [rawstring](regentlib.c.malloc(512))
+           format.snprintln(buffer, 512, "Failed to create dataset: {}", [field.string])
+           regentlib.assert(namething > 0, buffer)
+           regentlib.c.free(buffer)
+         end
          h5lib.H5Dclose(namething);
      end
      end)];
@@ -187,104 +276,4 @@ end
   return create_code
 end
 
---local test_task = create_hdf5_file2("test.hdf5", variables.particle_array)
-
---local function create_hdf5_file(filename)
---local create_code = rquote
---  --This must be called at the start of every function involving hdf5 right now
---  wrap.init_wrapper()
---  
---  var file_id = h5lib.H5Fcreate(filename, wrap.WRAP_H5F_ACC_TRUNC, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
---  regentlib.assert(file_id > 0, "Failed to create file")
---
---  var h_dims : h5lib.hsize_t[1]
---  h_dims[0] = 2
---  var dim = h5lib.H5Screate_simple(1, h_dims, [&uint64](0))
---  regentlib.assert(dim > 0, "Failed to create dimensions")
---  
---  var name1thing = h5lib.H5Dcreate2(file_id, "name1", wrap.WRAP_H5T_STD_I32LE, dim, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
---  regentlib.assert(name1thing > 0, "Failed to create dataset for name1")
---  h5lib.H5Dclose(name1thing)
---  
---  var name2thing = h5lib.H5Dcreate2(file_id, "name2", wrap.WRAP_H5T_NATIVE_DOUBLE, dim, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
---  regentlib.assert(name2thing > 0, "Failed to create dataset for name1")
---  h5lib.H5Dclose(name2thing)
---
---  h5lib.H5Fclose(file_id)
---end
---return create_code
---end
-
---This code is removed until I can work out how to do it/get a response from Regent devs
---local function create_fspace(mapper)
---local  args = terralib.newlist()
---  for k, v in pairs(mapper) do
-----    print(k, v)
---     
---    for key, index in pairs(part.fields) do
---      print(key, index)
---      for a, b in pairs(index) do
---        print(a, b)
---      end
---      print("---") 
---      if index.field.symbol_name == v then
-----         print(k .." : ".. index.field.symbol_type.name .. ",")
-----         args:insert(k .." : ".. index.field.symbol_type.name)
-----         print(type(index.field.symbol_type), type(int32))
---         args:insert(regentlib.newsymbol(index.field.symbol_type, k))
-----         print(index.field.symbol_type)
-----         for key2, index2 in pairs(index.field.symbol_type) do
-----           print(key2, index2, type(index2))
-----         end
---      end
---    end
---  end
---  print(args)
---  
---local fspace thing{
---
---}
---for key, index in pairs(part) do
---  print(key, index)
---end
---print("---")
---for key, index in pairs(thing) do
---  print(key, index)
---end
---print(args[1])
---return thing
---end
-
---function simple_hdf5_module.read_file(filename, mapper)
---TODO
---end
-
---task copy_task(hdfreg : region(ispace(int1d), hdf5_io_space), particle_array : region(ispace(int1d), part)) where
---  reads(particle_array), writes(hdfreg) do
---  for i in particle_array.ispace do
---    hdfreg[i].name1 = particle_array[i].test1
---    hdfreg[i].name2 = particle_array[i].test2
---  end
---end
-
---mapper = {}
---mapper["name1"] = "test1"
---mapper["name2"] = "test2"
-
-
 return simple_hdf5_module
-
---task main()
---  var i0 = ispace(int1d, 2)
---  var [variables.particle_array] = region(i0, part)
---  variables.particle_array[0].test1 = 0
---  variables.particle_array[0].test2 = 1.0
---  variables.particle_array[1].test1 = 1
---  variables.particle_array[1].test2 = 2.0
-----  thing([variables.particle_array], "test.hdf5")
---  [write_output("test.hdf5", mapper, variables.particle_array)]
-----  [test_task]
-----  thing(parts)
---end
-----create_fspace(mapper)
---regentlib.start(main)
