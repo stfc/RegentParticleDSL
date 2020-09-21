@@ -62,12 +62,12 @@ The simple HDF5 module provides an initialisation function to start the program 
 simple_hdf5_module.initialisation( filename, mapper, particle_array, space_x, space_y, [space_z])
 ```
 Parameters:
-`filename`: A full or relative path to the HDF5 input file.
-`mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
-`particle_array`: The particle array symbol. Usually this is `variables.particle_array`
-`space_x`: The size of the x dimension of the simulation space.
-`space_y`: The size of the y dimension of the simulation space.
-`space_z`: _optional_. The size of the z dimension of the simulation space. If not specified the simulation is assumed to be 2 dimensional.
+- `filename`: A full or relative path to the HDF5 input file.
+- `mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
+- `particle_array`: The particle array symbol. Usually this is `variables.particle_array`
+- `space_x`: The size of the x dimension of the simulation space.
+- `space_y`: The size of the y dimension of the simulation space.
+- `space_z`: _optional_. The size of the z dimension of the simulation space. If not specified the simulation is assumed to be 2 dimensional.
 
 Usage:
 The `initialisation` function is called from the `main` task in the user defined program,
@@ -87,9 +87,9 @@ simple_hdf5_module.write_output( filename, mapper, particle_array )
 ```
 
 Parameters:
-`filename`: A full or relative path to the HDF5 input file.
-`mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
-`particle_array`: The particle array symbol. Usually this is `variables.particle_array`
+- `filename`: A full or relative path to the HDF5 input file.
+- `mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
+- `particle_array`: The particle array symbol. Usually this is `variables.particle_array`
 
 
 Usage:
@@ -139,11 +139,11 @@ The ISPH module provides an initialisation function, which initalises a particle
 isph_module.initialisation_function(filename, variables, space_x, space_y, [mapper])
 ``` 
 Parameters:
-`filename`: A full or relative path to the ISPH input file.
-`variables`: The variables definition.
-`space_x`: The size of the x dimension of the simulation space.
-`space_y`: The size of the y dimension of the simulation space.
-`mapper`: _optional_ An ISPH mapper. If not defined the function uses the default definition, which requires the particle to contain a `core_part`, and two `double` fields named `pressure` and `volume`.
+- `filename`: A full or relative path to the ISPH input file.
+- `variables`: The variables definition.
+- `space_x`: The size of the x dimension of the simulation space.
+- `space_y`: The size of the y dimension of the simulation space.
+- `mapper`: _optional_ An ISPH mapper. If not defined the function uses the default definition, which requires the particle to contain a `core_part`, and two `double` fields named `pressure` and `volume`.
 
 
 Usage:
@@ -163,9 +163,9 @@ isph_module.write_output(filename, variables, [mapper])
 ```
 
 Parameters:
-`filename`: A full or relative path to the ISPH input file.
-`variables`: The variables definition.
-`mapper`: _optional_ An ISPH mapper. If not defined the function uses the default definition, which requires the particle to contain a `core_part`, and two `double` fields named `pressure` and `volume`.
+- `filename`: A full or relative path to the ISPH input file.
+- `variables`: The variables definition.
+- `mapper`: _optional_ An ISPH mapper. If not defined the function uses the default definition, which requires the particle to contain a `core_part`, and two `double` fields named `pressure` and `volume`.
 
 
 Usage:
