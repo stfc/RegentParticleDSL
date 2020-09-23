@@ -111,8 +111,16 @@ end
 
 
 
-
-function simple_hdf5_module.initialisation(filename, mapper, particle_array, space_x, space_y, space_z)
+--The initialisation task for the simple hdf5 module
+--Creates a particle array and fills it with data from the file.
+--Parameters:
+--filename: The (relative or absolute) path to the hdf5 input file
+--mapper: The mapper table that allows RegentParticleDSL to understand the HDF5 file.
+--variables: The variables table that stores the symbols used in the program.
+--space_x: The dimension of the x dimension of the box
+--space_y: The dimension of the y dimension of the box.
+--space_z : Optional. The dimension of the z dimension of the box.
+function simple_hdf5_module.initialisation(filename, mapper, variables, space_x, space_y, space_z)
   --Create the field space and the io_type_mapping from create_io_fspace
   local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
   --Mapper fields creates a mapping between the io fspace and part fspace.
@@ -180,7 +188,7 @@ end
    var hdfreg = region(ispace(int1d, part_count), hdf5_io_space)
    attach(hdf5, hdfreg.[io_fields], filename, regentlib.file_read_write)
    acquire(hdfreg)
-   copy_task(hdfreg, particle_array)
+   copy_task(hdfreg, [variables.particle_array])
    release(hdfreg)
    detach(hdf5, hdfreg)
    c.legion_runtime_issue_execution_fence(__runtime(), __context())

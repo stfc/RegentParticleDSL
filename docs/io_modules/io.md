@@ -59,12 +59,12 @@ If using the RegentParticleDSL docker container this will already be set.
 ### File Input
 The simple HDF5 module provides an initialisation function to start the program from a HDF5 file:
 ```
-simple_hdf5_module.initialisation( filename, mapper, particle_array, space_x, space_y, [space_z])
+simple_hdf5_module.initialisation( filename, mapper, variables, space_x, space_y, [space_z])
 ```
 Parameters:
 - `filename`: A full or relative path to the HDF5 input file.
 - `mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
-- `particle_array`: The particle array symbol. Usually this is `variables.particle_array`
+- `variables`: The variables table containing the symbols used in the application.
 - `space_x`: The size of the x dimension of the simulation space.
 - `space_y`: The size of the y dimension of the simulation space.
 - `space_z`: _optional_. The size of the z dimension of the simulation space. If not specified the simulation is assumed to be 2 dimensional.
