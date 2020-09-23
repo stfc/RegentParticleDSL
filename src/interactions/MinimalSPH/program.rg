@@ -54,17 +54,18 @@ task main()
 initialise_cells(variables.config , variables.particle_array)
   particles_to_cell_launcher( variables.particle_array, variables.config)
 
-  var [variables.cell_space] = update_cell_partitions([variables.particle_array], [variables.config])
+  var [variables.cell_space] = update_cell_partitions([variables.particle_array], [variables.config]);
   --Initialisation
-  [initial_density_reset]
-  [initial_force_reset]
+  [initial_density_reset];
+--  [run_per_particle_task( reset_density, variables.config, variables.cell_space )];
+  [initial_force_reset];
 
   --Do the zero timestep to setup the IC
   variables.config[0].space.timestep = 0.00
-  [initial_density_task]
-  update_cutoffs_launcher(variables.particle_array, variables.cell_space, variables.config)
-  [initial_timestep_task]
-  variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition1, variables.config)
+  [initial_density_task];
+  update_cutoffs_launcher(variables.particle_array, variables.cell_space, variables.config);
+  [initial_timestep_task];
+  variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, variables.cell_space, variables.config)
   
   var time : double = 0.0
   var endtime : double = 0.02
@@ -72,26 +73,25 @@ initialise_cells(variables.config , variables.particle_array)
   var start_time = get_time()
   format.println("timestep computed is {}", variables.config[0].space.timestep)
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
-  __delete(cell_partition1)
+  __delete(variables.cell_space)
   while time < endtime do
-    --TODO Fix update_cell_partitions
-    var [variables.cell_partition2] = update_cell_partitions(variables.particle_array, variables.config)
+    var [variables.cell_partition2] = update_cell_partitions(variables.particle_array, variables.config);
     --first kick
-    [kick1_task]
+    [kick1_task];
     __delete([variables.cell_partition2])
-    var [variables.cell_partition] = update_cell_partitions(variables.particle_array, variables.config)
-    [reset_density_task]
-    [density_task]
-    update_cutoffs_launcher(variables.particle_array, cell_partition, variables.config)
-    [reset_force_task]
-    [force_task]
+    var [variables.cell_partition] = update_cell_partitions(variables.particle_array, variables.config);
+    [reset_density_task];
+    [density_task];
+    update_cutoffs_launcher(variables.particle_array, variables.cell_partition, variables.config);
+    [reset_force_task];
+    [force_task];
     --2nd kick
-    [timestep_task]
+    [timestep_task];
   --  timestep_task([variables.particle_array], cell_partition, [variables.space])
-    c.legion_runtime_issue_execution_fence(__runtime(), __context())
+    c.legion_runtime_issue_execution_fence(__runtime(), __context());
     say_hello(time)
     time = time + variables.config[0].space.timestep
-    variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, cell_partition, variables.config)
+    variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, variables.cell_partition, variables.config)
     if(endtime - time > variables.config[0].space.timestep) then
       variables.config[0].space.timestep = endtime - time
     end

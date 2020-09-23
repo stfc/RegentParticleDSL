@@ -341,9 +341,9 @@ local symmetric = rquote
 
     --Compute cell radii
     var cutoff = config[0].neighbour_config.max_cutoff
-    var x_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_x )
-    var y_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_y )
-    var z_radii : int = ceil( cutoff / variables.config[0].neighbour_config.cell_dim_z )
+    var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
+    var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
+    var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z )
     for cell1 in cell_space.colors do
         cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
@@ -458,7 +458,7 @@ return per_part_bool_task
 end
 
 
-function run_per_particle_task( kernel_name, cell_space, config )
+function run_per_particle_task( kernel_name, config, cell_space )
 
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges(kernel_name)
 local per_part_task = generate_per_part_task( kernel_name, read1, write1 )
