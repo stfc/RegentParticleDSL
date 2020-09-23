@@ -30,8 +30,8 @@ local function traverse_fieldaccess_postorder_two_region( node, sym1, sym2)
           end
           if( name == nil) then
             name = node.field_name
---          else
---            name = name .. "." .. node.field_name
+          else
+            name = name .. "." .. node.field_name
           end
         end
     end,
@@ -57,8 +57,8 @@ local function traverse_fieldaccess_postorder_three_region( node, sym1, sym2, sy
           end
           if( name == nil) then
             name = node.field_name
---          else
---            name = name .. "." .. node.field_name
+          else
+            name = name .. "." .. node.field_name
           end
         end
     end,

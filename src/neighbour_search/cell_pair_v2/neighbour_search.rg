@@ -2,8 +2,9 @@ import "regent"
 
 require("defaults")
 require("src/neighbour_search/cell_pair_v2/cell")
-compute_priveleges = require("src/utils/compute_privilege")
+compute_privileges = require("src/utils/compute_privilege")
 format = require("std/format")
+string_to_field_path = require("src/utils/string_to_fieldpath")
 
 task zero_neighbour_part(particle_region : region(ispace(int1d), part)) where writes(particle_region.neighbour_part_space) do
   fill(particle_region.neighbour_part_space.cell_id, int3d({0,0,0}))
@@ -27,33 +28,53 @@ local ceil = regentlib.ceil(double)
 --Generate the classic MD-style symmetric update pairwise task.
 --This function assumes the cutoff is the same for both particles
 function generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part), config : region(ispace(int1d), config_type))  
- where reads(parts1.[read1]), reads( parts2.[read2]), reads( parts1.core_part_space), reads( parts2.core_part_space) ,reads (config), writes(parts1.[write1]) ,writes( parts2.[write2]) do
--- where reads(parts1.{interactions,i2,i3,i4,i5,i6,core_part_space}, parts1.core_part_space, config), writes(parts1.{interactions,i2,i3,i4,i5,i6}),
--- reads(parts2.{i2,interactions}, parts2.core_part_space), writes(parts2.{interactions,i2}) do
+--Take the privilege strings and convert them into privileges we can use to generate the task
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
+local read1_privs = terralib.newlist()
+local read2_privs = terralib.newlist()
+local write1_privs = terralib.newlist()
+local write2_privs = terralib.newlist()
+
+for _, v in pairs(read1) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v))) 
+end
+for _, v in pairs(read2) do
+  read2_privs:insert( regentlib.privilege(regentlib.reads, parts2, string_to_field_path.get_field_path(v))) 
+end
+for _, v in pairs(write1) do
+  write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v))) 
+end
+for _, v in pairs(write2) do
+  write2_privs:insert( regentlib.privilege(regentlib.writes, parts2, string_to_field_path.get_field_path(v))) 
+end
+
+local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))  
+  where [read1_privs], [read2_privs], [write1_privs], [write2_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
+  reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
    var half_box_x = 0.5 * box_x 
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
-   for part1 in parts1.ispace do
-     for part2 in parts2.ispace do
+   for part1 in [parts1].ispace do
+     for part2 in [parts2].ispace do
        --Compute particle distance
-       var dx = parts1[part1].core_part_space.pos_x - parts2[part2].core_part_space.pos_x
-       var dy = parts1[part1].core_part_space.pos_y - parts2[part2].core_part_space.pos_y
-       var dz = parts1[part1].core_part_space.pos_z - parts2[part2].core_part_space.pos_z
+       var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
+       var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
+       var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
        if (dx > half_box_x) then dx = dx - box_x end
        if (dy > half_box_y) then dy = dy - box_y end
        if (dz > half_box_z) then dz = dz - box_z end
        if (dx <-half_box_x) then dx = dx + box_x end
        if (dy <-half_box_y) then dy = dy + box_y end
        if (dz <-half_box_z) then dz = dz + box_z end
-       var cutoff2 = regentlib.fmax(parts1[part1].core_part_space.cutoff, parts2[part2].core_part_space.cutoff)
+       var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
        if(r2 <= cutoff2) then
-         [kernel_name(rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
+         [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end)]
        end
      end
    end
@@ -64,32 +85,49 @@ end
 --Functionality added but unclear on use-case right now
 function generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1 )
 --Asymmetric kernel can only write to part1
+--Take the privilege strings and convert them into privileges we can use to generate the task
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
+local read1_privs = terralib.newlist()
+local read2_privs = terralib.newlist()
+local write1_privs = terralib.newlist()
 
-local task pairwise_task(parts1 : region(ispace(int1d),part), parts2 : region(ispace(int1d),part),  config : region(ispace(int1d), config_type)) where 
-   reads(parts1.core_part_space) ,reads( parts2.core_part_space), reads( parts1.[read1]), reads(parts2.[read2]), reads(config), writes(parts1.[write1]) do
+for _, v in pairs(read1) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(read2) do
+  read2_privs:insert( regentlib.privilege(regentlib.reads, parts2, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(write1) do
+  write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+end
+
+local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+  where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
+  reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
-   for part1 in parts1.ispace do
-     for part2 in parts2.ispace do
+   for part1 in [parts1].ispace do
+     for part2 in [parts2].ispace do
        --Compute particle distance
-       var dx = parts1[part1].core_part_space.pos_x - parts2[part2].core_part_space.pos_x
-       var dy = parts1[part1].core_part_space.pos_y - parts2[part2].core_part_space.pos_y
-       var dz = parts1[part1].core_part_space.pos_z - parts2[part2].core_part_space.pos_z
+       var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
+       var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
+       var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
        if (dx > half_box_x) then dx = dx - box_x end
        if (dy > half_box_y) then dy = dy - box_y end
        if (dz > half_box_z) then dz = dz - box_z end
        if (dx <-half_box_x) then dx = dx + box_x end
        if (dy <-half_box_y) then dy = dy + box_y end
        if (dz <-half_box_z) then dz = dz + box_z end
-       var cutoff2 = parts1[part1].core_part_space.cutoff
+       var cutoff2 = [parts1][part1].core_part_space.cutoff
        cutoff2 = cutoff2 * cutoff2
        var r2 = dx*dx + dy*dy + dz*dz
        if(r2 <= cutoff2) then
-         [kernel_name(rexpr parts1[part1] end, rexpr parts2[part2] end, rexpr r2 end)]
+         [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end)]
        end
      end
    end
@@ -105,33 +143,50 @@ end
 --Generate a self task
 --This function assumes the cutoff is the same for both particles
 function generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
+--Take the privilege strings and convert them into privileges we can use to generate the task
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local read1_privs = terralib.newlist()
+local write1_privs = terralib.newlist()
 
-local task self_task(parts1 : region(ispace(int1d), part), config : region(ispace(int1d),config_type)) where
-  reads(parts1.[read1]), reads( parts1.[read2]), reads(parts1.core_part_space), reads(config), writes(parts1.[write1]),writes(parts1.[write2]) do
+for _, v in pairs(read1) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(read2) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(write1) do
+  write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(write2) do
+  write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+end
+
+local task self_task([parts1], config : region(ispace(int1d),config_type)) where
+  [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(config) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
-   for part1 in parts1.ispace do
-     for part2 in parts1.ispace do
+   for part1 in [parts1].ispace do
+     for part2 in [parts1].ispace do
        --Compute particle distance
        if(part1 < part2) then
-         var dx = parts1[part1].core_part_space.pos_x - parts1[part2].core_part_space.pos_x
-         var dy = parts1[part1].core_part_space.pos_y - parts1[part2].core_part_space.pos_y
-         var dz = parts1[part1].core_part_space.pos_z - parts1[part2].core_part_space.pos_z
+         var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+         var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+         var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
          if (dx > half_box_x) then dx = dx - box_x end
          if (dy > half_box_y) then dy = dy - box_y end
          if (dz > half_box_z) then dz = dz - box_z end
          if (dx <-half_box_x) then dx = dx + box_x end
          if (dy <-half_box_y) then dy = dy + box_y end
          if (dz <-half_box_z) then dz = dz + box_z end
-         var cutoff2 = parts1[part1].core_part_space.cutoff
+         var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
          cutoff2 = cutoff2 * cutoff2
          var r2 = dx*dx + dy*dy + dz*dz
          if(r2 <= cutoff2) then
-           [kernel_name(rexpr parts1[part1] end, rexpr parts1[part2] end, rexpr r2 end)]
+           [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end)]
          end
        end
      end
@@ -144,33 +199,47 @@ end
 --Generate a self task
 --This function assumes the cutoff of only the updated part is relevant
 function generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
+--Take the privilege strings and convert them into privileges we can use to generate the task
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local read1_privs = terralib.newlist()
+local write1_privs = terralib.newlist()
 
-local task self_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) where
-   reads(parts1.core_part_space), reads(parts1.[read1]),reads( parts1.[read2]), reads(config), writes(parts1.[write1]) do
+for _, v in pairs(read1) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(read2) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(write1) do
+  write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+end
+
+local task self_task([parts1], config : region(ispace(int1d), config_type)) where
+   [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(config) do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
    var half_box_x = 0.5 * box_x
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
-   for part1 in parts1.ispace do
-     for part2 in parts1.ispace do
+   for part1 in [parts1].ispace do
+     for part2 in [parts1].ispace do
        --Compute particle distance
        if(part1 ~= part2) then
-         var dx = parts1[part1].core_part_space.pos_x - parts1[part2].core_part_space.pos_x
-         var dy = parts1[part1].core_part_space.pos_y - parts1[part2].core_part_space.pos_y
-         var dz = parts1[part1].core_part_space.pos_z - parts1[part2].core_part_space.pos_z
+         var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+         var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+         var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
          if (dx > half_box_x) then dx = dx - box_x end
          if (dy > half_box_y) then dy = dy - box_y end
          if (dz > half_box_z) then dz = dz - box_z end
          if (dx <-half_box_x) then dx = dx + box_x end
          if (dy <-half_box_y) then dy = dy + box_y end
          if (dz <-half_box_z) then dz = dz + box_z end
-         var cutoff2 = parts1[part1].core_part_space.cutoff
+         var cutoff2 = [parts1][part1].core_part_space.cutoff
          cutoff2 = cutoff2 * cutoff2
          var r2 = dx*dx + dy*dy + dz*dz
          if(r2 <= cutoff2) then
-           [kernel_name(rexpr parts1[part1] end, rexpr parts1[part2] end, rexpr r2 end)]
+           [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end)]
          end
        end
      end
@@ -263,7 +332,7 @@ local read1, read2, write1, write2 = compute_privileges.two_region_privileges( k
 local cell_pair_task = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
 local cell_self_task = generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
 
-local runner = rquote
+local symmetric = rquote
     --Do all cell2s in the positive direction
     var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
     var x_count = config[0].neighbour_config.x_cells
@@ -297,7 +366,7 @@ local runner = rquote
         end
     end
 end
-return runner
+return symmetric
 
 end
 
@@ -307,7 +376,7 @@ local read1, read2, write1, write2 = compute_privileges.two_region_privileges( k
 local cell_pair_task = generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1 )
 local cell_self_task = generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
 
-local runner = rquote
+local asymmetric = rquote
     --Do all cell2s in the positive direction
     var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
     var x_count = config[0].neighbour_config.x_cells
@@ -343,7 +412,7 @@ local runner = rquote
     end
 
 end
-return runner
+return asymmetric
 end
 
 
@@ -355,13 +424,21 @@ end
 
 --Generate a task to be executed on every particle in the system
 function generate_per_part_task( kernel_name, read1, write1 )
-print("reads: ", read1)
-print("parts1.", write1)
-local task pairwise_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) where
-   reads(parts1.[read1]), reads(config),  writes(parts1.[write1]) do
-   --writes(parts1.{cutoff_update_space.redo, cutoff_update_space.left, cutoff_update_space.right, cutoff_update_space.h_0}) do
-   for part1 in parts1.ispace do
-         [kernel_name(rexpr parts1[part1] end, rexpr config[0] end)]
+--Take the privilege strings and convert them into privileges we can use to generate the task
+local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
+local read1_privs = terralib.newlist()
+local write1_privs = terralib.newlist()
+
+for _, v in pairs(read1) do
+  read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+end
+for _, v in pairs(write1) do
+  write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+end
+local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
+   [read1_privs], [write1_privs], reads(config) do
+   for part1 in [parts1].ispace do
+         [kernel_name(rexpr [parts1][part1] end, rexpr config[0] end)]
    end
 end
 return pairwise_task

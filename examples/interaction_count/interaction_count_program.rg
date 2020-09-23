@@ -20,7 +20,6 @@ local stdlib = terralib.includec("stdlib.h")
 
 local hdf5_read_mapper = {}
 hdf5_read_mapper["cutoff"] = "core_part_space.cutoff"
---hdf5_mapper["interactions"] = "interactions"
 hdf5_read_mapper["pos_x"] = "core_part_space.pos_x"
 hdf5_read_mapper["pos_y"] = "core_part_space.pos_y"
 hdf5_read_mapper["pos_z"] = "core_part_space.pos_z"
@@ -33,17 +32,17 @@ hdf5_write_mapper["pos_y"] = "core_part_space.pos_y"
 hdf5_write_mapper["pos_z"] = "core_part_space.pos_z"
 
 --Create the tasks and runner from the kernel. You can choose to use symmetric or asymmetric as desired here.
---local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables )
-local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel, variables )
+--local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
+local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel, variables.config, variables.cell_space )
 
-function create_cell_partition( particle_array, config, cell_partition )
-
-local call = rquote
-  var [cell_partition] = update_cell_partitions([particle_array], [config])
-end
-
-return call
-end
+--function create_cell_partition( particle_array, config, cell_partition )
+--
+--local call = rquote
+--  var [cell_partition] = update_cell_partitions([particle_array], [config])
+--end
+--
+--return call
+--end
 
 task main_task()
 
@@ -63,7 +62,9 @@ task main_task()
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
 --  interaction_tasks_runner(variables.particle_array, cell_partition, variables.config);
-  [interaction_tasks_runner];
+--  [interaction_tasks_runner];
+--  interaction_tasks_runner;
+  [create_symmetric_pairwise_runner(symmetric_interaction_count_kernel, variables.config, variables.cell_space) ];
 
   --This finalisation function is declared in the interaction_count_init file.
   --It contains various tests for the basic test to check correctness.
