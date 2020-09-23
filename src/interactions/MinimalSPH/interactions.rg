@@ -6,7 +6,7 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/cell_pair/neighbour_search")
+require("src/neighbour_search/cell_pair_v2/neighbour_search")
 sqrt = regentlib.sqrt(float)
 cbrt = regentlib.cbrt(float)
 

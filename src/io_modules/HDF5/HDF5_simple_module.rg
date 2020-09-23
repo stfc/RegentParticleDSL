@@ -1,9 +1,13 @@
+-------------------------------------------------------------
+--Copyright 2020 Science and Technologies Facilities Council
+--Licensed under the MIT License
+--Author Aidan Chalk, STFC Hartree Centre
+
 import "regent"
 
 
 require("defaults")
 require("src/particles/init_part")
-require("src/neighbour_search/cell_pair/neighbour_search")
 
 string_to_field_path = require("src/utils/string_to_fieldpath")
 format = require("std/format")

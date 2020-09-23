@@ -12,7 +12,7 @@ import "regent"
 require("src/particles/core_part")
 --This import depends on the neighbour_search algorithm, however all neighbour_search_algorithms
 --will have a neighbour_part_space which needs to be imported.
-require("src/neighbour_search/cell_pair/cell_pair")
+require("src/neighbour_search/cell_pair_v2/cell_pair")
 
 --This structure must always be called "part"
 fspace part{
