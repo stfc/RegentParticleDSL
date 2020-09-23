@@ -38,24 +38,14 @@ local final_string = rquote
   format.println("{}", [particle_array][0].interactions)
   for point in [particle_array].ispace do
     var s : rawstring
-    s = [rawstring] (stdlib.malloc(256))
+    s = [rawstring] (regentlib.c.malloc(256))
     format.snprintln(s,256, "test failed for {}: value {}", point, [variables.particle_array][point].interactions)
     regentlib.assert([variables.particle_array][point].interactions == 8, s)
-    stdlib.free(s)
+    regentlib.c.free(s)
   end
   
-  write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [particle_array], [config])
+ -- write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [particle_array], [config])
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
-  var read_count = read_particle_count("examples/interaction_count/basic_test.hdf5")
-  var copy_region = region(ispace(int1d, read_count), part)
-  read_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", copy_region)
-  
-  for point in copy_region do
-    regentlib.assert(copy_region[point].core_part_space.pos_x == [particle_array][point].core_part_space.pos_x, "failed on pos_x")
-    regentlib.assert(copy_region[point].core_part_space.pos_y == [particle_array][point].core_part_space.pos_y, "failed on pos_y")
-    regentlib.assert(copy_region[point].core_part_space.pos_z == [particle_array][point].core_part_space.pos_z, "failed on pos_z")
-    regentlib.assert(copy_region[point].core_part_space.cutoff == [particle_array][point].core_part_space.cutoff, "failed on cutoff")
-  end
 end
 return final_string
 end

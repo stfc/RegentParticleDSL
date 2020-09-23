@@ -23,5 +23,7 @@ RUN cp regent.vim/regent.vim ~/.vim/syntax/.
 RUN echo "au BufNewFile,BufRead *.rg set filetype=regent" >> ~/.vimrc
 RUN rm -rf regent.vim
 RUN git clone https://github.com/stfc/RegentParticleDSL.git
+
+ENV HDF5_INCLUDE_PATH=/usr/include/
     
 CMD ["/bin/bash"]
