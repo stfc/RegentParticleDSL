@@ -32,10 +32,11 @@ RUN tar -xvf Python-3.6.3.tgz
 RUN cd Python-3.6.3 && sudo ./configure && sudo make -j2 && sudo make install
 RUN python3.6 -m pip install numpy h5py
 RUN cd swiftsim/examples/HydroTests/SodShock_3D && ./getGlass.sh && python3 makeIC.py
-RUN cp RegentParticleDSL/src/interactions/MinimalSPH/defaults.rg RegentParticleDSL/.
 RUN cd RegentParticleDSL && git pull
+RUN cp RegentParticleDSL/src/interactions/MinimalSPH/defaults.rg RegentParticleDSL/.
 
 ENV HDF5_INCLUDE_PATH=/usr/include/
 ENV SODSHOCK_INPUT=/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5
     
 CMD ["/bin/bash"]
+#To run the testcase use "cd RegentParticleDSL && regent src/interactions/MinimalSPH/program.rg"
