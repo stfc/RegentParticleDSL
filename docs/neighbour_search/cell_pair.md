@@ -6,7 +6,7 @@ periodic only, and is found in the `src/neighbour_search/cell_pair` directory.
 ## Required Headers
 The required import to use the algorithm is
 ```
-require("src/neighbour_search/cell_pair/import_cell_pair")
+require("src/neighbour_search/cell_pair_v2/import_cell_pair")
 ```
 
 ## Algorithm initialisation and maintenance

@@ -27,6 +27,9 @@ local initial_force_reset = run_per_particle_task( reset_density, variables.conf
 local initial_density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel, variables.config, variables.cell_space )
 local initial_timestep_task = run_per_particle_task( kick_kernel, variables.config, variables.cell_space )
 
+local fname =  os.getenv("SODSHOCK_INPUT") or "/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5"
+print(fname)
+
 __forbid(__inline)
 task say_hello(time : float)
   format.println("HELLO TIME {}", time)
@@ -39,7 +42,7 @@ end
 
 task main()
 --[initialisation("/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5", variables.particle_array, variables.space)]
-  var filename = "/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5"
+  var filename = fname
   var count = read_particle_count(filename)
   format.println("Initialising SPH from {} with {} hydro particles", filename, count)
   var particles_space = ispace(int1d, count)
