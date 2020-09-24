@@ -19,7 +19,7 @@ terralib.includepath = os.getenv("HDF5_INCLUDE_PATH")..";"..terralib.includepath
 local h5lib = terralib.includec("hdf5.h")
 --HDF5 wrapper header as terra can't see some "defines" from hdf5.h.
 local wrap = terralib.includec("hdf5_wrapper.h")
-
+local stdlib = terralib.includec("stdlib.h")
 
 simple_hdf5_module = {}
 
@@ -32,6 +32,7 @@ type_mapping["int64"] = wrap.WRAP_H5T_STD_I64LE
 type_mapping["uint64"] = wrap.WRAP_H5T_STD_U64LE
 type_mapping["double"] = wrap.WRAP_H5T_NATIVE_DOUBLE
 type_mapping["float"] = wrap.WRAP_H5T_NATIVE_FLOAT
+type_mapping["int1d"] = wrap.WRAP_H5T_STD_I64LE
 
 local hdf5_io_space = {}
 
@@ -145,7 +146,7 @@ function simple_hdf5_module.initialisation(filename, mapper, variables, space_x,
   io_type_mapping:map(function(field)
   if type_mapping[field.field_type.name] == nil then
     print("Type "..field.field_type.name.." does not have a known HDF5 conversion type. Please"..
-          " open an issue to get this added.")
+          " open an issue to get this added." )
     os.exit()
   end
   init_mapping:insert({string=field.field_name, hdftype=type_mapping[field.field_type.name] })
