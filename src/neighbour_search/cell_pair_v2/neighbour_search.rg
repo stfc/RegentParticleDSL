@@ -332,6 +332,15 @@ end
 return self_task
 end
 
+__demand(__inline)
+task cell_greater_equal(cell1 : int3d, cell2 : int3d) : bool
+  var returnval : bool = false
+  if (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) then
+    returnval =  true
+  end
+  return returnval
+end
+
 function create_symmetric_pairwise_runner( kernel_name, config, cell_space )
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel_name )
 local cell_pair_task = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
@@ -352,15 +361,31 @@ local symmetric = rquote
     for cell1 in cell_space.colors do
         cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
-        for x = 0, x_radii+1 do
-          for y = 0, y_radii+1 do
-            for z = 0, z_radii + 1 do
+        for x = -x_radii, x_radii+1 do
+          for y = -y_radii, y_radii+1 do
+            for z = -z_radii, z_radii + 1 do
               if(not (x == 0 and y == 0 and z == 0) ) then
-                var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
+                var cell2_x = cell1.x + x
+                var cell2_y = cell1.y + y
+                var cell2_z = cell1.z + z
+                if cell2_x < 0 then
+                  cell2_x = cell2_x + x_count
+                end
+                if cell2_y < 0 then
+                  cell2_y = cell2_y + y_count
+                end
+                if cell2_z < 0 then
+                  cell2_z = cell2_z + z_count
+                end
+                var cell2 : int3d = int3d({ (cell2_x)%x_count, (cell2_y)%y_count, (cell2_z)%z_count })
                 --Weird if statement to handle max_cutoff >= half the boxsize
-                if( (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) and
-                   (cell1.x - x_radii <= cell2.x and cell1.y - y_radii <= cell2.y and cell1.z - y_radii <= cell2.z) ) then
-
+                if( cell_greater_equal(cell1, cell2) 
+                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y) or
+                                                        (z < 0 and cell2.z <= cell1.z + z_radii and cell2.z > cell1.z))
+                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y)
+                    or (z > 0 and cell2.z >= cell1.z - z_radii and cell2.z < cell1.z) )
+                ) then
                 else
                   --symmetric
                   cell_pair_task(cell_space[cell1], cell_space[cell2], config)
@@ -396,16 +421,33 @@ local asymmetric = rquote
     for cell1 in cell_space.colors do
         cell_self_task(cell_space[cell1], config)
         --Loops non inclusive, positive only direction.
-        for x = 0, x_radii+1 do
-          for y = 0, y_radii+1 do
-            for z = 0, z_radii + 1 do
+        for x = -x_radii, x_radii+1 do
+          for y = -y_radii, y_radii+1 do
+            for z = -z_radii, z_radii + 1 do
               if(not (x == 0 and y == 0 and z == 0) ) then
-                var cell2 : int3d = int3d({ (cell1.x + x)%x_count, (cell1.y +y)%y_count, (cell1.z + z)%z_count })
-                --Weird if statement to handle max_cutoff >= half the boxsize
-                if( (cell1.x > cell2.x or (cell1.x == cell2.x and cell1.y > cell2.y) or( cell1.x == cell2.x and cell1.y == cell2.y and cell1.z > cell2.z)) and
-                   (cell1.x - x_radii <= cell2.x and cell1.y - y_radii <= cell2.y and cell1.z - y_radii <= cell2.z) ) then
-
-                else
+                var cell2_x = cell1.x + x
+                var cell2_y = cell1.y + y
+                var cell2_z = cell1.z + z
+                if cell2_x < 0 then
+                  cell2_x = cell2_x + x_count
+                end
+                if cell2_y < 0 then
+                  cell2_y = cell2_y + y_count
+                end
+                if cell2_z < 0 then
+                  cell2_z = cell2_z + z_count
+                end
+                var cell2 : int3d = int3d({ (cell2_x)%x_count, (cell2_y)%y_count, (cell2_z)%z_count })
+                --if statement to handle max_cutoff >= half the boxsize
+                    --Handle radius overlap
+                if( cell_greater_equal(cell1, cell2) 
+                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y) or
+                                                        (z < 0 and cell2.z <= cell1.z + z_radii and cell2.z > cell1.z))
+                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y)
+                    or (z > 0 and cell2.z >= cell1.z - z_radii and cell2.z < cell1.z) )
+                ) then
+                 else
                   --Asymmetric, launch tasks both ways
                   cell_pair_task(cell_space[cell1], cell_space[cell2], config)
                   cell_pair_task(cell_space[cell2], cell_space[cell1], config)

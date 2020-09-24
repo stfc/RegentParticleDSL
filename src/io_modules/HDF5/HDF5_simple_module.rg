@@ -19,7 +19,7 @@ terralib.includepath = os.getenv("HDF5_INCLUDE_PATH")..";"..terralib.includepath
 local h5lib = terralib.includec("hdf5.h")
 --HDF5 wrapper header as terra can't see some "defines" from hdf5.h.
 local wrap = terralib.includec("hdf5_wrapper.h")
-
+local stdlib = terralib.includec("stdlib.h")
 
 simple_hdf5_module = {}
 
@@ -32,6 +32,7 @@ type_mapping["int64"] = wrap.WRAP_H5T_STD_I64LE
 type_mapping["uint64"] = wrap.WRAP_H5T_STD_U64LE
 type_mapping["double"] = wrap.WRAP_H5T_NATIVE_DOUBLE
 type_mapping["float"] = wrap.WRAP_H5T_NATIVE_FLOAT
+type_mapping["int1d"] = wrap.WRAP_H5T_STD_I64LE
 
 local hdf5_io_space = {}
 
@@ -113,6 +114,77 @@ zero_core_part(particle_region)
 zero_neighbour_part(particle_region)
 end
 
+--The initialisation task for the simple hdf5 module
+--Creates a particle array and fills it with data from the file.
+--Parameters:
+--filename: The (relative or absolute) path to the hdf5 input file
+--mapper: The mapper table that allows RegentParticleDSL to understand the HDF5 file.
+--particle_array: The particle array symbol to be used to store this particle array.
+function simple_hdf5_module.read_file(filename, mapper, particle_array)
+  --Create the field space and the io_type_mapping from create_io_fspace
+  local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
+  --Mapper fields creates a mapping between the io fspace and part fspace.
+  --We use the string_to_fieldpath code to allow nested field space accesses
+  local mapper_fields = terralib.newlist()
+  for k, v in pairs(mapper) do
+    mapper_fields:insert({io_field=string_to_field_path.get_field_path(k), part_field=string_to_field_path.get_field_path(v)})
+  end
+  --io_fields just stores a list of the fields in the io fspace. We need this for
+  --attaching the region correctly
+  local io_fields = terralib.newlist()
+  for k, v in pairs(mapper) do
+    io_fields:insert(k)
+  end
+  --init_mapping is created from the io_type_mapping, and stores the hdf5 field name (the same as the io space name)
+  --and the corresponding hdf5type declaration (taken from the type_mapping)
+  local init_mapping = terralib.newlist()
+  io_type_mapping:map(function(field)
+  if type_mapping[field.field_type.name] == nil then
+    print("Type "..field.field_type.name.." does not have a known HDF5 conversion type. Please"..
+          " open an issue to get this added." )
+    os.exit()
+  end
+  init_mapping:insert({string=field.field_name, hdftype=type_mapping[field.field_type.name] })
+  end)
+
+  local get_part_count = get_particle_count_task(filename,  init_mapping)
+
+  --The copy between the hdf5 region and the particle array needs to be done in a task to work. This is created here
+  local task copy_task( hdfreg : region(ispace(int1d), hdf5_io_space), particle_array : region(ispace(int1d), part) ) where
+    writes(particle_array), reads(hdfreg) do
+    --Loop over the elements of the regions
+    for i in particle_array.ispace do
+      --Copy every element from the particle_array to the corresponding field in the io_region.
+      --Due to https://github.com/StanfordLegion/legion/issues/932 we check if the field is
+      --a member of the core_part_space, and if so use the corresponding branch
+      [mapper_fields:map(function(field)
+           return rquote
+           particle_array[i].[field.part_field] = hdfreg[i].[field.io_field]
+           end
+      end)];
+    end
+
+end
+
+  local test = rquote
+   var part_count = get_part_count()
+   format.println("Reading {} particles from the HDF5 file", part_count)
+   var particle_space = ispace(int1d, part_count)
+   var [particle_array] = region(particle_space, part)
+
+   particle_initialisation([particle_array], filename)
+
+   --Once the other initialisation is done, we read in the particles from the hdf5 file.
+   var hdfreg = region(ispace(int1d, part_count), hdf5_io_space)
+   attach(hdf5, hdfreg.[io_fields], filename, regentlib.file_read_write)
+   acquire(hdfreg)
+   copy_task(hdfreg, [particle_array])
+   release(hdfreg)
+   detach(hdf5, hdfreg)
+   c.legion_runtime_issue_execution_fence(__runtime(), __context())
+  end
+  return test
+end
 
 
 --The initialisation task for the simple hdf5 module
@@ -145,7 +217,7 @@ function simple_hdf5_module.initialisation(filename, mapper, variables, space_x,
   io_type_mapping:map(function(field)
   if type_mapping[field.field_type.name] == nil then
     print("Type "..field.field_type.name.." does not have a known HDF5 conversion type. Please"..
-          " open an issue to get this added.")
+          " open an issue to get this added." )
     os.exit()
   end
   init_mapping:insert({string=field.field_name, hdftype=type_mapping[field.field_type.name] })

@@ -87,7 +87,7 @@ simple_hdf5_module.write_output( filename, mapper, particle_array )
 ```
 
 Parameters:
-- `filename`: A full or relative path to the HDF5 input file.
+- `filename`: A full or relative path to the required HDF5 output file location.
 - `mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
 - `particle_array`: The particle array symbol. Usually this is `variables.particle_array`
 
@@ -123,6 +123,28 @@ sections of the particle structure.
 NOTE: At current the simple HDF5 module does not support more than one nested field space,
  see [this issue](https://github.com/stfc/RegentParticleDSL/issues/41) and let us know
  if this is required functionality so we can add it.
+
+### HDF5 read file
+The simple HDF5 module also provides a function to read a file to an already existing region. This is primarily used for testing purposes, but advanced users may also
+want this available.
+```
+simple_hdf5_module.read_file(filename, mapper, particle_array)
+```
+
+Parameters:
+- `filename`: A full or relative path to the HDF5 input file.
+- `mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type.
+- `particle_array`: The particle array symbol.
+
+Usage:
+The `write_output` function is called from the `main` task in the user defined program,
+and requires surrounding square brackets([...];). For example:
+```
+task main()
+...
+[simple_hdf5_module.read_file( "path/to/input.hdf5", mapper, variables.particle_array2)];
+```
+would read the hdf5 file at `path/to/input.hdf5` using the mapper defined in the `mapper` variable.
 
 ## ISPH IO Module
 The ISPH IO module handles the ISPH file format, and provides some other helpful functionality for ISPH files.

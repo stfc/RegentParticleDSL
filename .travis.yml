@@ -1,0 +1,62 @@
+language: C
+#sudo: required
+
+services:
+    - docker
+
+env:
+    global:
+        - HDF5_INCLUDE_PATH=/usr/include/
+    matrix:
+        - SCRIPT_NAME="tests.py"
+        - SCRIPT_NAME="tests2.py"
+        - SCRIPT_NAME="tests3.py"
+        - SCRIPT_NAME="tests4.py"
+        - SCRIPT_NAME="tests5.py"
+        - SCRIPT_NAME="failtests.py"
+        #        - JOB_COMMAND="docker run -t stfc:regentparticledsl bash -c cd RegentParticleDSL && python3 tests.py"
+          #        - JOB_COMMAND="cd RegentParticleDSL && python3 tests2.py"
+          #        - JOB_COMMAND="cd RegentParticleDSL && python3 tests3.py"
+          #        - JOB_COMMAND="cd RegentParticleDSL && python3 tests4.py"
+          #        - JOB_COMMAND="cd RegentParticleDSL && python3 tests5.py"
+          #        - JOB_COMMAND="docker run -t stfc:regentparticledsl bash -c \"cd RegentParticleDSL && python3 failtests.py\""
+          #- JOB_COMMAND="cd RegentParticleDSL && python3 failtests.py"
+      
+before_install:
+    #    - docker build --build-arg BRANCH_NAME=${TRAVIS_BRANCH} --build-arg COMMIT_HASH=${TRAVIS_COMMIT} -t stfc:regentparticledsl tests/.
+    #    - docker run -env SCRIPT_NAME=$SCRIPT_NAME -t stfc:regentparticledsl
+    - sudo apt-get update 
+    - sudo apt-get install -y build-essential clang-3.5 git libclang-3.5-dev libncurses5-dev llvm-3.5-dev wget zlib1g-dev libhdf5-dev cmake vim python3 python3-pip hdf5-tools
+    - h5stat -V
+    - h5cc --version
+    - which h5cc
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu/hdf5/serial
+    - export PATH=$PATH:/usr/bin
+    - export LIBRARY_PATH=$LD_LIBRARY_PATH
+    - export INCLUDE_PATH=/usr/include/hdf5/serial
+    - export C_INCLUDE_PATH=$INCLUDE_PATH
+    - export CPLUS_INCLUDE_PATH=$INCLUDE_PATH
+    - pip3 install --upgrade pip
+    - pip3 install numpy h5py
+    - git clone -b master https://github.com/StanfordLegion/legion.git
+    - LLVM_CONFIG=llvm-config-3.5 python3 legion/language/install.py --rdir=auto --hdf5 -j --no-terra-cmake
+    - ls -l legion/language/regent.py
+    - sudo ln -s legion/language/regent.py /usr/bin/regent
+    - ls -l legion/language/regent.py
+    - ls /usr/bin/regent
+      #    - which regent
+      #- 
+
+      #jobs:
+      #    include:
+script:
+    #    - docker run -t stfc:regentparticledsl bash -c ${JOB_COMMAND}
+    #    - echo "Hello ${JOB_COMMAND}"
+    #    - cd RegentParticleDSL && python3 $SCRIPT_NAME
+    - python3 $SCRIPT_NAME
+              #            - docker run -t stfc:regentparticledsl bash -c "cd RegentParticleDSL && python3 tests.py"
+              #            - docker run -t stfc:regentparticledsl bash -c "cd RegentParticleDSL && python3 tests2.py"
+              #            - docker run -t stfc:regentparticledsl bash -c "cd RegentParticleDSL && python3 tests3.py"
+              #            - docker run -t stfc:regentparticledsl bash -c "cd RegentParticleDSL && python3 tests4.py"
+              #            - docker run -t stfc:regentparticledsl bash -c "cd RegentParticleDSL && python3 tests5.py"
+              #            - docker run -t stfc:regentparticledsl bash -c "cd RegentParticleDSL && python3 failtests.py"
