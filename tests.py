@@ -1,27 +1,34 @@
 import os
 import subprocess
 import sys
+from datetime import datetime
 
 x_counts = []
 y_counts = []
 z_counts = []
 cutoffs = []
 
+#Creates a series of tests with 1/3/5/7/9 particles in each dimension, and a variety of cutoff lengths
 def define_tests():
     global x_counts, y_counts, z_counts, cutoffs
-    for i in range(1,10):
+    for i in range(1,10,2):
         x_counts.append(i)
-    for j in range(1,10):
+    for j in range(1,10,2):
         y_counts.append(j)
-    for k in range(1,10):
+    for k in range(1,10,2):
         z_counts.append(k)
     cutoffs.append(1.75)
+    cutoffs.append(1.01)
+    cutoffs.append(1.25)
+    cutoffs.append(2)
 
-
+#Runs the generator, solution computer and tests scripts on each of the inputs defined in define_tests
 def run_tests():
     global x_counts, y_counts, z_counts, cutoffs
     define_tests()
     test_num = 0
+    start=datetime.now()
+    copy = subprocess.run(["cp", "examples/interaction_count/defaults.rg", "."])
     for i in range(len(x_counts)):
         for j in range(len(y_counts)):
             for k in range(len(z_counts)):
@@ -50,13 +57,26 @@ def run_tests():
                         print("Failed for {}".format(pop.args))
                         sys.exit(1)
 #                    try:
-                    pop3 = subprocess.run(["regent", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_{}.hdf5"
+                    pop3 = subprocess.run(["regent", "tests/interaction_count/interaction_test_sym.rg", "-input", "tests/interaction_count/test_{}.hdf5"
                                                                     .format(test_num), "-solution", "tests/interaction_count/solution_{}.hdf5".format(test_num),
                                                         "-x_cell", "{}".format(box_x * 1.0),
                                                         "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False)
                     if pop3.returncode != 0:
-                        print("Failed test {}".format(test_num))
+                        print("Failed symmetric test {} {} {} {}".format(test_num, x_counts[i], y_counts[j], z_counts[k] ))
+                        print("Sol args {}".format(pop.args))
+                        print("Args {}".format(pop3.args))
                         sys.exit(1)
+                    
+                    pop4 = subprocess.run(["regent", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_{}.hdf5"
+                                                                    .format(test_num), "-solution", "tests/interaction_count/solution_{}.hdf5".format(test_num),
+                                                        "-x_cell", "{}".format(box_x * 1.0),
+                                                        "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False)
+                    if pop4.returncode != 0:
+                        print("Failed asymmetric test {} {} {} {}".format(test_num,  x_counts[i], y_counts[j], z_counts[k]))
+                        print("Sol args {}".format(pop.args))
+                        print("Args {}".format(pop4.args))
+                        sys.exit(1)
+    print("Tests took {}".format( datetime.now()-start))
 
 
 

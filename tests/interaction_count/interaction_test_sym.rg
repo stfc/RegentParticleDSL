@@ -7,7 +7,7 @@ import "regent"
 
 require("defaults")
 local format = require("std/format")
---FIXME: We want to make this not just specific to a single 
+--TODO: We want to make this not just specific to a single Issue: #46
 require("src/particles/core_part")
 require("src/neighbour_search/cell_pair_v2/import_cell_pair")
 
@@ -44,14 +44,6 @@ hdf5_write_mapper["pos_x"] = "core_part_space.pos_x"
 hdf5_write_mapper["pos_y"] = "core_part_space.pos_y"
 hdf5_write_mapper["pos_z"] = "core_part_space.pos_z"
 hdf5_write_mapper["ids"] = "core_part_space.id"
-
---FIXME: Declare the particle in a separate file...
---fspace part{
---  neighbour_part_space : neighbour_part,
---  core_part_space : core_part,
---  --Only extra variable we need is a counter of how many interactions we have!
---  interactions : uint32
---}
 
 local c = regentlib.c
 local cstring = terralib.includec("string.h")
@@ -150,8 +142,6 @@ task main_task()
 
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
   comparison(variables.particle_array, variables.solution_array);
---  [simple_hdf5_module.write_output("examples/interaction_count/basic_test.hdf5", hdf5_write_mapper, variables.particle_array)];
- --FIXME Add correctness checking
 end
 
 regentlib.start(main_task)

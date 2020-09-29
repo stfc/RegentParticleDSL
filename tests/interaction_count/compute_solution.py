@@ -38,11 +38,6 @@ def parse_inputs():
 def read_file(filename):
     global pos_x, pos_y, pos_z, cutoff, interactions, ids
     f = h5py.File(filename, 'r')
-#    print(list(f.keys()))
-#    print(f['pos_x'].dtype)
-#    print(f['cutoff'].dtype)
-#    print(f['interactions'].dtype)
-#    print(f['ids'].dtype)
     pos_x = np.zeros(f['pos_x'].shape, dtype = f['pos_x'].dtype)
     pos_y = np.zeros(f['pos_y'].shape, dtype = f['pos_y'].dtype)
     pos_z = np.zeros(f['pos_z'].shape, dtype = f['pos_z'].dtype)
@@ -72,8 +67,6 @@ def write_file(filename):
         dset_cutoff[i] = cutoff[i]
         dset_interactions[i] = interactions[i]
         dset_ids[i] = ids[i]
-    print(interactions)
-#    print(filename)
 
 def n2_interactions():
     global pos_x, pos_y, pos_z, cutoff, interactions, box_size_x, box_size_y, box_size_z
@@ -103,7 +96,7 @@ def n2_interactions():
             r2 = dx*dx + dy*dy + dz*dz
             cutoff2 = cutoff_i*cutoff_i
             if r2 <= cutoff2:
-#                if ids[i] == 0:
+#                if ids[i] == 0 or ids[j] == 0:
 #                    print(ids[i], ids[j])
                 interactions[i] = interactions[i] + 1
                 interactions[j] = interactions[j] + 1

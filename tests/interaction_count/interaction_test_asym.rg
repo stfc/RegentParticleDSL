@@ -146,8 +146,6 @@ task main_task()
 
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
   comparison(variables.particle_array, variables.solution_array);
---  [simple_hdf5_module.write_output("examples/interaction_count/basic_test.hdf5", hdf5_write_mapper, variables.particle_array)];
- --FIXME Add correctness checking
 end
 
 regentlib.start(main_task)
