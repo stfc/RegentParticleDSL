@@ -1,4 +1,5 @@
 # RegentParticleDSL
+[![Build Status](https://travis-ci.com/stfc/RegentParticleDSL.svg?branch=master)](https://travis-ci.com/stfc/RegentParticleDSL)
 (Working name)
 
 ## Documentation ##
