@@ -30,27 +30,21 @@ hdf5_write_mapper["interactions"] = "interactions"
 hdf5_write_mapper["pos_x"] = "core_part_space.pos_x"
 hdf5_write_mapper["pos_y"] = "core_part_space.pos_y"
 hdf5_write_mapper["pos_z"] = "core_part_space.pos_z"
+hdf5_write_mapper["ids"] = "core_part_space.id"
 
 --Create the tasks and runner from the kernel. You can choose to use symmetric or asymmetric as desired here.
---local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
-local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel, variables.config, variables.cell_space )
-
---function create_cell_partition( particle_array, config, cell_partition )
---
---local call = rquote
---  var [cell_partition] = update_cell_partitions([particle_array], [config])
---end
---
---return call
---end
+local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
+--local interaction_tasks_runner = create_asymmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
 
 task main_task()
 
   --We will use 9 particles, with a large cutoff. The initialisation is currently declared in the interaction_count_init file.
   --In the future much of this will be abstracted into the DSL, though user-specified particles can be done easily enough, and
   --example code to do this will be added.
---  [initialisation_function(variables.particle_array, variables.config)];
   [simple_hdf5_module.initialisation("examples/interaction_count/basic_test.hdf5", hdf5_read_mapper, variables, 3.0, 3.0, 3.0)];
+  for x in [variables.particle_array].ispace do
+    [variables.particle_array][x].core_part_space.id = int1d(x)
+  end
   
   --We will set cell size to be 1.0 for now. Not periodic or anything for now so no idea of global cell size for now.
   --TODO: NYI: The DSL library should choose the cell size itself.
@@ -61,10 +55,7 @@ task main_task()
   
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
---  interaction_tasks_runner(variables.particle_array, cell_partition, variables.config);
---  [interaction_tasks_runner];
---  interaction_tasks_runner;
-  [create_symmetric_pairwise_runner(symmetric_interaction_count_kernel, variables.config, variables.cell_space) ];
+   [interaction_tasks_runner];
 
   --This finalisation function is declared in the interaction_count_init file.
   --It contains various tests for the basic test to check correctness.

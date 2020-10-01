@@ -39,7 +39,7 @@ local final_string = rquote
   for point in [particle_array].ispace do
     var s : rawstring
     s = [rawstring] (regentlib.c.malloc(256))
-    format.snprintln(s,256, "test failed for {}: value {}", point, [variables.particle_array][point].interactions)
+    format.snprintln(s,256, "test failed for {} with id {}: value {}", point, [variables.particle_array][point].core_part_space.id, [variables.particle_array][point].interactions)
     regentlib.assert([variables.particle_array][point].interactions == 8, s)
     regentlib.c.free(s)
   end
