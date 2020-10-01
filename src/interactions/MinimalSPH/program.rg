@@ -72,6 +72,7 @@ initialise_cells(variables.config , variables.particle_array)
   
   var time : double = 0.0
   var endtime : double = 0.02
+  var step : int = 0
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   var start_time = get_time()
   format.println("timestep computed is {}", variables.config[0].space.timestep)
@@ -95,10 +96,11 @@ initialise_cells(variables.config , variables.particle_array)
     say_hello(time)
     time = time + variables.config[0].space.timestep
     variables.config[0].space.timestep = compute_timestep_launcher(variables.particle_array, variables.cell_partition, variables.config)
-    if(endtime - time > variables.config[0].space.timestep) then
+    if(endtime - time < variables.config[0].space.timestep) then
       variables.config[0].space.timestep = endtime - time
     end
-    format.println("timestep is {}", variables.config[0].space.timestep)
+    format.println("Step {}: timestep is {}",step, variables.config[0].space.timestep)
+    step = step + 1
     __delete([variables.cell_partition])
   end  
     c.legion_runtime_issue_execution_fence(__runtime(), __context())
