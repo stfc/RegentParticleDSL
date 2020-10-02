@@ -18,7 +18,7 @@ end
 __demand(__inline)
 task update_cell_partitions(particles : region(ispace(int1d), part), config : region(ispace(int1d), config_type)) where
   reads(particles.neighbour_part_space,particles.core_part_space, config),
-  writes(config.neighbour_config, particles.neighbour_part_space) do
+  writes(config.neighbour_config, particles.neighbour_part_space, particles.core_part_space) do
   initialise_cells(config, particles)
   particles_to_cell_launcher(particles, config)
   var space_parameter = ispace(int3d, {config[0].neighbour_config.x_cells, config[0].neighbour_config.y_cells, config[0].neighbour_config.z_cells}, {0,0,0})
