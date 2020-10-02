@@ -105,7 +105,7 @@ local function three_region_privilege_map(node, sym1, sym2, sym3, read_sym1, rea
   --this is a written to part of our region
   if(node:is(ast.specialized.stat.Assignment)) then
     if(node.lhs[1]:is(ast.specialized.expr.FieldAccess)) then
-        local name, symbol = traverse_fieldaccess_postorder_three_region(node.lhs[1], sym1, sym2)
+        local name, symbol = traverse_fieldaccess_postorder_three_region(node.lhs[1], sym1, sym2, sym3)
       if(symbol == 1) then
         write_sym1:insert(name)
       elseif(symbol == 2) then
