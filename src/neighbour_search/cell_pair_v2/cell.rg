@@ -122,10 +122,29 @@ end
 
 task particles_to_cells(particles : region(ispace(int1d), part),
                         config : region(ispace(int1d), config_type)) where 
-  reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config),
+  reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config),
   writes(particles.neighbour_part_space.cell_id) do
 
   for particle in particles do
+    --We need to handle periodicity
+    if (particles[particle.core_part_space.pos_x >= config.space.dim_x) then 
+      particles[particle.core_part_space.pos_x = particles[particle.core_part_space.pos_x - config.space.dim_x
+    end
+    if (particles[particle.core_part_space.pos_y >= config.space.dim_y) then 
+      particles[particle.core_part_space.pos_y = particles[particle.core_part_space.pos_y - config.space.dim_y
+    end
+    if (particles[particle.core_part_space.pos_z >= config.space.dim_z) then 
+      particles[particle.core_part_space.pos_z = particles[particle.core_part_space.pos_z - config.space.dim_z
+    end
+    if (particles[particle.core_part_space.pos_x < 0.0) then 
+      particles[particle.core_part_space.pos_x = particles[particle.core_part_space.pos_x + config.space.dim_x
+    end
+    if (particles[particle.core_part_space.pos_y < 0.0) then 
+      particles[particle.core_part_space.pos_y = particles[particle.core_part_space.pos_y + config.space.dim_y
+    end
+    if (particles[particle.core_part_space.pos_z < 0.0) then 
+      particles[particle.core_part_space.pos_z = particles[particle.core_part_space.pos_z + config.space.dim_z
+    end
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
     var y_cell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.cell_dim_y))
     var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
