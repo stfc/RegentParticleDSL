@@ -65,7 +65,7 @@ sized regions of particles, and want to copy all of the data from `region1` to `
 task copy_task(region1 : region(ispace(int1d), part), region2 : region(ispace(int1d), part)) where
   reads(region1), writes(region2) do
   --In this case we're assuming region1 and region2 are identically sized.
-  for part in region1.ispace do
+  for part in [region1].ispace do
     --Need to write our copy code here.
   end
 
