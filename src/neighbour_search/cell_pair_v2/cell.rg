@@ -70,7 +70,7 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   regentlib.assert( z_space > 0.0, "z_space not set")
   regentlib.assert( config[0].neighbour_config.max_cutoff > 0.0, "Unable to set max_cutoff")
 
-
+  
   var x_cells : int = floord(x_space / config[0].neighbour_config.max_cutoff)
   var y_cells : int = floord(y_space / config[0].neighbour_config.max_cutoff)
   var z_cells : int = floord(z_space / config[0].neighbour_config.max_cutoff)
@@ -97,6 +97,17 @@ task initialise_cells(config : region(ispace(int1d), config_type),
     n_cells = x_cells * y_cells * z_cells
     avg_ppc = count / n_cells
   end
+  --For now, repartitions MUST remain the same size
+  if config[0].neighbour_config.x_cells > 0 then
+    x_cells = config[0].neighbour_config.x_cells
+  end
+  if config[0].neighbour_config.y_cells > 0 then
+    y_cells = config[0].neighbour_config.y_cells
+  end
+  if config[0].neighbour_config.z_cells > 0 then
+    z_cells = config[0].neighbour_config.z_cells
+  end
+  format.println("Running with {}x{}x{} cells", x_cells, y_cells, z_cells)
 
   var cell_x_dim : double = x_space / ([double](x_cells))
   var cell_y_dim : double = y_space / ([double](y_cells))
