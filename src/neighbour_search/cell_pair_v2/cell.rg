@@ -108,10 +108,10 @@ task initialise_cells(config : region(ispace(int1d), config_type),
     z_cells = config[0].neighbour_config.z_cells
   end
   format.println("Running with {}x{}x{} cells", x_cells, y_cells, z_cells)
-
   var cell_x_dim : double = x_space / ([double](x_cells))
   var cell_y_dim : double = y_space / ([double](y_cells))
   var cell_z_dim : double = z_space / ([double](z_cells))
+  format.println("cell dims {} {} {}", cell_x_dim, cell_y_dim, cell_z_dim)
 
 
   config[0].neighbour_config.x_cells = x_cells
@@ -159,6 +159,7 @@ task particles_to_cell_launcher(particles : region(ispace(int1d), part),
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
     var y_cell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.cell_dim_y))
     var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
+    format.println("{} {} {}", x_cell, y_cell, z_cell)
     var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
     particles[particle].neighbour_part_space.cell_id = cell_loc
   end
