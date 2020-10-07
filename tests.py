@@ -75,8 +75,8 @@ def run_tests():
                     pop3 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_sym.rg", "-input", "tests/interaction_count/test_0.hdf5"
                                                                     , "-solution", "tests/interaction_count/solution_0.hdf5",
                                                         "-x_cell", "{}".format(box_x * 1.0),
-                                                        "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False,
-                                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                                        "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False
+                                                        )
 
                     if pop3.returncode != 0:
                         print("Failed symmetric test {} {} {} {}".format(test_num, x_counts[i], y_counts[j], z_counts[k] ))
@@ -88,8 +88,8 @@ def run_tests():
                     pop4 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_0.hdf5"
                         , "-solution", "tests/interaction_count/solution_0.hdf5",
                                                         "-x_cell", "{}".format(box_x * 1.0),
-                                                        "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False,
-                                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                                        "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False
+                                                        )
 
                     if pop4.returncode != 0:
                         print("Failed asymmetric test {} {} {} {}".format(test_num,  x_counts[i], y_counts[j], z_counts[k]))
