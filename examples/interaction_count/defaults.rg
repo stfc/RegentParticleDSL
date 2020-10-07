@@ -4,7 +4,7 @@
 --Author Aidan Chalk, STFC Hartree Centre
 
 import "regent"
-require("src/neighbour_search/default_neighbour_search")
+require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
 require("src/particles/core_part")
 require("examples/interaction_count/interaction_count_part")
 require("src/config/space")
