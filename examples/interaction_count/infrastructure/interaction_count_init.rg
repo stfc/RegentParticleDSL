@@ -50,13 +50,14 @@ end
 return final_string
 end
 
-
+local zero_part_task = generate_zero_part_func()
 task particle_initialisation(particle_region : region(ispace(int1d), part)) where writes(particle_region) do
 --TODO: NYI in DSL.
 --2D shape of 9 particles, places at 0, 1, 2 in x and y dimension
-zero_core_part(particle_region)
-zero_neighbour_part(particle_region)
-fill(particle_region.interactions, 0)
+--zero_core_part(particle_region)
+--zero_neighbour_part(particle_region)
+--fill(particle_region.interactions, 0)
+zero_part_task(particle_region)
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
 
 particle_region[0].core_part_space.pos_x = 0.0

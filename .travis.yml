@@ -17,6 +17,7 @@ env:
         - SCRIPT_NAME="tests3.py"
         - SCRIPT_NAME="tests4.py"
         - SCRIPT_NAME="tests5.py"
+        - SCRIPT_NAME="tests6.py"
           #        - SCRIPT_NAME="failtests.py"
         #        - JOB_COMMAND="docker run -t stfc:regentparticledsl bash -c cd RegentParticleDSL && python3 tests.py"
           #        - JOB_COMMAND="cd RegentParticleDSL && python3 tests2.py"

@@ -6,7 +6,6 @@
 import "regent"
 
 require("src/particles/core_part")
-require("src/neighbour_search/cell_pair_v2/import_cell_pair")
 
 fspace part{
   neighbour_part_space : neighbour_part,
