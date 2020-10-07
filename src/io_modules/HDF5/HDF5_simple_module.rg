@@ -107,11 +107,11 @@ end
 return check_file_struc
 end
 
+local zero_part_task = generate_zero_part_func()
 --Particle initialisation task - clears out the core_part and neighbour_part values
 local task particle_initialisation(particle_region : region(ispace(int1d), part), filename : rawstring) where writes(particle_region) do
 
-zero_core_part(particle_region)
-zero_neighbour_part(particle_region)
+zero_part_task(particle_region)
 end
 
 --The initialisation task for the simple hdf5 module
