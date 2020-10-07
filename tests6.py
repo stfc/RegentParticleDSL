@@ -5,8 +5,6 @@ from datetime import datetime
 
 #Runs the generator, solution computer and tests scripts on each of the inputs defined in define_tests
 def run_tests():
-    global x_counts, y_counts, z_counts, cutoffs
-    define_tests()
     test_num = 0
     start=datetime.now()
     copy = subprocess.run(["cp", "examples/interaction_count/defaults.rg", "."])
