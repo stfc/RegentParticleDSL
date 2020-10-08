@@ -6,6 +6,9 @@ require("src/neighbour_search/cell_pair_tradequeues/cell")
 local string_to_field_path = require("src/utils/string_to_fieldpath")
 local recursive_fields = require("src/utils/recursive_fields")
 local neighbour_init = {}
+local c = regentlib.c
+
+get_args = require("src/utils/read_args")
 
 neighbour_init.padded_particle_array = regentlib.newsymbol("padded_particle_array")
 neighbour_init.TradeQueueRegion = regentlib.newsymbol("TradeQueueRegion")
@@ -122,6 +125,25 @@ local part_structure = construct_part_structure()
 neighbour_init.padding_per_cell = 50
 neighbour_init.tradequeue_size = neighbour_init.padding_per_cell / 5
 
+--Read in some parameters from the command line. Work in progress
+local function check_command_line()
+  local debug = get_args.get_optional_arg("-hl:debug")
+  if debug == 1 then
+    DEBUG = true
+  end
+  local ppc = get_args.get_optional_arg("-hl:padding")
+  if ppc ~= nil then
+    neighbour_init.padding_per_cell = tonumber(ppc)
+  end
+  local tqsize = get_args.get_optional_arg("-hl:tqsize")
+  if tqsize ~= nil then
+    neighbour_init.tradequeue_size = tonumber(tqsize)
+  end
+  print("padding per cell is:", neighbour_init.padding_per_cell)
+  print("Tradequeue size is:", neighbour_init.tradequeue_size) 
+end
+check_command_line()
+
 --This function updates the cells to reflect any motion that occurs in the system. We repartition only as required, but never change
 --the number of cells at this point due to causing issues with various assumptions in the system at the moment.
 function neighbour_init.update_cells(variables)
@@ -197,6 +219,9 @@ local task tradequeue_push(parts : region(ispace(int1d), part), tradequeue : reg
       end
     end
     --Return if successful
+--    if not valid then
+--      format.println("PUSH: Cell {} {} {} not valid", cell_id.x, cell_id.y, cell_id.z)
+--    end
     return valid
 end
 
@@ -245,6 +270,25 @@ local task tradequeue_pull(parts : region(ispace(int1d), part), tradequeue : reg
     end
     --If we reach the end and tradequeue_remain is true, then we didn't have enough slots
     valid = not tradequeue_remain
+--    if cell == int3d({0,0,0}) then
+--      format.println("Cell 0,0,0 pulled {}", tradequeue_pulled)
+--    end
+--    if not valid then 
+--      format.println("PULL: Cell {} {} {} not valid, pulled {}", cell.x, cell.y, cell.z, tradequeue_pulled)
+--      var remaining = 0
+--      for index in tradequeue.ispace do
+--        if tradequeue[index].neighbour_part_space._valid then
+--          remaining = remaining + 1
+--        end
+--      end
+--      var padding = 0
+--      for part in parts.ispace do
+--        if not parts[part].neighbour_part_space._valid then
+--          padding = padding + 1
+--        end
+--      end
+--      format.println("Should have pulled {}, pulled {}, padding {}", remaining, tradequeue_pulled, padding)
+--    end
     return valid
 end
 
@@ -267,10 +311,42 @@ if DEBUG ~= nil and DEBUG then
   end
 end
 
+local assert_padding = function()
+  return rquote
+  end
+end
+if DEBUG ~= nil and DEBUG then
+  assert_padding = function()
+    local rval = rquote
+      for cell in neighbour_init.cell_partition.colors do
+        var padding_count = 0
+        var size = 0
+        for part in neighbour_init.cell_partition[cell] do
+          if not neighbour_init.cell_partition[cell][part].neighbour_part_space._valid then
+            padding_count = padding_count + 1
+          end
+          size = size + 1
+        end
+--        if padding_count ~= neighbour_init.padding_per_cell then
+--          format.println("Cell {} {} {} has {} padding and {} size", cell.x, cell.y, cell.z, padding_count, size)
+--        end
+        --if cell == int3d({0,0,0}) then
+        --  format.println("Cell (0,0,0) has {} padding", padding_count)
+        --end
+        --regentlib.assert(padding_count == neighbour_init.padding_per_cell, "No padding") 
+        regentlib.assert(padding_count ~= 0, "No padding") 
+      end    
+    end
+  return rval
+  end
+end
 
 local update_cells_quote = rquote
 
-  var valid : bool = true
+  var valid : bool = true;
+  [assert_correct_cells()];
+  [assert_padding()];
+  c.legion_runtime_issue_execution_fence(__runtime(), __context())
   __demand(__index_launch)
   for cell in neighbour_init.cell_partition.colors do
     compute_new_dests([neighbour_init.cell_partition][cell], [variables.config])
@@ -312,6 +388,7 @@ local update_cells_quote = rquote
       end
     end
   end
+  c.legion_runtime_issue_execution_fence(__runtime(), __context())
   --Trade queues attempted
   if(valid) then
     [assert_correct_cells()];
@@ -367,6 +444,7 @@ local update_cells_quote = rquote
       counter = counter + 1
       if counter == neighbour_init.padding_per_cell then
         counter = 0
+--        format.println("Added {} padding to cell {} {} {}", neighbour_init.padding_per_cell, cell.x, cell.y, cell.z);
         z_cell = z_cell + 1
         if z_cell == [variables.config][0].neighbour_config.z_cells then
           z_cell = 0
@@ -383,18 +461,21 @@ local update_cells_quote = rquote
     --Now the padding should exist for every cell again, so we repartition. The cell mesh never changes 
     --FIXME: Do we need to delete the old partition to reduce memory leaks? At the moment doing so results in a Legion error 482
 --    __delete([neighbour_init.cell_partition])
-    format.println("Creating new partition")
-    var n_cells = [variables.config][0].neighbour_config.x_cells * [variables.config][0].neighbour_config.y_cells * [variables.config][0].neighbour_config.z_cells
-    var x_cells = [variables.config][0].neighbour_config.x_cells
-    var y_cells = [variables.config][0].neighbour_config.y_cells
-    var z_cells = [variables.config][0].neighbour_config.z_cells
-    var space_parameter = ispace(int3d, {x_cells, y_cells, z_cells}, {0,0,0})
-    var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter))
-    var [neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1);
-    --Check partition happened correctly
-    [assert_correct_cells()];
-    valid = true
---    regentlib.assert(false, "Not yet implemented repartitioning and saving strategy for when tradequeues are not valid")
+    --c.legion_runtime_issue_execution_fence(__runtime(), __context())
+    --format.println("Creating new partition")
+    --var n_cells = [variables.config][0].neighbour_config.x_cells * [variables.config][0].neighbour_config.y_cells * [variables.config][0].neighbour_config.z_cells
+    --var x_cells = [variables.config][0].neighbour_config.x_cells
+    --var y_cells = [variables.config][0].neighbour_config.y_cells
+    --var z_cells = [variables.config][0].neighbour_config.z_cells
+    --var space_parameter = ispace(int3d, {x_cells, y_cells, z_cells}, {0,0,0})
+    --var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter));
+    --[neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1);
+    --c.legion_runtime_issue_execution_fence(__runtime(), __context());
+    ----Check partition happened correctly
+    --[assert_correct_cells()];
+    --[assert_padding()];
+    --valid = true
+    regentlib.assert(false, "Not yet implemented repartitioning and saving strategy for when tradequeues are not valid. Use command line flags -hl:padding (default 50) and -hl:tqsize (default 10 to increase the extra space to allow particle congestion")
   end
 end
 
@@ -443,11 +524,11 @@ local initialisation_quote = rquote
     for y=0, [variables.config][0].neighbour_config.y_cells do
       for z=0, [variables.config][0].neighbour_config.z_cells do
          var cell_i3d = int3d({x,y,z})
-        for index = 0, 50 do
+        for index = 0, neighbour_init.padding_per_cell do
           [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*50 + index].neighbour_part_space._valid = false
+          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space._valid = false
           [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*50 + index].neighbour_part_space.cell_id = cell_i3d
+          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space.cell_id = cell_i3d
         end
       end
     end
@@ -460,7 +541,7 @@ local initialisation_quote = rquote
   var y_cells = [variables.config][0].neighbour_config.y_cells
   var z_cells = [variables.config][0].neighbour_config.z_cells
   var space_parameter = ispace(int3d, {x_cells, y_cells, z_cells}, {0,0,0})
-  var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter))
+  var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter));
   var [neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1)
   --TODO: TradeQueues are currently 1D partition, ideally we need to fix this.
   --https://github.com/stfc/RegentParticleDSL/issues/55
