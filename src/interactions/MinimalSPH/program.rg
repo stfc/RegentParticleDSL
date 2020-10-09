@@ -19,15 +19,16 @@ local c = regentlib.c
 
 local density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel, variables.config, neighbour_init.cell_partition )
 local force_task = create_symmetric_pairwise_runner( force_kernel, variables.config, neighbour_init.cell_partition )
-local timestep_task = run_per_particle_task( kick_kernel, variables.config, neighbour_init.cell_partition )
-local kick1_task = run_per_particle_task( kick_kernel, variables.config, neighbour_init.cell_partition )
+local kick2_task = run_per_particle_task( kick2_kernel, variables.config, neighbour_init.cell_partition )
+local kick1_task = run_per_particle_task( kick1_kernel, variables.config, neighbour_init.cell_partition )
+local drift_task = run_per_particle_task( drift_kernel, variables.config, neighbour_init.cell_partition )
 local reset_density_task = run_per_particle_task( reset_density, variables.config, neighbour_init.cell_partition )
 local reset_force_task = run_per_particle_task( reset_acceleration, variables.config, neighbour_init.cell_partition )
 
 local initial_density_reset = run_per_particle_task( reset_density, variables.config, neighbour_init.cell_partition )
 local initial_force_reset = run_per_particle_task( reset_density, variables.config, neighbour_init.cell_partition )
 local initial_density_task = create_asymmetric_pairwise_runner( nonsym_density_kernel, variables.config, neighbour_init.cell_partition )
-local initial_timestep_task = run_per_particle_task( kick_kernel, variables.config, neighbour_init.cell_partition )
+local initial_timestep_task = run_per_particle_task( kick1_kernel, variables.config, neighbour_init.cell_partition )
 
 local fname =  os.getenv("SODSHOCK_INPUT") or "/home/aidan/swiftsim/examples/HydroTests/SodShock_3D/sodShock.hdf5"
 print(fname)
@@ -79,15 +80,15 @@ task main()
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
 --  __delete(variables.cell_space)
   while time < endtime do
-    --first kick
-    [kick1_task];
+    [drift_task];
+    [neighbour_init.update_cells(variables)];
     [reset_density_task];
     [density_task];
     update_cutoffs_launcher(neighbour_init.padded_particle_array, neighbour_init.cell_partition, variables.config);
     [reset_force_task];
     [force_task];
     --2nd kick
-    [timestep_task];
+    [kick2_task];
   --  timestep_task([variables.particle_array], cell_partition, [variables.space])
     c.legion_runtime_issue_execution_fence(__runtime(), __context());
     say_hello(time)
@@ -96,6 +97,8 @@ task main()
     if(endtime - time < variables.config[0].space.timestep) then
       variables.config[0].space.timestep = endtime - time
     end
+    --first kick
+    [kick1_task];
     format.println("Step {}: timestep is {}",step, variables.config[0].space.timestep)
     step = step + 1
   end  
