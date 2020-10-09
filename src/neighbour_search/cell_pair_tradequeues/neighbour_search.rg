@@ -407,11 +407,13 @@ local write1_privs = terralib.newlist()
 for _, v in pairs(read1) do
   read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
 end
+--Add the extra privilege required by the search algorithm
+read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path("neighbour_part_space._valid")  ))
 for _, v in pairs(write1) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
 end
 local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs], reads(config), reads(neighbour_part_space._valid) do
+   [read1_privs], [write1_privs], reads(config) do
    for part1 in [parts1].ispace do
      if [parts1][part1].neighbour_part_space._valid then
          [kernel_name(rexpr [parts1][part1] end, rexpr config[0] end)]

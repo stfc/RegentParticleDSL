@@ -6,8 +6,8 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/cell_pair_v2/neighbour_search")
-require("src/neighbour_search/cell_pair_v2/cell")
+require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+require("src/neighbour_search/cell_pair_tradequeues/cell")
 require("src/interactions/MinimalSPH/interactions")
 require("src/interactions/MinimalSPH/timestep")
 local variables = require("src/interactions/MinimalSPH/variables")
@@ -52,17 +52,19 @@ local terra free_array(array : &double)
 end
                        
 task compute_timesteps(particles: region(ispace(int1d), part)) : double where
-  reads(particles.h, particles.v_sig) do
+  reads(particles.h, particles.v_sig, particles.neighbour_part_space._valid) do
   var min_timestep = 1000000000.0
   for part in particles.ispace do
-   var dt_cfl = 2.0 * kernel_gamma * CFL_condition * particles[part].h / ( particles[part].v_sig)
-    min_timestep = regentlib.fmin(min_timestep, dt_cfl)
+    if particles[part].neighbour_part_space._valid then
+      var dt_cfl = 2.0 * kernel_gamma * CFL_condition * particles[part].h / ( particles[part].v_sig)
+      min_timestep = regentlib.fmin(min_timestep, dt_cfl)
+    end
   end
   return min_timestep
 end
 
 task compute_timestep_launcher( particles: region(ispace(int1d), part), cell_space : partition(disjoint, particles , ispace(int3d)), config : region(ispace(int1d), config_type) ) : double
-    where reads(particles.h, particles.v_sig) do
+    where reads(particles.h, particles.v_sig, particles.neighbour_part_space._valid) do
    
    var dx = cell_space.colors.bounds.hi.x - cell_space.colors.bounds.lo.x + 1
    var dy = cell_space.colors.bounds.hi.y - cell_space.colors.bounds.lo.y + 1
@@ -103,8 +105,9 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
    for part1 in parts_self.ispace do
-     if(parts_self[part1].cutoff_update_space.redo == redo) then
+     if(parts_self[part1].neighbour_part_space._valid and parts_self[part1].cutoff_update_space.redo == redo) then
        for part2 in parts_far.ispace do
+         if parts_far[part2].neighbour_part_space._valid then
          --Compute particle distance
            var dx = parts_self[part1].core_part_space.pos_x - parts_far[part2].core_part_space.pos_x
            var dy = parts_self[part1].core_part_space.pos_y - parts_far[part2].core_part_space.pos_y
@@ -121,6 +124,7 @@ task pair_redo_density( parts_self : region(ispace(int1d), part),
            if(r2 <= cutoff2) then
              [nonsym_density_kernel(rexpr parts_self[part1] end, rexpr parts_far[part2] end, rexpr r2 end)]
            end
+         end
        end
      end
    end
@@ -137,10 +141,10 @@ task self_redo_density( parts : region(ispace(int1d), part), config : region(isp
    var half_box_y = 0.5 * box_y
    var half_box_z = 0.5 * box_z
    for part1 in parts.ispace do
-     if(parts[part1].cutoff_update_space.redo == redo) then
+     if(parts[part1].neighbour_part_space._valid and parts[part1].cutoff_update_space.redo == redo) then
        for part2 in parts.ispace do
          --Compute particle distance
-         if(int1d(part1) ~= int1d(part2)) then
+         if(parts[part2].neighbour_part_space._valid and int1d(part1) ~= int1d(part2)) then
            var dx = parts[part1].core_part_space.pos_x - parts[part2].core_part_space.pos_x
            var dy = parts[part1].core_part_space.pos_y - parts[part2].core_part_space.pos_y
            var dz = parts[part1].core_part_space.pos_z - parts[part2].core_part_space.pos_z
