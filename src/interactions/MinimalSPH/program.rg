@@ -81,7 +81,7 @@ task main()
 --  __delete(variables.cell_space)
   while time < endtime do
     [drift_task];
-    [neighbour_init.update_cells(variables)];
+--    [neighbour_init.update_cells(variables)];
     [reset_density_task];
     [density_task];
     update_cutoffs_launcher(neighbour_init.padded_particle_array, neighbour_init.cell_partition, variables.config);

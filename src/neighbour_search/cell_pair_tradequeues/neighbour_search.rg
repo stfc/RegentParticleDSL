@@ -24,6 +24,7 @@ local read1_privs = terralib.newlist()
 local read2_privs = terralib.newlist()
 local write1_privs = terralib.newlist()
 local write2_privs = terralib.newlist()
+local update_neighbours = false
 
 for _, v in pairs(read1) do
   read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
@@ -33,9 +34,15 @@ for _, v in pairs(read2) do
 end
 for _, v in pairs(write1) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 for _, v in pairs(write2) do
   write2_privs:insert( regentlib.privilege(regentlib.writes, parts2, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 
 local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
@@ -73,7 +80,7 @@ local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), conf
      end
    end
 end
-return pairwise_task
+return pairwise_task, update_neighbours
 end
 
 
@@ -85,6 +92,7 @@ local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
 local read1_privs = terralib.newlist()
 local read2_privs = terralib.newlist()
 local write1_privs = terralib.newlist()
+local update_neighbours = false
 
 for _, v in pairs(read1) do
   read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
@@ -94,6 +102,9 @@ for _, v in pairs(read2) do
 end
 for _, v in pairs(write1) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
@@ -129,7 +140,7 @@ local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), con
      end
    end
 end
-return pairwise_task
+return pairwise_task, update_neighbours
 end
 
 -----------------------------------------
@@ -143,6 +154,7 @@ function generate_symmetric_self_task( kernel_name, read1, read2, write1, write2
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local read1_privs = terralib.newlist()
 local write1_privs = terralib.newlist()
+local update_neighbours = false
 
 for _, v in pairs(read1) do
   read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
@@ -152,9 +164,15 @@ for _, v in pairs(read2) do
 end
 for _, v in pairs(write1) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 for _, v in pairs(write2) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 
 local task self_task([parts1], config : region(ispace(int1d),config_type)) where
@@ -194,7 +212,7 @@ local task self_task([parts1], config : region(ispace(int1d),config_type)) where
    end
 
 end
-return self_task
+return self_task, update_neighbours
 end
 
 
@@ -205,6 +223,7 @@ function generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local read1_privs = terralib.newlist()
 local write1_privs = terralib.newlist()
+local update_neighbours = false
 
 for _, v in pairs(read1) do
   read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
@@ -214,6 +233,9 @@ for _, v in pairs(read2) do
 end
 for _, v in pairs(write1) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 
 local task self_task([parts1], config : region(ispace(int1d), config_type)) where
@@ -252,7 +274,7 @@ local task self_task([parts1], config : region(ispace(int1d), config_type)) wher
      end
    end
 end
-return self_task
+return self_task, update_neighbours
 end
 
 -----------------------------------------
@@ -271,8 +293,17 @@ end
 
 function create_symmetric_pairwise_runner( kernel_name, config, cell_space )
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel_name )
-local cell_pair_task = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
-local cell_self_task = generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
+local cell_pair_task, update_neighbours1 = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
+local cell_self_task, update_neighbours2 = generate_symmetric_self_task( kernel_name, read1, read2, write1, write2 )
+local update_neighbours = update_neighbours1 or update_neighbours2
+local update_neighbours_quote = rquote
+
+end
+if update_neighbours then
+  local temp_variables = {}
+  temp_variables.config = config
+  update_neighbours_quote = neighbour_init.update_cells(temp_variables)
+end
 
 local symmetric = rquote
     --Do all cell2s in the positive direction
@@ -323,6 +354,7 @@ local symmetric = rquote
           end
         end
     end
+    [update_neighbours_quote];
 end
 return symmetric
 
@@ -331,8 +363,18 @@ end
 function create_asymmetric_pairwise_runner( kernel_name, config, cell_space )
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel_name )
 --While write2 is computed, asymmetric kernels are not allowed to write to write2
-local cell_pair_task = generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1 )
-local cell_self_task = generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
+local cell_pair_task, update_neighbours1 = generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1 )
+local cell_self_task, update_neighbours2 = generate_asymmetric_self_task( kernel_name, read1, read2, write1 )
+local update_neighbours = update_neighbours1 or update_neighbours2
+local update_neighbours_quote = rquote
+
+end
+if update_neighbours then
+  local temp_variables = {}
+  temp_variables.config = config
+  update_neighbours_quote = neighbour_init.update_cells(temp_variables)
+end
+
 
 local asymmetric = rquote
     --Do all cell2s in the positive direction
@@ -385,7 +427,7 @@ local asymmetric = rquote
           end
         end
     end
-
+    [update_neighbours_quote];
 end
 return asymmetric
 end
@@ -403,7 +445,7 @@ function generate_per_part_task( kernel_name, read1, write1 )
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local read1_privs = terralib.newlist()
 local write1_privs = terralib.newlist()
-
+local update_neighbours = false
 for _, v in pairs(read1) do
   read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
 end
@@ -411,6 +453,9 @@ end
 read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path("neighbour_part_space._valid")  ))
 for _, v in pairs(write1) do
   write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+  if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+    update_neighbours = true
+  end
 end
 local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(config) do
@@ -420,7 +465,7 @@ local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) 
      end
    end
 end
-return pairwise_task
+return pairwise_task, update_neighbours
 end
 
 function generate_per_part_task_bool_return ( kernel_name )
@@ -441,13 +486,23 @@ end
 function run_per_particle_task( kernel_name, config, cell_space )
 
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges(kernel_name)
-local per_part_task = generate_per_part_task( kernel_name, read1, write1 )
+local need_tradequeues = false
+local per_part_task, update_neighbours = generate_per_part_task( kernel_name, read1, write1 )
+local update_neighbours_quote = rquote
+
+end
+if update_neighbours then
+  local temp_variables = {}
+  temp_variables.config = config
+  update_neighbours_quote = neighbour_init.update_cells(temp_variables)
+end
 local runner = rquote
 
     --For each cell, call the task!
     for cell1 in cell_space.colors do
        per_part_task(cell_space[cell1], config)
     end
+   [update_neighbours_quote];
 end
 
 return runner
