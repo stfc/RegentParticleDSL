@@ -20,11 +20,6 @@ At the moment, the initialisation is done in the `interaction_count_init.rg` fil
 This initialises 9 particles in a grid, with a large cutoff (such that all are 
 in range of each other).
 
-## HDF5 IO ##
-The `interaction_count_io.rg` file contains some routines that enable read/write access to
-HDF5 files. These are not yet used for input but the program will save output using HDF5, and 
-reads in the created HDF5 file to check the IO routines work correctly.
-
 ## Variables ##
 The `interaction_count_variables.rg` file contains some variable declarations, which will be used at a later
 date to enable metaprogramming to remove most of the boilerplate code in the main program
@@ -45,9 +40,11 @@ symmetric kernel, and an asymmetric kernel that is not currently used.
 ## Main program ##
 The main program is specified in the `interaction_count_program.rg` file.
 Before the `main_task`, we create the tasks used for the program using the appropriate
-functions. In the `main_task`, we create the particles (which the IO system will do in future) do a small amount of housekeeping, and
+functions. In the `main_task`, we create the particles using an IO module, and
 then launch the tasks. We use an assert to check correctness for now, and then do some HDF5 testing. The correctness checking and HDF5 business
 will be moved into the infrastructure at a later date.
 
 The only rule for the main task itself (or anywhere else the user code requires `[function]` style syntax) is that each line must end in a `;` 
-to ensure Regent can correctly parse the code
+to ensure Regent can correctly parse the code.
+
+The main program uses the `simple_HDF5` IO module to initialise the data structures.
