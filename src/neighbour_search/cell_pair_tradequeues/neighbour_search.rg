@@ -7,9 +7,9 @@ import "regent"
 
 require("defaults")
 require("src/neighbour_search/cell_pair_tradequeues/cell")
-compute_privileges = require("src/utils/compute_privilege")
-format = require("std/format")
-string_to_field_path = require("src/utils/string_to_fieldpath")
+local compute_privileges = require("src/utils/compute_privilege")
+local format = require("std/format")
+local string_to_field_path = require("src/utils/string_to_fieldpath")
 
 
 local abs = regentlib.fabs(double)

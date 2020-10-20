@@ -2,6 +2,7 @@ import "regent"
 
 require("defaults")
 require("src/neighbour_search/cell_pair_tradequeues/cell")
+require("src/particles/init_part")
 
 local string_to_field_path = require("src/utils/string_to_fieldpath")
 local recursive_fields = require("src/utils/recursive_fields")
@@ -545,17 +546,10 @@ local initialisation_quote = rquote
   var [neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1)
   --TODO: TradeQueues are currently 1D partition, ideally we need to fix this.
   --https://github.com/stfc/RegentParticleDSL/issues/55
-  var [neighbour_init.TradeQueueRegion] = region(ispace(int1d, neighbour_init.tradequeue_size * n_cells ), part)
+  var [neighbour_init.TradeQueueRegion] = region(ispace(int1d, neighbour_init.tradequeue_size * n_cells ), part);
   --FIXME: Initialise tradequeue values to 0 instead of this - requires zero_parts functionality
-  for i in [neighbour_init.TradeQueueRegion].ispace do
-    [part_structure:map(function(element)
-      return rquote
-        [neighbour_init.TradeQueueRegion][i].[element.field] = [neighbour_init.padded_particle_array][0].[element.field]
-      end
-    end)];
-    --Set invalid
-    [neighbour_init.TradeQueueRegion][i].neighbour_part_space._valid = false 
-  end
+  [generate_zero_part_quote( )];
+
   var [neighbour_init.TradeQueues] = partition(equal, [neighbour_init.TradeQueueRegion], ispace(int1d, n_cells))
 
 end

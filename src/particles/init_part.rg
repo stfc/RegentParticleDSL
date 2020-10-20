@@ -20,6 +20,34 @@ default_value_table["int1d"] = rexpr int1d(0) end
 default_value_table["int2d"] = rexpr int2d({0,0}) end
 default_value_table["int3d"] = rexpr int3d({0,0,0}) end
 
+function generate_zero_part_quote( )
+
+local field_strings = {}
+local string_table = {}
+for k, v in pairs(part.fields) do
+--  print(v.field.symbol_name)
+--  print(v.field.symbol_type)
+  recursive_fields.recurse_field(v, field_strings, string_table)
+end
+--print(field_strings)
+local mapping_table = terralib.newlist()
+for k, _ in pairs(field_strings) do
+  if( default_value_table[string_table[k]] == nil) then
+    print("No default value set for type: ".. string_table[k]..". Please create an issue to get this added")
+  end
+  mapping_table:insert({name = string_to_field_path.get_field_path(field_strings[k]), type = string_table[k], default_val = default_value_table[string_table[k]]})
+end
+
+return rquote
+    [mapping_table:map( function(element)
+       return rquote
+       fill(particle_region.[element.name], [element.default_val])
+       end
+    end)];
+  end
+
+end
+
 function generate_zero_part_func( )
 
 local field_strings = {}
