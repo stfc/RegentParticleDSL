@@ -548,7 +548,7 @@ local initialisation_quote = rquote
   --https://github.com/stfc/RegentParticleDSL/issues/55
   var [neighbour_init.TradeQueueRegion] = region(ispace(int1d, neighbour_init.tradequeue_size * n_cells ), part);
   --FIXME: Initialise tradequeue values to 0 instead of this - requires zero_parts functionality
-  [generate_zero_part_quote( )];
+  [generate_zero_part_quote( neighbour_init.TradeQueueRegion )];
 
   var [neighbour_init.TradeQueues] = partition(equal, [neighbour_init.TradeQueueRegion], ispace(int1d, n_cells))
 

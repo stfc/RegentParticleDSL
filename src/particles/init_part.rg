@@ -20,7 +20,7 @@ default_value_table["int1d"] = rexpr int1d(0) end
 default_value_table["int2d"] = rexpr int2d({0,0}) end
 default_value_table["int3d"] = rexpr int3d({0,0,0}) end
 
-function generate_zero_part_quote( )
+function generate_zero_part_quote( particle_array )
 
 local field_strings = {}
 local string_table = {}
@@ -41,7 +41,7 @@ end
 return rquote
     [mapping_table:map( function(element)
        return rquote
-       fill(particle_region.[element.name], [element.default_val])
+       fill(particle_array.[element.name], [element.default_val])
        end
     end)];
   end
