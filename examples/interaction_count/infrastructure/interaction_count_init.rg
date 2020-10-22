@@ -6,7 +6,7 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/cell_pair_v2/cell")
+require("src/neighbour_search/cell_pair_tradequeues/cell")
 require("src/particles/init_part")
 
 local c = regentlib.c

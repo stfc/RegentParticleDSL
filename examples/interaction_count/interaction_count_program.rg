@@ -6,9 +6,10 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/cell_pair_v2/import_cell_pair")
-require("src/neighbour_search/cell_pair_v2/neighbour_search")
-require("src/neighbour_search/cell_pair_v2/cell")
+require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+require("src/neighbour_search/cell_pair_tradequeues/cell")
 require("examples/interaction_count/interaction_count_kernel")
 require("examples/interaction_count/infrastructure/interaction_count_init")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
@@ -33,8 +34,8 @@ hdf5_write_mapper["pos_z"] = "core_part_space.pos_z"
 hdf5_write_mapper["ids"] = "core_part_space.id"
 
 --Create the tasks and runner from the kernel. You can choose to use symmetric or asymmetric as desired here.
-local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
---local interaction_tasks_runner = create_asymmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
+local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
+--local interaction_tasks_runner = create_asymmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
 
 task main_task()
 
@@ -46,21 +47,17 @@ task main_task()
     [variables.particle_array][x].core_part_space.id = int1d(x)
   end
   
-  --We will set cell size to be 1.0 for now. Not periodic or anything for now so no idea of global cell size for now.
-  --TODO: NYI: The DSL library should choose the cell size itself.
-  --This code will be abstracted into a new function on a per-neighbour finding system later, but with the same structure.
-  particles_to_cell_launcher(variables.particle_array, variables.config);
-  --Generate the cell partition. This ideally will not be done by the user, or will be "hidden"
-  var [variables.cell_space] = update_cell_partitions(variables.particle_array, variables.config);
-  
+   [neighbour_init.initialise(variables)];
+  [neighbour_init.update_cells(variables)];
+ 
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
    [interaction_tasks_runner];
 
   --This finalisation function is declared in the interaction_count_init file.
   --It contains various tests for the basic test to check correctness.
-  [finalisation_function(variables.particle_array, variables.config)];
-  [simple_hdf5_module.write_output("examples/interaction_count/basic_test.hdf5", hdf5_write_mapper, variables.particle_array)];
+  [finalisation_function(neighbour_init.padded_particle_array, variables.config)];
+  [simple_hdf5_module.write_output("examples/interaction_count/basic_test.hdf5", hdf5_write_mapper, neighbour_init.padded_particle_array)];
 end
 
 regentlib.start(main_task)
