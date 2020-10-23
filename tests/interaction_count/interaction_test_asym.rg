@@ -110,8 +110,6 @@ end
 return kernel
 end
 
-local interaction_tasks_runner = create_asymmetric_pairwise_runner( asymmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
-
 task comparison(computed : region(ispace(int1d), part), solution : region(ispace(int1d), part)) where
 reads(computed.interactions, solution.interactions, computed.core_part_space.id, solution.core_part_space.id, computed.neighbour_part_space) do
   for x in computed.ispace do
@@ -136,7 +134,7 @@ task main_task()
   [neighbour_init.initialise(variables)];
   [neighbour_init.update_cells(variables)];
 
-   [interaction_tasks_runner];
+  [invoke(variables.config, {asymmetric_interaction_count_kernel,ASYMMETRIC_PAIRWISE}, NO_BARRIER)]; 
 
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
   comparison(neighbour_init.padded_particle_array, variables.solution_array);

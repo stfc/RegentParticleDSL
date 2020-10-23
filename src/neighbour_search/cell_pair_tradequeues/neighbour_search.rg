@@ -10,7 +10,7 @@ require("src/neighbour_search/cell_pair_tradequeues/cell")
 local compute_privileges = require("src/utils/compute_privilege")
 local format = require("std/format")
 local string_to_field_path = require("src/utils/string_to_fieldpath")
-
+local c = regentlib.c
 
 local abs = regentlib.fabs(double)
 local ceil = regentlib.ceil(double)
@@ -511,3 +511,64 @@ end
 -----------------------------------------
 --End of Per Part Tasks------------------
 -----------------------------------------
+
+
+-----------------------------------------
+--Invoke Framework-----------------------
+-----------------------------------------
+
+--By default, asking for PAIRWISE gives a SYMMETRIC_PAIRWISE operation
+SYMMETRIC_PAIRWISE = 1
+PAIRWISE = 1
+ASYMMETRIC_PAIRWISE = 2
+PER_PART = 3
+
+BARRIER = 100
+NO_BARRIER = 101
+
+function invoke(config, ...)
+  local end_barrier = true
+  --Loop over the arguments and check for synchronicity (or other things to be added).
+  for i= 1, select("#",...) do
+    if select(i, ...) == NO_BARRIER then
+      end_barrier = false
+    end
+  end
+  
+  local quote_list = terralib.newlist()
+  --Loop through the inputs and find all the tables. 
+  for i= 1, select("#",...) do
+     local v = select(i, ...)
+    if type(v) == "table" then
+      if v[1] == nil or v[2] == nil then
+        print("The arguments to invoke were incorrect")
+        os.exit(1)
+      end
+      local func = v[1]
+      local type_iterate = v[2]
+      if type_iterate == SYMMETRIC_PAIRWISE then
+        quote_list:insert( create_symmetric_pairwise_runner(func, config, neighbour_init.cell_partition) )
+      elseif type_iterate == ASYMMETRIC_PAIRWISE then
+        quote_list:insert( create_asymmetric_pairwise_runner(func, config, neighbour_init.cell_partition) )
+      elseif type_iterate == PER_PART then
+        quote_list:insert( run_per_particle_task(func, config,  neighbour_init.cell_partition) ) 
+      else
+        print("The kernel type passed to invoke was not recognized")
+        os.exit(1)
+      end
+    end
+  end
+  local barrier_quote = rquote
+
+  end
+  if end_barrier then
+    barrier_quote = rquote
+      c.legion_runtime_issue_execution_fence(__runtime(), __context())
+    end
+  end 
+  local invoke_quote = rquote
+    [quote_list];
+    [barrier_quote];
+  end
+return invoke_quote
+end

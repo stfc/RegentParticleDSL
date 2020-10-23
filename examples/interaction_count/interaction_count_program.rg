@@ -33,9 +33,6 @@ hdf5_write_mapper["pos_y"] = "core_part_space.pos_y"
 hdf5_write_mapper["pos_z"] = "core_part_space.pos_z"
 hdf5_write_mapper["ids"] = "core_part_space.id"
 
---Create the tasks and runner from the kernel. You can choose to use symmetric or asymmetric as desired here.
-local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
---local interaction_tasks_runner = create_asymmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
 
 task main_task()
 
@@ -52,7 +49,8 @@ task main_task()
  
   --Run the interaction tasks "timestep". We could do this multiple types and know it will be correct due to 
   --the programming model
-   [interaction_tasks_runner];
+   [invoke(variables.config, {symmetric_interaction_count_kernel, SYMMETRIC_PAIRWISE}, BARRIER)];
+--   [invoke(variables.config, {asymmetric_interaction_count_kernel, SYMMETRIC_PAIRWISE}, BARRIER)];
 
   --This finalisation function is declared in the interaction_count_init file.
   --It contains various tests for the basic test to check correctness.
