@@ -1,9 +1,7 @@
 # Installing RegentParticleDSL
 
 ## Downloading the repository
-
-Currently RegentParticleDSL is not open for general access, once we have some initial testing completed, this will be available.
-If you have access to the repository, it can be downloaded through git as usual.
+The repository is available on [github here](https://github.com/stfc/RegentParticleDSL). The master branch contains the current version of the code, however this can be modified regularly, so if there are issues please let us know and try the tagged releases instead.
 
 ## Requirements
 
@@ -19,7 +17,8 @@ code implementation:
 ```
 
 Alternatively, these libraries can be built yourself on linux. Instructions for Regent are available on [regent-lang.org/install](http://regent-lang.org/install/), 
-and HDF5 is available at [hdf5group.org](https://www.hdfgroup.org/solutions/hdf5/). Regent needs to be built with the `--hdf5` option.
+and HDF5 is available at [hdf5group.org](https://www.hdfgroup.org/solutions/hdf5/). Regent needs to be built with the `--hdf5` option. To build Regent with HDF5,
+make sure the appropriate paths to HDF5 are visible on the `PATH`, `LD_LIBRARY_PATH`, `LIBRARY_PATH`, `INCLUDE_PATH` and `CPLUS_INCLUDE_PATH`.
 
 
 ## Project Outline
@@ -30,4 +29,4 @@ The `examples` folder contains small test programs, that have working programs t
 
 The `src` folder contains all the DSL library code, such as neighbour search algorithms, default type declarations and some kernel implementations.
 
-At the moment, all RegentParticleDSL programs should be launched from the root directory of the DSL, due to limitations with Regent's visibility.
+At the moment, all RegentParticleDSL programs should be launched from the root directory of the DSL, due to how file's are imported.

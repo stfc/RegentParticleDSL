@@ -6,7 +6,7 @@
 import "regent"
 
 require("src/particles/core_part")
-require("src/neighbour_search/cell_pair_v2/import_cell_pair")
+require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
 
 --Extra data required for the cutoff update
 fspace cutoff_update{

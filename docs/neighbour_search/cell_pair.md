@@ -1,32 +1,22 @@
 # Cell Pair Algorithm
 
 The cell pair algorithm is an implementation of the cell-lists algorithm for CPU computation. The algorithm is 
-periodic only, and is found in the `src/neighbour_search/cell_pair` directory.
+periodic, and is found in the `src/neighbour_search/cell_pair_tradequeues` directory.
 
 ## Required Headers
 The required import to use the algorithm is
 ```
-require("src/neighbour_search/cell_pair_v2/import_cell_pair")
+require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+local neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
 ```
 
 ## Algorithm initialisation and maintenance
 The neighbour search algorithms don't yet have an initialisation or variable. To initalise the neighbour search algorithm,
 the following code is required in the main of the program (after the IO initialisation is completed):
 ```
-initialise_cells(variables.config , variables.particle_array)
-particles_to_cell_launcher( variables.particle_array, variables.config)
-
-var cell_partition1 = update_cell_partitions([variables.particle_array], [variables.config])
+  [neighbour_init.initialise(variables)];
+  [neighbour_init.update_cells(variables)];
 ```
-
-Upon completion of any task that moves the particles, the cell lists need to be update with this call:
-```
-__delete(cell_partition1)
-var cell_partition2 = update_cell_partitions(variables.particle_array, variables.config)
-```
-
-Note that the same variable cannot be used in the same scope for different `update_cell_partitions` calls. Instead use `__delete` to
-ensure safe cleanup, and create a new variable to store the result of the call.
 
 ## Kernel options
 This implementation provides support for 3 types of kernel at current.
@@ -43,14 +33,14 @@ end
 ```
 The `part` is the `part` fspace type declared by the user, and the `config` argument is the `config` fspace type.
 
-To create a per-particle task, the algorithm provides the following function:
+To declare the launch of a set of per-particle tasks, the algorithm provides the following function:
 ```
-local per_part_task = generate_per_part_task( kernel_name )
+local per_part_task = run_per_particle_task( kernel_name, variables.config, neighbour_init.cell_partition )
 ```
 
-To run the created task, use the following signature:
+To run the created tasks, use the following signature:
 ```
-  per_part_task(variables.particle_array, cell_partition, variables.config)
+  [per_part_task];
 ```
 
 ### Symmetric pairwise task
@@ -69,14 +59,14 @@ Both `part1` and `part2` are both `part` fspace types, and both are fully modifi
 
 The cutoff radius used for symmetric pairwise tasks is the maximum of the cutoff radii of `part1` and `part2`.
 
-To create a symmetric task, the algorithm provides the following function:
+To create the code to run a set of symmetric tasks, the algorithm provides the following function:
 ```
-local symmetric_task = create_symmetric_pairwise_runner( kernel_name )
+local symmetric_task = create_symmetric_pairwise_runner( kernel_name, variables.config, neighbour_init.cell_partition )
 ```
 
 To run the created task, use the following signature:
 ```
-  symmetric_task(variables.particle_array, cell_partition, variables.config)
+  [symmetric_task];
 ```
 
 ### Asymmetric pairwise task
@@ -97,10 +87,10 @@ The cutoff radius used for asymmetric pairwise tasks is the cutoff radius of `pa
 
 To create a asymmetric task, the algorithm provides the following function:
 ```
-local asymmetric_task = create_asymmetric_pairwise_runner( kernel_name )
+local asymmetric_task = create_asymmetric_pairwise_runner( kernel_name, variables.config, neighbour_init.cell_partition )
 ```
 
 To run the created task, use the following signature:
 ```
-  asymmetric_task(variables.particle_array, cell_partition, variables.config)
+  [asymmetric_task];
 ```

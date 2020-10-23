@@ -10,7 +10,7 @@ All files used with RegentParticleDSL must begin with the same first line:
     import "regent"
 ```
 
-This tells the regent compiler to recognize the file correctly.
+This sets the programming language to Regent.
 
 To include code or declarations from other files, the language uses the require code. For example:
 ```
@@ -45,7 +45,8 @@ the main program having Regent's specific syntax. Regent variables are declared 
     var int_variable : int = 1
     var float_variable : float = 1.0
 ```
-
+Variables can also be declared without a type, provided an initial value is set so the compiler can infer the type. Any variable declared but not initialised must
+have the type declared.
 The other features specific to Regent are discussed later parts of the documentation.
 
 ## Terra

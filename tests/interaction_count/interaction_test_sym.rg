@@ -9,12 +9,11 @@ require("defaults")
 local format = require("std/format")
 --TODO: We want to make this not just specific to a single Issue: #46
 require("src/particles/core_part")
-require("src/neighbour_search/cell_pair_v2/import_cell_pair")
-
+require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
 require("defaults")
-require("src/neighbour_search/cell_pair_v2/import_cell_pair")
-require("src/neighbour_search/cell_pair_v2/neighbour_search")
-require("src/neighbour_search/cell_pair_v2/cell")
+neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+require("src/neighbour_search/cell_pair_tradequeues/cell")
 require("examples/interaction_count/interaction_count_kernel")
 require("examples/interaction_count/infrastructure/interaction_count_init")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
@@ -113,13 +112,13 @@ end
 return kernel
 end
 
-local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, variables.cell_space )
+local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
 
 task comparison(computed : region(ispace(int1d), part), solution : region(ispace(int1d), part)) where
-reads(computed.interactions, solution.interactions, computed.core_part_space.id, solution.core_part_space.id) do
+reads(computed.interactions, solution.interactions, computed.core_part_space.id, solution.core_part_space.id, computed.neighbour_part_space) do
   for x in computed.ispace do
     for y in solution.ispace do
-      if computed[x].core_part_space.id == solution[x].core_part_space.id then
+      if computed[x].core_part_space.id == solution[x].core_part_space.id and computed[x].neighbour_part_space._valid then
         if computed[x].interactions ~= solution[x].interactions then
           var buffer = [rawstring](regentlib.c.malloc(1024))
           format.snprintln(buffer, 1024, "Interactions incorrect for particle ID {}, computed {} solution {}", computed[x].core_part_space.id,
@@ -136,12 +135,13 @@ end
 task main_task()
   [simple_hdf5_module.initialisation( input_file, hdf5_read_mapper, variables, x_cell, y_cell, z_cell)];
 --
-  particles_to_cell_launcher(variables.particle_array, variables.config);
-  var [variables.cell_space] = update_cell_partitions(variables.particle_array, variables.config);
+  [neighbour_init.initialise(variables)];
+  [neighbour_init.update_cells(variables)];
+
    [interaction_tasks_runner];
 
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
-  comparison(variables.particle_array, variables.solution_array);
+  comparison(neighbour_init.padded_particle_array, variables.solution_array);
 end
 
 regentlib.start(main_task)
