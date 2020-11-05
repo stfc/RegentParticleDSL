@@ -72,7 +72,7 @@ def run_tests():
                         print("Failed for {}".format(pop.args))
                         sys.exit(1)
 
-                    pop3 = subprocess.run(["regent", "tests/interaction_count/interaction_test_sym.rg", "-input", "tests/interaction_count/test_0.hdf5"
+                    pop3 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_sym.rg", "-input", "tests/interaction_count/test_0.hdf5"
                                                                     , "-solution", "tests/interaction_count/solution_0.hdf5",
                                                         "-x_cell", "{}".format(box_x * 1.0),
                                                         "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False
@@ -85,7 +85,7 @@ def run_tests():
                         sys.exit(1)
                     
 
-                    pop4 = subprocess.run(["regent", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_0.hdf5"
+                    pop4 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_0.hdf5"
                         , "-solution", "tests/interaction_count/solution_0.hdf5",
                                                         "-x_cell", "{}".format(box_x * 1.0),
                                                         "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False
