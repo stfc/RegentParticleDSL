@@ -9,7 +9,7 @@ local recursive_fields = require("src/utils/recursive_fields")
 local neighbour_init = {}
 local c = regentlib.c
 
-get_args = require("src/utils/read_args")
+local get_args = require("src/utils/read_args")
 
 neighbour_init.padded_particle_array = regentlib.newsymbol("padded_particle_array")
 neighbour_init.TradeQueueRegion = regentlib.newsymbol("TradeQueueRegion")
@@ -131,6 +131,8 @@ local function check_command_line()
   local debug = get_args.get_optional_arg("-hl:debug")
   if debug == 1 then
     DEBUG = true
+  else
+    DEBUG = false
   end
   local ppc = get_args.get_optional_arg("-hl:padding")
   if ppc ~= nil then

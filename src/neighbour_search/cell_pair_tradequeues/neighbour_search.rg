@@ -10,10 +10,22 @@ require("src/neighbour_search/cell_pair_tradequeues/cell")
 local compute_privileges = require("src/utils/compute_privilege")
 local format = require("std/format")
 local string_to_field_path = require("src/utils/string_to_fieldpath")
-
+local get_args = require("src/utils/read_args")
 
 local abs = regentlib.fabs(double)
 local ceil = regentlib.ceil(double)
+
+local DEBUG = false
+--Read in some parameters from the command line. Work in progress
+local function check_command_line()
+  local debug = get_args.get_optional_arg("-hl:debug")
+  if debug == 1 then
+    DEBUG = true
+  else
+    DEBUG = false
+  end
+end
+check_command_line()
 
 --This function assumes the cutoff is the same for both particles
 function generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2 )
@@ -45,6 +57,14 @@ for _, v in pairs(write2) do
   end
 end
 
+local check_zero = rquote
+end
+if DEBUG then
+check_zero = rquote
+  regentlib.assert(r2 ~= 0, "Distance between particles is zero - undefined behaviour may occur")
+end
+end
+
 local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [write2_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid) do
@@ -71,9 +91,10 @@ local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), conf
            if (dz <-half_box_z) then dz = dz + box_z end
            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
            cutoff2 = cutoff2 * cutoff2
-           var r2 = dx*dx + dy*dy + dz*dz
+           var r2 = dx*dx + dy*dy + dz*dz;
+           [check_zero];
            if(r2 <= cutoff2) then
-             [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end)]
+             [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end)];
            end
          end
        end
@@ -106,6 +127,14 @@ for _, v in pairs(write1) do
     update_neighbours = true
   end
 end
+local check_zero = rquote
+end
+if DEBUG then
+check_zero = rquote
+  regentlib.assert(r2 ~= 0, "Distance between particles is zero - undefined behaviour may occur")
+end
+end
+
 local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid) do
@@ -131,7 +160,8 @@ local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), con
            if (dz <-half_box_z) then dz = dz + box_z end
            var cutoff2 = [parts1][part1].core_part_space.cutoff
            cutoff2 = cutoff2 * cutoff2
-           var r2 = dx*dx + dy*dy + dz*dz
+           var r2 = dx*dx + dy*dy + dz*dz;
+           [check_zero];
            if(r2 <= cutoff2) then
              [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end)]
            end
@@ -175,6 +205,14 @@ for _, v in pairs(write2) do
   end
 end
 
+local check_zero = rquote
+end
+if DEBUG then
+check_zero = rquote
+  regentlib.assert(r2 ~= 0, "Distance between particles is zero - undefined behaviour may occur")
+end
+end
+
 local task self_task([parts1], config : region(ispace(int1d),config_type)) where
   [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
                                  reads(parts1.neighbour_part_space._valid), reads(config) do
@@ -201,7 +239,8 @@ local task self_task([parts1], config : region(ispace(int1d),config_type)) where
              if (dz <-half_box_z) then dz = dz + box_z end
              var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
              cutoff2 = cutoff2 * cutoff2
-             var r2 = dx*dx + dy*dy + dz*dz
+             var r2 = dx*dx + dy*dy + dz*dz;
+             [check_zero];
              if(r2 <= cutoff2) then
                [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end)]
              end
@@ -237,6 +276,13 @@ for _, v in pairs(write1) do
     update_neighbours = true
   end
 end
+local check_zero = rquote
+end
+if DEBUG then
+check_zero = rquote
+  regentlib.assert(r2 ~= 0, "Distance between particles is zero - undefined behaviour may occur")
+end
+end
 
 local task self_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
@@ -264,7 +310,8 @@ local task self_task([parts1], config : region(ispace(int1d), config_type)) wher
              if (dz <-half_box_z) then dz = dz + box_z end
              var cutoff2 = [parts1][part1].core_part_space.cutoff
              cutoff2 = cutoff2 * cutoff2
-             var r2 = dx*dx + dy*dy + dz*dz
+             var r2 = dx*dx + dy*dy + dz*dz;
+             [check_zero];
              if(r2 <= cutoff2) then
                [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end)]
              end
