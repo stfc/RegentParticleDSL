@@ -1,7 +1,7 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/cell_pair_tradequeues/cell")
+require("src/neighbour_search/2d_cell_pair_tradequeues/cell")
 require("src/particles/init_part")
 
 local string_to_field_path = require("src/utils/string_to_fieldpath")
@@ -123,7 +123,7 @@ local task compute_new_dests(particles : region(ispace(int1d), part), config : r
 end
 
 --__demand(__leaf)
-local task tradequeue_push(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell_id : int3d, neighbour : int3d) : bool where
+local task tradequeue_push(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell_id : int2d, neighbour : int2d) : bool where
     reads(parts, tradequeue), writes(tradequeue, parts) do
 
     --Keep track of whether the tradequeues succeed
@@ -178,7 +178,7 @@ end
 end 
 
 --__demand(__leaf)
-local task tradequeue_pull(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell : int3d) : bool where
+local task tradequeue_pull(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell : int2d) : bool where
     reads(parts, tradequeue), writes(tradequeue, parts) do
 
     --Keep track of whether the tradequeues succeed
@@ -242,7 +242,7 @@ if DEBUG ~= nil and DEBUG then
       for cell in neighbour_init.cell_partition.colors do
         for part in neighbour_init.cell_partition[cell] do
           if neighbour_init.cell_partition[cell][part].neighbour_part_space._valid then
-            regentlib.assert(neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id == int3d(cell), "particle found in wrong cell")
+            regentlib.assert(neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id == int2d(cell), "particle found in wrong cell")
           end
         end
       end    
@@ -450,7 +450,7 @@ local initialisation_quote = rquote
   var start_index = [variables.particle_array].ispace.bounds.hi + 1
   for x=0, [variables.config][0].neighbour_config.x_cells do
     for y=0, [variables.config][0].neighbour_config.y_cells do
-         var cell_i3d = int3d({x,y})
+         var cell_i3d = int2d({x,y})
         for index = 0, neighbour_init.padding_per_cell do
           [neighbour_init.padded_particle_array][start_index + (y +
           x * [variables.config][0].neighbour_config.y_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space._valid = false

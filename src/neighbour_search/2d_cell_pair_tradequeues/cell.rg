@@ -121,9 +121,8 @@ task particles_to_cells(particles : region(ispace(int1d), part),
   for particle in particles do
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
     var y_cell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.cell_dim_y))
-    var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
 --    format.println("{} {} {}", x_cell, y_cell, z_cell)
-    var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
+    var cell_loc : int2d = int2d( {x_cell, y_cell} )
     particles[particle].neighbour_part_space.cell_id = cell_loc
   end
 end
