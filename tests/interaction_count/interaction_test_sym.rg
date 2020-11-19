@@ -103,16 +103,11 @@ read_args()
 --Symmetric interaction count kernel
 function symmetric_interaction_count_kernel(part1, part2, r2)
 local kernel = rquote
-  if part1.core_part_space.id == int1d(0) or part2.core_part_space.id == int1d(0) then
-    format.println("{} and {}", part1.core_part_space.id, part2.core_part_space.id)
-  end
   part1.interactions = part1.interactions + 1
   part2.interactions = part2.interactions + 1
 end
 return kernel
 end
-
-local interaction_tasks_runner = create_symmetric_pairwise_runner( symmetric_interaction_count_kernel, variables.config, neighbour_init.cell_partition )
 
 task comparison(computed : region(ispace(int1d), part), solution : region(ispace(int1d), part)) where
 reads(computed.interactions, solution.interactions, computed.core_part_space.id, solution.core_part_space.id, computed.neighbour_part_space) do
@@ -138,7 +133,7 @@ task main_task()
   [neighbour_init.initialise(variables)];
   [neighbour_init.update_cells(variables)];
 
-   [interaction_tasks_runner];
+  [invoke(variables.config, {symmetric_interaction_count_kernel, SYMMETRIC_PAIRWISE}, NO_BARRIER)];
 
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
   comparison(neighbour_init.padded_particle_array, variables.solution_array);

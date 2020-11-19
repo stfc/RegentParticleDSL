@@ -29,19 +29,20 @@ end
 return init_string
 end
 
---TODO: This is hopefully what the finalisation function looks like for now.
---Has loads of excess STUFF still to test this example carefully
+--This currently is wrong
 function finalisation_function(particle_array, config)
 
 local final_string = rquote
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
   format.println("{}", [particle_array][0].interactions)
   for point in [particle_array].ispace do
-    var s : rawstring
-    s = [rawstring] (regentlib.c.malloc(256))
-    format.snprintln(s,256, "test failed for {} with id {}: value {}", point, [variables.particle_array][point].core_part_space.id, [variables.particle_array][point].interactions)
-    regentlib.assert([variables.particle_array][point].interactions == 8, s)
-    regentlib.c.free(s)
+    if [particle_array][point].neighbour_part_space._valid then
+      var s : rawstring
+      s = [rawstring] (regentlib.c.malloc(256))
+      format.snprintln(s,256, "test failed for {} with id {}: value {}", point, [variables.particle_array][point].core_part_space.id, [variables.particle_array][point].interactions)
+      regentlib.assert([variables.particle_array][point].interactions == 8, s)
+      regentlib.c.free(s)
+    end
   end
   
  -- write_hdf5_snapshot("examples/interaction_count/basic_test.hdf5", [particle_array], [config])

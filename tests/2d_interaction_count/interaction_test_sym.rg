@@ -9,15 +9,13 @@ require("defaults")
 local format = require("std/format")
 --TODO: We want to make this not just specific to a single Issue: #46
 require("src/particles/core_part")
---require("src/neighbour_search/cell_pair_v2/import_cell_pair")
-require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
 require("defaults")
---require("src/neighbour_search/cell_pair_v2/import_cell_pair")
-neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
-require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-require("src/neighbour_search/cell_pair_tradequeues/cell")
+neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
+require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
+require("src/neighbour_search/2d_cell_pair_tradequeues/cell")
 require("examples/interaction_count/interaction_count_kernel")
-require("examples/interaction_count/infrastructure/interaction_count_init")
+--require("examples/interaction_count/infrastructure/interaction_count_init")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
 
 variables = {}
@@ -102,10 +100,11 @@ read_args()
 
 
 
---Aymmetric interaction count kernel
-function asymmetric_interaction_count_kernel(part1, part2, r2)
+--Symmetric interaction count kernel
+function symmetric_interaction_count_kernel(part1, part2, r2)
 local kernel = rquote
   part1.interactions = part1.interactions + 1
+  part2.interactions = part2.interactions + 1
 end
 return kernel
 end
@@ -134,7 +133,7 @@ task main_task()
   [neighbour_init.initialise(variables)];
   [neighbour_init.update_cells(variables)];
 
-  [invoke(variables.config, {asymmetric_interaction_count_kernel,ASYMMETRIC_PAIRWISE}, NO_BARRIER)]; 
+  [invoke(variables.config, {symmetric_interaction_count_kernel, SYMMETRIC_PAIRWISE}, NO_BARRIER)];
 
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
   comparison(neighbour_init.padded_particle_array, variables.solution_array);
