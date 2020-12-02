@@ -196,7 +196,6 @@ else
   coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
   coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) )
 end
-
 local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),

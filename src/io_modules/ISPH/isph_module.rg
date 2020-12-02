@@ -7,7 +7,6 @@ import "regent"
 
 require("defaults")
 require("src/particles/init_part")
-require("src/neighbour_search/cell_pair_v2/neighbour_search")
 
 string_to_field_path = require("src/utils/string_to_fieldpath")
 format = require("std/format")
@@ -91,12 +90,8 @@ local function gen_write_file_task(mapper)
   return write_file
 end
 
---Particle initialisation task - clears out the core_part and neighbour_part values
-local task particle_initialisation(particle_region : region(ispace(int1d), part), filename : rawstring) where writes(particle_region) do
 
-zero_core_part(particle_region)
-zero_neighbour_part(particle_region)
-end
+local particle_initialisation = generate_zero_part_func()
 
 --Read in the number of particles. This is the number of lines in the file / 2
 local terra read_part_count(filename : rawstring) : uint32
@@ -130,7 +125,8 @@ local init_string = rquote
   fill([variables.config].{space.dim_x, space.dim_y, space.dim_z}, 0.0)
 
   init_space(space_x, space_y, space_z, [variables.config])
-  particle_initialisation([variables.particle_array], filename)
+--  particle_initialisation([variables.particle_array], filename)
+  particle_initialisation([variables.particle_array])
   read_task(filename, [variables.particle_array])
   c.legion_runtime_issue_execution_fence(__runtime(), __context())
 end
