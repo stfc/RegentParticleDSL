@@ -122,16 +122,16 @@ task particles_to_cells(particles : region(ispace(int1d), part),
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
     var y_cell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.cell_dim_y))
     --If particle outside the domain place it in the last cell. This avoids things like a box from 0 to 3 with a particle at 3 being excluded
-    if x_cell >= config[0].neighbour_config.x_cells then
+    if x_cell >= int1d(config[0].neighbour_config.x_cells) then
        x_cell = config[0].neighbour_config.x_cells-1
     end
-    if x_cell < 0 then
+    if x_cell < int1d(0) then
        x_cell = 0
     end
-    if y_cell >= config[0].neighbour_config.y_cells then
+    if y_cell >= int1d(config[0].neighbour_config.y_cells) then
        y_cell = config[0].neighbour_config.y_cells-1
     end
-    if y_cell < 0 then
+    if y_cell < int1d(0) then
        y_cell = 0
     end
 --    format.println("{} {} {}", x_cell, y_cell, z_cell)

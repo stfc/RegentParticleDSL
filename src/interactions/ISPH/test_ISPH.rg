@@ -10,11 +10,11 @@ h3 = global(double, h2:get()*h:get())
 ad_7 = global(double, 3.0/(359.0*M_PI*h3:get()))
 ad_7h = global(double, ad_7:get() / h:get())
 
-require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
+require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_2d_nonperiod")
 require("defaults")
-neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
-require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
-require("src/neighbour_search/2d_cell_pair_tradequeues/cell")
+neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init")
+require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_search")
+require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
 isph_module = require("src/io_modules/ISPH/isph_module")
 
 variables = {}
@@ -34,7 +34,7 @@ task set_cutoff(particles : region(ispace(int1d), part)) where reads(particles),
 end
 
 task main()
-[isph_module.initialisation_function("/home/aidan/isph_read/rec000000.txt", variables, 5.0, 5.0)];
+[isph_module.initialisation_function("/home/aidan/isph_read/rec000000.txt", variables, 4.0, 3.0)];
 set_cutoff(variables.particle_array);
 [neighbour_init.initialise(variables)];
 --[neighbour_init.update_cells(variables)];
