@@ -1207,16 +1207,74 @@ NO_BARRIER = 101
 MULTI_KERNEL=1000
 SINGLE_KERNEL=1001
 
-local function is_safe_to_combine(kernel)
+local function is_safe_to_combine(kernel, combined_kernels)
+  local pre_read1 = terralib.newlist()
+  local pre_write1 = terralib.newlist()
+  local hash_r1 = {}
+  local hash_w1 = {}
+  --Compute the read/write requirements for the already combined kernels
+  for _, kernel in pairs(combined_kernels) do
+    local temp_r1, temp_r2, temp_w1, temp_w2 = compute_privileges.two_region_privileges(kernel)
+    --Merge the read/writes for this kernel with previous ones, keeping uniqueness
+    for _,v in pairs(temp_r1) do
+      if( not hash_r1[v]) then
+        pre_read1:insert(v)
+        hash_r1[v] = true
+      end
+    end
+    for _,v in pairs(temp_r2) do
+      if( not hash_r1[v]) then
+        pre_read1:insert(v)
+        hash_r1[v] = true
+      end
+    end
+    for _,v in pairs(temp_w1) do
+      if( not hash_w1[v]) then
+        pre_write1:insert(v)
+        hash_w1[v] = true
+      end
+    end
+    for _,v in pairs(temp_w2) do
+      if( not hash_w1[v]) then
+        pre_write1:insert(v)
+        hash_w1[v] = true
+      end
+    end
+  end
+
+
+
+
+
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel )
 local safe_to_combine = true
 for _, v in pairs(write1) do
   if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" or v == "core_part_space.cutoff" then
     safe_to_combine = false
   end
+  --Handle WaW or WaR dependencies
+  if (hash_w1[v]) or (hash_r1[v]) then
+    safe_to_combine = false
+  end
 end
 for _, v in pairs(write2) do
   if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" or v == "core_part_space.cutoff" then
+    safe_to_combine = false
+  end
+  --Handle WaW or WaR dependencies
+  if (hash_w1[v]) or (hash_r1[v]) then
+    safe_to_combine = false
+  end
+end
+for _,v in pairs(read1) do
+  --Handle RaW dependency
+  if (hash_w1[v]) then
+    safe_to_combine = false
+  end
+end
+for _,v in pairs(read2) do
+  --Handle RaW dependency
+  if (hash_w1[v]) then
     safe_to_combine = false
   end
 end
@@ -1247,7 +1305,7 @@ function invoke_multikernel(config, ...)
       local type_iterate = v[2]
       --I think we can refactor this using some functions to make the code cleaner, and just check if last_type == type_iterate. AC 
       if type_iterate == SYMMETRIC_PAIRWISE then
-        local safe_to_combine = is_safe_to_combine(func) 
+        local safe_to_combine = is_safe_to_combine(func, kernels) 
         if safe_to_combine and last_type == SYMMETRIC_PAIRWISE then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -1274,7 +1332,7 @@ function invoke_multikernel(config, ...)
           last_type = -1
         end
       elseif type_iterate == ASYMMETRIC_PAIRWISE then
-        local safe_to_combine = is_safe_to_combine(func)
+        local safe_to_combine = is_safe_to_combine(func, kernels)
         if safe_to_combine and last_type == ASYMMETRIC_PAIRWISE then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -1301,7 +1359,7 @@ function invoke_multikernel(config, ...)
           last_type = -1
         end
       elseif type_iterate == PER_PART then
-        local safe_to_combine = is_safe_to_combine(func)
+        local safe_to_combine = is_safe_to_combine(func, kernels)
         if safe_to_combine and last_type == PER_PART then
           table.insert(kernels, func)
         elseif safe_to_combine then
