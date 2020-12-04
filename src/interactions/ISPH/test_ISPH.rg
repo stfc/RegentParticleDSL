@@ -15,7 +15,7 @@ require("defaults")
 neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init")
 require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_search")
 require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
-isph_module = require("src/io_modules/ISPH/isph_module")
+isph_module = require("src/io_modules/ISPH/2d_isph_module")
 
 variables = {}
 variables.config = regentlib.newsymbol("config")
