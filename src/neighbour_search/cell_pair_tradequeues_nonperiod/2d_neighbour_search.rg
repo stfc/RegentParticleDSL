@@ -51,8 +51,8 @@ if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 end
 
 local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
@@ -123,8 +123,8 @@ if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) ) 
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) ) 
 end
 
 local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
@@ -183,10 +183,10 @@ end
 local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 end
 local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
@@ -245,10 +245,10 @@ end
 local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts2 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 end
 
 local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
@@ -314,7 +314,7 @@ local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
 local task self_task([parts1], config : region(ispace(int1d),config_type)) where
@@ -383,7 +383,7 @@ local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
 local task self_task([parts1], config : region(ispace(int1d),config_type)) where
@@ -442,7 +442,7 @@ local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
 local task self_task([parts1], config : region(ispace(int1d), config_type)) where
@@ -505,7 +505,7 @@ local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
 local task self_task([parts1], config : region(ispace(int1d), config_type)) where
@@ -693,7 +693,7 @@ local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
 local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
@@ -733,7 +733,7 @@ local coherences = terralib.newlist()
 if update_neighbours then
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 else
-  coherences:insert( regentlib.coherence( regentlib.atomic, parts1 ) )
+  coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(config), [coherences] do
