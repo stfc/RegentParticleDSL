@@ -1236,9 +1236,9 @@ function invoke_multikernel(config, ...)
       end
       local func = v[1]
       local type_iterate = v[2]
-      --I think we can refactor this using some functions to make the code cleaner, and just check if last_type == type_iterate. AC 
+ --I think we can refactor this using some functions to make the code cleaner, and just check if last_type == type_iterate. AC
       if type_iterate == SYMMETRIC_PAIRWISE then
-        local safe_to_combine = is_safe_to_combine(func, kernels) 
+        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels)
         if safe_to_combine and last_type == SYMMETRIC_PAIRWISE then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -1259,13 +1259,18 @@ function invoke_multikernel(config, ...)
           elseif #kernels > 0 and last_type == PER_PART then
             quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
           end
-
-          quote_list:insert( create_symmetric_pairwise_runner(func, config, neighbour_init.cell_partition))
-          kernels = {}
-          last_type = -1
+          if can_be_combined then
+            kernels = {}
+            table.insert(kernels, func)
+            last_type = SYMMETRIC_PAIRWISE
+          else
+            quote_list:insert( create_symmetric_pairwise_runner(func, config, neighbour_init.cell_partition))
+            kernels = {}
+            last_type = -1
+          end
         end
       elseif type_iterate == ASYMMETRIC_PAIRWISE then
-        local safe_to_combine = is_safe_to_combine(func, kernels)
+        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels)
         if safe_to_combine and last_type == ASYMMETRIC_PAIRWISE then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -1287,12 +1292,18 @@ function invoke_multikernel(config, ...)
             quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
           end
 
-          quote_list:insert( create_asymmetric_pairwise_runner(func, config, neighbour_init.cell_partition))
-          kernels = {}
-          last_type = -1
+          if can_be_combined then
+            kernels = {}
+            table.insert(kernels, func)
+            last_type = ASYMMETRIC_PAIRWISE
+          else
+            quote_list:insert( create_asymmetric_pairwise_runner(func, config, neighbour_init.cell_partition))
+            kernels = {}
+            last_type = -1
+          end
         end
       elseif type_iterate == PER_PART then
-        local safe_to_combine = is_safe_to_combine(func, kernels)
+        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels)
         if safe_to_combine and last_type == PER_PART then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -1313,9 +1324,15 @@ function invoke_multikernel(config, ...)
           elseif #kernels > 0 and last_type == PER_PART then
             quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
           end
-          quote_list:insert(  run_per_particle_task( func, config, neighbour_init.cell_partition ) )
-          kernels = {}
-          last_type = -1
+          if can_be_combined then
+            kernels = {}
+            table.insert(kernels, func)
+            last_type = PER_PART
+          else
+            quote_list:insert(  run_per_particle_task( func, config, neighbour_init.cell_partition ) )
+            kernels = {}
+            last_type = -1
+          end
         end
       else
         print("The kernel type passed to invoke was not recognized")
