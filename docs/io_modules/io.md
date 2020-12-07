@@ -149,14 +149,15 @@ would read the hdf5 file at `path/to/input.hdf5` using the mapper defined in the
 ## ISPH IO Module
 The ISPH IO module handles the ISPH file format, and provides some other helpful functionality for ISPH files.
 
-The module is imported with
+The module has a 2D and 3D version, and they can be imported with
 ```
-isph_module = require("src/io_modules/ISPH/isph_module")
+2d_isph_module = require("src/io_modules/ISPH/2d_isph_module")
+3d_isph_module = require("src/io_modules/ISPH/3d_isph_module")
 ```
-and the functions are all encapsulated inside `isph_module`.
+and the functions are all encapsulated inside `XX_isph_module`.
 
 ### Initialisation
-The ISPH module provides an initialisation function, which initalises a particle array from and ISPH formatted file:
+The ISPH module provides an initialisation function, which initalises a particle array from and ISPH formatted file. For the 2D version this is:
 ```
 isph_module.initialisation_function(filename, variables, space_x, space_y, [mapper])
 ``` 
@@ -167,6 +168,17 @@ Parameters:
 - `space_y`: The size of the y dimension of the simulation space.
 - `mapper`: _optional_ An ISPH mapper. If not defined the function uses the default definition, which requires the particle to contain a `core_part`, and two `double` fields named `pressure` and `volume`.
 
+The 3D version this is:
+```
+isph_module.initialisation_function(filename, variables, space_x, space_y, space_z, [mapper])
+```
+Parameters:
+- `filename`: A full or relative path to the ISPH input file.
+- `variables`: The variables definition.
+- `space_x`: The size of the x dimension of the simulation space.
+- `space_y`: The size of the y dimension of the simulation space.
+- `space_z`: The size of the z dimension of the simulation space.
+- `mapper`: _optional_ An ISPH mapper. If not defined the function uses the default definition, which requires the particle to contain a `core_part`, and two `double` fields named `pressure` and `volume`.
 
 Usage:
 The `initialisation` function is called from the `main` task in the user defined program,
@@ -207,7 +219,7 @@ The mapper is an optional part of the ISPH module, which enables the user to spe
 If used, the mapper needs to be declared in the lua section of the user code
  (i.e. outside of the main task).
 
-The mapper is a lua table, and contains a map from the column in the file to the part structure field, for example, the inbuilt default mapper is defined as:
+The mapper is a lua table, and contains a map from the column in the file to the part structure field, for example, the inbuilt default mapper is defined for the 2D case as:
 ```
 local isph_mapper = {}
 isph_mapper[1] = "core_part_space.pos_x"
@@ -216,6 +228,19 @@ isph_mapper[3] = "core_part_space.vel_x"
 isph_mapper[4] = "core_part_space.vel_y"
 isph_mapper[5] = "pressure"
 isph_mapper[6] = "volume"
+```
+
+and for the 3D case as:
+```
+local isph_mapper = {}
+isph_mapper[1] = "core_part_space.pos_x"
+isph_mapper[2] = "core_part_space.pos_y"
+isph_mapper[3] = "core_part_space.pos_z"
+isph_mapper[4] = "core_part_space.vel_x"
+isph_mapper[5] = "core_part_space.vel_y"
+isph_mapper[6] = "core_part_space.vel_z"
+isph_mapper[7] = "pressure"
+isph_mapper[8] = "volume"
 ```
 
 This mapper stores the first value in each particle's definition from the ISPH file into `core_part_space.pos_x`, the second in `core_part_space.pos_y` and so on.

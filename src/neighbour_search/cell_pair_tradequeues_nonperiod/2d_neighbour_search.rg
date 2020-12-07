@@ -6,7 +6,7 @@
 import "regent"
 
 require("defaults")
-require("src/neighbour_search/2d_cell_pair_tradequeues/cell")
+require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
 local compute_privileges = require("src/utils/compute_privilege")
 local format = require("std/format")
 local string_to_field_path = require("src/utils/string_to_fieldpath")
@@ -71,10 +71,6 @@ local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), conf
            --Compute particle distance
            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-           if (dx > half_box_x) then dx = dx - box_x end
-           if (dy > half_box_y) then dy = dy - box_y end
-           if (dx <-half_box_x) then dx = dx + box_x end
-           if (dy <-half_box_y) then dy = dy + box_y end
            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
            cutoff2 = cutoff2 * cutoff2
            var r2 = dx*dx + dy*dy
@@ -147,10 +143,6 @@ local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), conf
            --Compute particle distance
            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-           if (dx > half_box_x) then dx = dx - box_x end
-           if (dy > half_box_y) then dy = dy - box_y end
-           if (dx <-half_box_x) then dx = dx + box_x end
-           if (dy <-half_box_y) then dy = dy + box_y end
            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
            cutoff2 = cutoff2 * cutoff2
            var r2 = dx*dx + dy*dy
@@ -211,10 +203,6 @@ local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), con
            --Compute particle distance
            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-           if (dx > half_box_x) then dx = dx - box_x end
-           if (dy > half_box_y) then dy = dy - box_y end
-           if (dx <-half_box_x) then dx = dx + box_x end
-           if (dy <-half_box_y) then dy = dy + box_y end
            var cutoff2 = [parts1][part1].core_part_space.cutoff
            cutoff2 = cutoff2 * cutoff2
            var r2 = dx*dx + dy*dy
@@ -278,10 +266,6 @@ local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), con
            --Compute particle distance
            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-           if (dx > half_box_x) then dx = dx - box_x end
-           if (dy > half_box_y) then dy = dy - box_y end
-           if (dx <-half_box_x) then dx = dx + box_x end
-           if (dy <-half_box_y) then dy = dy + box_y end
            var cutoff2 = [parts1][part1].core_part_space.cutoff
            cutoff2 = cutoff2 * cutoff2
            var r2 = dx*dx + dy*dy
@@ -349,10 +333,6 @@ local task self_task([parts1], config : region(ispace(int1d),config_type)) where
            if(part1 < part2) then
              var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
              var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-             if (dx > half_box_x) then dx = dx - box_x end
-             if (dy > half_box_y) then dy = dy - box_y end
-             if (dx <-half_box_x) then dx = dx + box_x end
-             if (dy <-half_box_y) then dy = dy + box_y end
              var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
              cutoff2 = cutoff2 * cutoff2
              var r2 = dx*dx + dy*dy
@@ -422,10 +402,6 @@ local task self_task([parts1], config : region(ispace(int1d),config_type)) where
            if(part1 < part2) then
              var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
              var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-             if (dx > half_box_x) then dx = dx - box_x end
-             if (dy > half_box_y) then dy = dy - box_y end
-             if (dx <-half_box_x) then dx = dx + box_x end
-             if (dy <-half_box_y) then dy = dy + box_y end
              var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
              cutoff2 = cutoff2 * cutoff2
              var r2 = dx*dx + dy*dy
@@ -485,10 +461,6 @@ local task self_task([parts1], config : region(ispace(int1d), config_type)) wher
            if(part1 ~= part2) then
              var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
              var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-             if (dx > half_box_x) then dx = dx - box_x end
-             if (dy > half_box_y) then dy = dy - box_y end
-             if (dx <-half_box_x) then dx = dx + box_x end
-             if (dy <-half_box_y) then dy = dy + box_y end
              var cutoff2 = [parts1][part1].core_part_space.cutoff
              cutoff2 = cutoff2 * cutoff2
              var r2 = dx*dx + dy*dy
@@ -552,10 +524,6 @@ local task self_task([parts1], config : region(ispace(int1d), config_type)) wher
            if(part1 ~= part2) then
              var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
              var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-             if (dx > half_box_x) then dx = dx - box_x end
-             if (dy > half_box_y) then dy = dy - box_y end
-             if (dx <-half_box_x) then dx = dx + box_x end
-             if (dy <-half_box_y) then dy = dy + box_y end
              var cutoff2 = [parts1][part1].core_part_space.cutoff
              cutoff2 = cutoff2 * cutoff2
              var r2 = dx*dx + dy*dy
@@ -617,22 +585,18 @@ local symmetric = rquote
             if(not (x == 0 and y == 0) ) then
               var cell2_x = cell1.x + x
               var cell2_y = cell1.y + y
-              if cell2_x < 0 then
-                cell2_x = cell2_x + x_count
-              end
-              if cell2_y < 0 then
-                cell2_y = cell2_y + y_count
-              end
-              var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
-              --Weird if statement to handle max_cutoff >= half the boxsize
-              if( cell_greater_equal(cell1, cell2)
-              or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                      (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
-              or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
-              ) then
-              else
-                --symmetric
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+              if (cell2_x >= 0 and cell2_x < x_count) and (cell2_y >= 0 and cell2_y < y_count) then
+                var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
+                --Weird if statement to handle max_cutoff >= half the boxsize
+                if( cell_greater_equal(cell1, cell2)
+                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
+                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
+                ) then
+                else
+                  --symmetric
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                end
               end
             end
           end
@@ -678,24 +642,20 @@ local asymmetric = rquote
             if(not (x == 0 and y == 0 ) ) then
               var cell2_x = cell1.x + x
               var cell2_y = cell1.y + y
-              if cell2_x < 0 then
-                cell2_x = cell2_x + x_count
-              end
-              if cell2_y < 0 then
-                cell2_y = cell2_y + y_count
-              end
-              var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
-              --if statement to handle max_cutoff >= half the boxsize
-                  --Handle radius overlap
-              if( cell_greater_equal(cell1, cell2)
-              or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                      (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
-              or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
-              ) then
-               else
-                --Asymmetric, launch tasks both ways
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
-                cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+              if (cell2_x >= 0 and cell2_x < x_count) and (cell2_y >= 0 and cell2_y < y_count) then
+                var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
+                --if statement to handle max_cutoff >= half the boxsize
+                    --Handle radius overlap
+                if( cell_greater_equal(cell1, cell2)
+                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
+                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
+                ) then
+                 else
+                  --Asymmetric, launch tasks both ways
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                  cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+                end
               end
             end
           end
@@ -911,22 +871,18 @@ local symmetric = rquote
             if(not (x == 0 and y == 0) ) then
               var cell2_x = cell1.x + x
               var cell2_y = cell1.y + y
-              if cell2_x < 0 then
-                cell2_x = cell2_x + x_count
-              end
-              if cell2_y < 0 then
-                cell2_y = cell2_y + y_count
-              end
-              var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
-              --Weird if statement to handle max_cutoff >= half the boxsize
-              if( cell_greater_equal(cell1, cell2)
-              or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                      (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
-              or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
-              ) then
-              else
-                --symmetric
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+              if (cell2_x >= 0 and cell2_x < x_count) and (cell2_y >= 0 and cell2_y < y_count) then
+                var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
+                --Weird if statement to handle max_cutoff >= half the boxsize
+                if( cell_greater_equal(cell1, cell2)
+                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
+                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
+                ) then
+                else
+                  --symmetric
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                end
               end
             end
           end
@@ -1014,24 +970,20 @@ local asymmetric = rquote
             if(not (x == 0 and y == 0) ) then
               var cell2_x = cell1.x + x
               var cell2_y = cell1.y + y
-              if cell2_x < 0 then
-                cell2_x = cell2_x + x_count
-              end
-              if cell2_y < 0 then
-                cell2_y = cell2_y + y_count
-              end
-              var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
-              --if statement to handle max_cutoff >= half the boxsize
-                  --Handle radius overlap
-              if( cell_greater_equal(cell1, cell2)
-              or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                      (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y)) 
-              or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
-              ) then
-               else
-                --Asymmetric, launch tasks both ways
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
-                cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+              if (cell2_x >= 0 and cell2_x < x_count) and (cell2_y >= 0 and cell2_y < y_count) then
+                var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
+                --if statement to handle max_cutoff >= half the boxsize
+                    --Handle radius overlap
+                if( cell_greater_equal(cell1, cell2)
+                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y)) 
+                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
+                ) then
+                 else
+                  --Asymmetric, launch tasks both ways
+                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                  cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+                end
               end
             end
           end
@@ -1160,9 +1112,6 @@ local function is_safe_to_combine(kernel, combined_kernels)
       end
     end
   end
-
-
-
 
 local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel )
 local safe_to_combine = true

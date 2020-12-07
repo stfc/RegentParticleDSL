@@ -63,30 +63,39 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   config[0].neighbour_config.max_cutoff = find_max_cutoff_launcher(particles) 
   var x_space = config[0].space.dim_x
   var y_space = config[0].space.dim_y
+  var z_space = config[0].space.dim_z
 
   regentlib.assert( x_space > 0.0, "x_space not set")
   regentlib.assert( y_space > 0.0, "y_space not set")
+  regentlib.assert( z_space > 0.0, "z_space not set")
   regentlib.assert( config[0].neighbour_config.max_cutoff > 0.0, "Unable to set max_cutoff")
 
   
   var x_cells : int = floord(x_space / config[0].neighbour_config.max_cutoff)
   var y_cells : int = floord(y_space / config[0].neighbour_config.max_cutoff)
-  --Always have to have 3x3
+  var z_cells : int = floord(z_space / config[0].neighbour_config.max_cutoff)
+  --Always have to have 2x2x2
   x_cells = regentlib.fmax(x_cells, 3)
   y_cells = regentlib.fmax(y_cells, 3)
+  z_cells = regentlib.fmax(z_cells, 3)
 
   --Aim for at least 200 PPC  
   var count = particles.bounds.hi - particles.bounds.lo
-  var n_cells = x_cells * y_cells
+  var n_cells = x_cells * y_cells * z_cells
   var avg_ppc : int32 = int32(count / n_cells)
-  while avg_ppc < 800 and (x_cells > 3 or y_cells > 3) do
-    if x_cells > y_cells then
+  while avg_ppc < 800 and (x_cells > 3 or y_cells > 3 or z_cells > 3) do
+--  while avg_ppc < 200 and (x_cells > 3 or y_cells > 3 or z_cells > 3) do
+    if x_cells > y_cells and x_cells > z_cells then
       x_cells = regentlib.fmax(x_cells / 2, 3)
     else
-      y_cells = regentlib.fmax(y_cells / 2, 3)
+      if y_cells > z_cells then
+        y_cells = regentlib.fmax(y_cells / 2, 3)
+      else
+        z_cells = regentlib.fmax(z_cells / 2, 3)
+      end 
     end
-    n_cells = x_cells * y_cells
-    avg_ppc = int32(count / n_cells)
+    n_cells = x_cells * y_cells * z_cells
+    avg_ppc = count / n_cells
   end
   --For now, repartitions MUST remain the same size
   if config[0].neighbour_config.x_cells > 0 then
@@ -95,16 +104,22 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   if config[0].neighbour_config.y_cells > 0 then
     y_cells = config[0].neighbour_config.y_cells
   end
-  format.println("Running with {}x{} cells", x_cells, y_cells)
+  if config[0].neighbour_config.z_cells > 0 then
+    z_cells = config[0].neighbour_config.z_cells
+  end
+  format.println("Running with {}x{}x{} cells", x_cells, y_cells, z_cells)
   var cell_x_dim : double = x_space / ([double](x_cells))
   var cell_y_dim : double = y_space / ([double](y_cells))
-  format.println("cell dims {} {}", cell_x_dim, cell_y_dim)
+  var cell_z_dim : double = z_space / ([double](z_cells))
+  format.println("cell dims {} {} {}", cell_x_dim, cell_y_dim, cell_z_dim)
 
 
   config[0].neighbour_config.x_cells = x_cells
   config[0].neighbour_config.y_cells = y_cells
+  config[0].neighbour_config.z_cells = z_cells
   config[0].neighbour_config.cell_dim_x = cell_x_dim
   config[0].neighbour_config.cell_dim_y = cell_y_dim
+  config[0].neighbour_config.cell_dim_z = cell_z_dim
 end
 
 
@@ -121,16 +136,28 @@ task particles_to_cells(particles : region(ispace(int1d), part),
   for particle in particles do
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
     var y_cell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.cell_dim_y))
-    if x_cell == int1d(config[0].neighbour_config.x_cells) then
-      format.println("FOUND CELL AT X DOMAIN EDGE, POSITION IS {}", particles[particle].core_part_space.pos_x)
-      regentlib.assert(false, "")
+    var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
+    --If particle outside the domain place it in the last cell. This avoids things like a box from 0 to 3 with a particle at 3 being excluded
+    if x_cell >= config[0].neighbour_config.x_cells then
+       x_cell = config[0].neighbour_config.x_cells-1
     end
-    if y_cell == int1d(config[0].neighbour_config.y_cells) then
-      format.println("FOUND CELL AT Y DOMAIN EDGE, POSITION IS {}", particles[particle].core_part_space.pos_y)
-      regentlib.assert(false, "")
+    if x_cell < 0 then
+       x_cell = 0
+    end
+    if y_cell >= config[0].neighbour_config.y_cells then
+       y_cell = config[0].neighbour_config.y_cells-1
+    end
+    if y_cell < 0 then
+       y_cell = 0
+    end
+    if z_cell >= config[0].neighbour_config.z_cells then
+       z_cell = config[0].neighbour_config.z_cells-1
+    end
+    if z_cell < 0 then
+       z_cell = 0
     end
 --    format.println("{} {} {}", x_cell, y_cell, z_cell)
-    var cell_loc : int2d = int2d( {x_cell, y_cell} )
+    var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
     particles[particle].neighbour_part_space.cell_id = cell_loc
   end
 end
