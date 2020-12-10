@@ -7,6 +7,8 @@ import "regent"
 require("src/particles/core_part")
 
 
+WALL = global(int32, 1);
+FLUID = global(int32, 0);
 
 fspace part{
   core_part_space : core_part,
@@ -18,6 +20,7 @@ fspace part{
   --Density
   rho : float,
   rho_base : float,
+  drho_dt : float,
   rho_t_minus1 : float,
   viscosity : float, 
   pressure : float,
@@ -48,5 +51,9 @@ fspace part{
   v_minus1_x : float,
   v_minus1_y : float,
   v_minus1_z : float,
+  --Constant acceleration term
+  a_const_x : float,
+  a_const_y : float,
+  a_const_z : float,
 
 }

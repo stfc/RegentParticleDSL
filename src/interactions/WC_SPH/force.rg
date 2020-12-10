@@ -20,16 +20,16 @@ terra kernel_deval(u : float, h : float, w : &float, w_dx : &float)
   var u3 = u2*u
   var a_D = (10.0/7.0) * 3.141592654 * h*h
   
-  if w >= 0 and w <= 1 then
-    &w = a_D* 1.0 - 1.5*(u2) + 0.75*(u3)
-    &w_dx = a_D* -3.0*u + 2.25*u2
-  elseif w >=1 and w <=2 then
+  if @w >= 0.0 and @w < 1.0 then
+    @w = a_D* 1.0 - 1.5*(u2) + 0.75*(u3)
+    @w_dx = a_D* -3.0*u + 2.25*u2
+  elseif @w >= 1.0 and @w <= 2.0 then
     var two_minus_u = 2.0 - u
-    &w = a_D* 0.25 * (two_minus_u * two_minus_u * two_minus_u)
-    &w_dx = a_D* 0.75 * (two_minus_u*two_minus_u)
+    @w = a_D* 0.25 * (two_minus_u * two_minus_u * two_minus_u)
+    @w_dx = a_D* 0.75 * (two_minus_u*two_minus_u)
   else
-    &w = 0.0
-    &w_dx = 0.0
+    @w = 0.0
+    @w_dx = 0.0
   end
 end
 
@@ -154,14 +154,13 @@ local kernel = rquote
   var dvdr : float = dv0*dx0 + dv1*dx1 + dv2*dx2
   var dvdr_rr2 : float = dvdr * inv_r2eta2
   --FIXME : Sort out MAX function
-  part1.max_visc = MAX(part1.max_visc, dvdr_rr2)
-  part2.max_visc = MAX(part2.max_visc, dvdr_rr2)
-  part1.max_visc = MAX(part1.max_visc, dvdr_rr2);
+  part1.max_visc = regentlib.fmax(part1.max_visc, dvdr_rr2)
+  part2.max_visc = regentlib.fmax(part2.max_visc, dvdr_rr2)
 
   --FIXME: IMPLEMENT THESE
-  [boundary_fluid_interaction( part1, part2, r, r2, dx0, dx1, dx2)];
-  [compute_density_diffusive_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
-  [compute_shifting_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
+--  [boundary_fluid_interaction( part1, part2, r, r2, dx0, dx1, dx2)];
+--  [compute_density_diffusive_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
+--  [compute_shifting_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
 end
 return kernel
 end
