@@ -68,6 +68,11 @@ local timestep_quote = rquote
     part.pressure = pressure_from_density(part.rho)
   end
   part.since_euler = part.since_euler+1
+  --Reset timestep values
+  part.drho_dt = 0.0
+  part.a_hydro_x = 0.0
+  part.a_hydro_y = 0.0
+  part.a_hydro_z = 0.0
 end
 return timestep_quote
 end

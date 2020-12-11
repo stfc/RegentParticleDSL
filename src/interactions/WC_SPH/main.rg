@@ -12,7 +12,7 @@ require("src/interactions/WC_SPH/force")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
 
 local format = require("std/format")
-
+local c = regentlib.c
 local sqrtf = regentlib.sqrt(float)
 
 local CFL_condition = global(float, 0.1)
@@ -70,7 +70,6 @@ variables.particle_array[0].is_wall = FLUID
 variables.particle_array[0].core_part_space.pos_x = 0.5
 variables.particle_array[0].core_part_space.pos_y = 1.35
 variables.particle_array[0].core_part_space.pos_z = 0.5
-variables.particle_array[0].core_part_space.mass = 10.0
 variables.particle_array[0].rho = 1000.0
 variables.particle_array[0].h = 0.13
 variables.particle_array[0].a_const_x = 0.0
@@ -164,6 +163,7 @@ variables.particle_array[12].h = 0.13;
 for part in [variables.particle_array] do
 
   [variables.particle_array][part].core_part_space.id = part;
+  [variables.particle_array][part].core_part_space.mass = 10.0;
   [variables.particle_array][part].core_part_space.cutoff = 2.0 * [variables.particle_array][part].h
 end
 
@@ -172,17 +172,31 @@ end
 
 compute_timestep(neighbour_init.padded_particle_array, variables.config)
 format.println("Timestep = {}", variables.config[0].space.timestep);
+var starttime = c.legion_get_current_time_in_micros()
 var time = 0.0
 var next_print = 0.001
 var step = 0
+var step_count = 0
 
-while time < 2.0 do
+--__demand(__trace)
+while time < 0.005 do
 [invoke(variables.config, {force_kernel, SYMMETRIC_PAIRWISE}, {timestep, PER_PART}, NO_BARRIER)];
 time = time + variables.config[0].space.timestep
 if(time > next_print) then
-  format.println("Time = {}", time)
+  var dur_time = c.legion_get_current_time_in_micros() - starttime
+  format.println("Time = {}, runtime = {}, step_count = {}", time, dur_time/1000000, step_count)
   next_print = next_print + 0.001
   step = step + 1
+  for part in [neighbour_init.padded_particle_array] do
+    if [neighbour_init.padded_particle_array][part].neighbour_part_space._valid and [neighbour_init.padded_particle_array][part].core_part_space.id == int1d(0) then
+      format.println("Particle 0 at {} {} {}, rho {} interactions {}", [neighbour_init.padded_particle_array][part].core_part_space.pos_x,
+                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_y,
+                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_z,
+                                               [neighbour_init.padded_particle_array][part].rho,
+                                                [neighbour_init.padded_particle_array][part].interactions)
+    end
+  end
+  
   var filename = [rawstring](regentlib.c.malloc(1024))
   format.snprint(filename, 1024, "file{}.hdf5", step);
   [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
@@ -190,6 +204,7 @@ if(time > next_print) then
 end
 
 compute_timestep(neighbour_init.padded_particle_array, variables.config)
+step_count = step_count + 1
 end
 
 end

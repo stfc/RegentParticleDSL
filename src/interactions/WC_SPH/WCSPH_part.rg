@@ -55,5 +55,5 @@ fspace part{
   a_const_x : float,
   a_const_y : float,
   a_const_z : float,
-
+  interactions : int32
 }

@@ -13,24 +13,49 @@ terra pow_dimension_plus_one(x : float) : float
 end
 
 
---Cubic spline kernel
-terra kernel_deval(u : float, h : float, w : &float, w_dx : &float)
-  
-  var u2 = u*u
-  var u3 = u2*u
-  var a_D = (10.0/7.0) * 3.141592654 * h*h
-  
-  if @w >= 0.0 and @w < 1.0 then
-    @w = a_D* 1.0 - 1.5*(u2) + 0.75*(u3)
-    @w_dx = a_D* -3.0*u + 2.25*u2
-  elseif @w >= 1.0 and @w <= 2.0 then
-    var two_minus_u = 2.0 - u
-    @w = a_D* 0.25 * (two_minus_u * two_minus_u * two_minus_u)
-    @w_dx = a_D* 0.75 * (two_minus_u*two_minus_u)
+local M_PI = 3.141592653589793238462643383279502884
+local kernel_gamma = global(float, 1.825742)
+local kernel_constant = global(float, 16.0 / M_PI)
+local kernel_gamma_inv_dim = global(float, 1.0 / (kernel_gamma:get() * kernel_gamma:get() * kernel_gamma:get()) )
+local kernel_gamma_inv_dim_plus_one = global(float, 1.0 / (kernel_gamma:get() * kernel_gamma:get() * kernel_gamma:get() * kernel_gamma:get()) )
+
+terra kernel_deval( ui : float, wi : &float, wi_dx : &float )
+  var kernel_gamma_inv = 1.0 / kernel_gamma
+  var q3 = 0.0
+  var q2 = 0.0
+  var q1 = 0.0
+  var q0 = 0.0
+  var x = ui * kernel_gamma_inv
+  var w :float = 0.0
+  var w_dx : float = 0.0
+  if ui <= 0.5 then
+    q3 = 3.
+    q2 = -3.0
+    q1 = 0
+    q0 = 0.5
   else
-    @w = 0.0
-    @w_dx = 0.0
+    q3 = -1.0
+    q2 = 3.0
+    q1 = -3.0
+    q0 = 1.0
   end
+
+  w = q3 * x + q2
+  w_dx = q3
+
+  w_dx = w_dx * x + w
+  w = w * x + q1
+
+  w_dx = w_dx * x + w
+  w = w * x + q0
+
+  if (w < 0.0) then w = 0.0 end
+  if (w_dx > 0.0) then w_dx = 0.0 end
+  w = w * kernel_constant * kernel_gamma_inv_dim
+  w_dx = w_dx * kernel_constant * kernel_gamma_inv_dim_plus_one
+
+  @wi = w
+  @wi_dx = w_dx
 end
 
 function force_kernel(part1, part2, r2)
@@ -58,14 +83,14 @@ local kernel = rquote
   var xi : float= r * hi_inv
   var wi : float = 0.0
   var wi_dx : float = 0.0
-  kernel_deval(xi, part1.h, &wi, &wi_dx)
+  kernel_deval(xi, &wi, &wi_dx)
   wi_dx = wi_dx  * inv_hidim_pow_plus_one
 
   var hj_inv : float = 1.0 / part2.h
   var xj : float= r * hj_inv
   var wj : float = 0.0
   var wj_dx : float = 0.0
-  kernel_deval(xj, part2.h, &wj, &wj_dx)
+  kernel_deval(xj, &wj, &wj_dx)
   wj_dx = wj_dx  * inv_hjdim_pow_plus_one
 
   var r2_eta2 : float = r2 + 0.01*0.01
@@ -140,11 +165,25 @@ local kernel = rquote
 
   var dens : float = dv0*wi_dx*dx0 + dv1*wi_dx*dx1 + dv2*wi_dx*dx2
 
+--  if(part1.core_part_space.id == int1d(0)) then
+--    format.println("drho_dt", mj, acc, wi_dx, dx1)
+--  end
   part1.drho_dt = part1.drho_dt + (mj * dens)
   part1.a_hydro_x = part1.a_hydro_x - (mj * acc * wi_dx * dx0)
   part1.a_hydro_y = part1.a_hydro_y - (mj * acc * wi_dx * dx1)
   part1.a_hydro_z = part1.a_hydro_z - (mj * acc * wi_dx * dx2)
 
+--  if(part2.core_part_space.id == int1d(0)) then
+--    format.println("hydro_y interaction {} {} {} {}", mi, acc, wj_dx, dx1)
+--  end
+  --if(part2.core_part_space.id == int1d(0)) then
+  --  format.println("drho_dt interaction {} {}", mi, dens)
+  --  var x = 0
+  --  if  part1.neighbour_part_space._valid then
+  --     x = 1
+  --  end
+  --  format.println("other part is real? {}", x)
+  --end
   part2.drho_dt = part2.drho_dt + (mi*dens)
   part2.a_hydro_x = part2.a_hydro_x + (mi * acc * wj_dx * dx0)
   part2.a_hydro_y = part2.a_hydro_y + (mi * acc * wj_dx * dx1)
@@ -157,6 +196,8 @@ local kernel = rquote
   part1.max_visc = regentlib.fmax(part1.max_visc, dvdr_rr2)
   part2.max_visc = regentlib.fmax(part2.max_visc, dvdr_rr2)
 
+  part1.interactions = part1.interactions + 1
+  part2.interactions = part2.interactions + 1
   --FIXME: IMPLEMENT THESE
 --  [boundary_fluid_interaction( part1, part2, r, r2, dx0, dx1, dx2)];
 --  [compute_density_diffusive_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
