@@ -22,6 +22,8 @@ variables = {}
 variables.config = regentlib.newsymbol("config")
 variables.particle_array = regentlib.newsymbol("particle_array")
 
+variables.io_array = regentlib.newsymbol("io_array")
+
 local hdf5_write_mapper = {}
 hdf5_write_mapper["cutoff"] = "core_part_space.cutoff"
 hdf5_write_mapper["density"] = "rho"
@@ -65,7 +67,6 @@ end
 task main()
 
 [initialisation_function(variables, 13, 5.0, 5.0, 5.0)];
-
 variables.particle_array[0].is_wall = FLUID
 variables.particle_array[0].core_part_space.pos_x = 0.5
 variables.particle_array[0].core_part_space.pos_y = 1.35
@@ -179,7 +180,8 @@ var step = 0
 var step_count = 0
 
 --__demand(__trace)
-while time < 0.005 do
+--while time < 2.0 do
+while step < 6 do
 [invoke(variables.config, {force_kernel, SYMMETRIC_PAIRWISE}, {timestep, PER_PART}, NO_BARRIER)];
 time = time + variables.config[0].space.timestep
 if(time > next_print) then
@@ -187,19 +189,21 @@ if(time > next_print) then
   format.println("Time = {}, runtime = {}, step_count = {}", time, dur_time/1000000, step_count)
   next_print = next_print + 0.001
   step = step + 1
-  for part in [neighbour_init.padded_particle_array] do
-    if [neighbour_init.padded_particle_array][part].neighbour_part_space._valid and [neighbour_init.padded_particle_array][part].core_part_space.id == int1d(0) then
-      format.println("Particle 0 at {} {} {}, rho {} interactions {}", [neighbour_init.padded_particle_array][part].core_part_space.pos_x,
-                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_y,
-                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_z,
-                                               [neighbour_init.padded_particle_array][part].rho,
-                                                [neighbour_init.padded_particle_array][part].interactions)
-    end
-  end
   
   var filename = [rawstring](regentlib.c.malloc(1024))
   format.snprint(filename, 1024, "file{}.hdf5", step);
+--  var file = c.fopen(filename, "w+");
+--  for part in [neighbour_init.padded_particle_array] do
+--    if [neighbour_init.padded_particle_array][part].neighbour_part_space._valid then
+--      format.fprintln(file, "{} {} {} {} ", [neighbour_init.padded_particle_array][part].core_part_space.pos_x,
+--                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_y,
+--                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_z,
+--                                               [neighbour_init.padded_particle_array][part].rho)
+--    end
+--  end
+--  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
   [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+--  c.fclose(file);
   regentlib.c.free(filename)
 end
 
