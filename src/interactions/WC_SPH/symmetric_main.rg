@@ -66,105 +66,32 @@ end
 
 task main()
 
-[initialisation_function(variables, 13, 5.0, 5.0, 5.0)];
-variables.particle_array[0].is_wall = FLUID
-variables.particle_array[0].core_part_space.pos_x = 0.5
-variables.particle_array[0].core_part_space.pos_y = 1.35
-variables.particle_array[0].core_part_space.pos_z = 0.5
-variables.particle_array[0].rho = 1000.0
-variables.particle_array[0].h = 0.13
-variables.particle_array[0].a_const_x = 0.0
-variables.particle_array[0].a_const_y = -9.81
-variables.particle_array[0].a_const_z = 0.0
- 
-variables.particle_array[1].is_wall = WALL
-variables.particle_array[1].core_part_space.pos_x = 0.4
-variables.particle_array[1].core_part_space.pos_y = 0.2
-variables.particle_array[1].core_part_space.pos_z = 0.5
-variables.particle_array[1].rho = 1000.0
-variables.particle_array[1].h = 0.13
- 
-variables.particle_array[2].is_wall = WALL 
-variables.particle_array[2].core_part_space.pos_x = 0.5
-variables.particle_array[2].core_part_space.pos_y = 0.2
-variables.particle_array[2].core_part_space.pos_z = 0.5
-variables.particle_array[2].rho = 1000.0
-variables.particle_array[2].h = 0.13
-
-variables.particle_array[3].is_wall = WALL 
-variables.particle_array[3].core_part_space.pos_x = 0.6
-variables.particle_array[3].core_part_space.pos_y = 0.2
-variables.particle_array[3].core_part_space.pos_z = 0.5
-variables.particle_array[3].rho = 1000.0
-variables.particle_array[3].h = 0.13
-
-variables.particle_array[4].is_wall = WALL 
-variables.particle_array[4].core_part_space.pos_x = 0.7
-variables.particle_array[4].core_part_space.pos_y = 0.2
-variables.particle_array[4].core_part_space.pos_z = 0.5
-variables.particle_array[4].rho = 1000.0
-variables.particle_array[4].h = 0.13
-
-variables.particle_array[5].is_wall = WALL 
-variables.particle_array[5].core_part_space.pos_x = 0.8
-variables.particle_array[5].core_part_space.pos_y = 0.2
-variables.particle_array[5].core_part_space.pos_z = 0.5
-variables.particle_array[5].rho = 1000.0
-variables.particle_array[5].h = 0.13
-
-variables.particle_array[6].is_wall = WALL 
-variables.particle_array[6].core_part_space.pos_x = 0.9
-variables.particle_array[6].core_part_space.pos_y = 0.2
-variables.particle_array[6].core_part_space.pos_z = 0.5
-variables.particle_array[6].rho = 1000.0
-variables.particle_array[6].h = 0.13
-
-variables.particle_array[7].is_wall = WALL 
-variables.particle_array[7].core_part_space.pos_x = 0.4
-variables.particle_array[7].core_part_space.pos_y = 0.3
-variables.particle_array[7].core_part_space.pos_z = 0.5
-variables.particle_array[7].rho = 1000.0
-variables.particle_array[7].h = 0.13
- 
-variables.particle_array[8].is_wall = WALL 
-variables.particle_array[8].core_part_space.pos_x = 0.5
-variables.particle_array[8].core_part_space.pos_y = 0.3
-variables.particle_array[8].core_part_space.pos_z = 0.5
-variables.particle_array[8].rho = 1000.0
-variables.particle_array[8].h = 0.13
- 
-variables.particle_array[9].is_wall = WALL 
-variables.particle_array[9].core_part_space.pos_x = 0.6
-variables.particle_array[9].core_part_space.pos_y = 0.3
-variables.particle_array[9].core_part_space.pos_z = 0.5
-variables.particle_array[9].rho = 1000.0
-variables.particle_array[9].h = 0.13
- 
-variables.particle_array[10].is_wall = WALL 
-variables.particle_array[10].core_part_space.pos_x = 0.7
-variables.particle_array[10].core_part_space.pos_y = 0.3
-variables.particle_array[10].core_part_space.pos_z = 0.5
-variables.particle_array[10].rho = 1000.0
-variables.particle_array[10].h = 0.13
- 
-variables.particle_array[11].is_wall = WALL 
-variables.particle_array[11].core_part_space.pos_x = 0.8
-variables.particle_array[11].core_part_space.pos_y = 0.3
-variables.particle_array[11].core_part_space.pos_z = 0.5
-variables.particle_array[11].rho = 1000.0
-variables.particle_array[11].h = 0.13
- 
-variables.particle_array[12].is_wall = WALL 
-variables.particle_array[12].core_part_space.pos_x = 0.9
-variables.particle_array[12].core_part_space.pos_y = 0.3
-variables.particle_array[12].core_part_space.pos_z = 0.5
-variables.particle_array[12].rho = 1000.0
-variables.particle_array[12].h = 0.13;
+[initialisation_function(variables, 4096, 4.0, 4.0, 4.0)];
+var x : int = 0
+var y : int = 0
+var z : int = 0
+var partcount = 0
+for x=0, 16 do
+  for y=0, 16 do
+    for z=0, 16 do
+      variables.particle_array[int1d(partcount)].is_wall = FLUID
+      variables.particle_array[int1d(partcount)].core_part_space.pos_x = 0.25 * double(x)
+      variables.particle_array[int1d(partcount)].core_part_space.pos_y = 0.25 * double(y)
+      variables.particle_array[int1d(partcount)].core_part_space.pos_z = 0.25 * double(z)
+      variables.particle_array[int1d(partcount)].rho = 1000
+      variables.particle_array[int1d(partcount)].h = 1.6 * 0.25
+      variables.particle_array[int1d(partcount)].a_const_x = 0.0
+      variables.particle_array[int1d(partcount)].a_const_y = 0.0
+      variables.particle_array[int1d(partcount)].a_const_z = 0.0
+      partcount = partcount+1
+    end
+  end
+end
 
 for part in [variables.particle_array] do
 
   [variables.particle_array][part].core_part_space.id = part;
-  [variables.particle_array][part].core_part_space.mass = 10.0;
+  [variables.particle_array][part].core_part_space.mass = 15.625;
   [variables.particle_array][part].core_part_space.cutoff = 2.0 * [variables.particle_array][part].h
 end
 
@@ -180,8 +107,7 @@ var step = 0
 var step_count = 0
 
 --__demand(__trace)
---while time < 2.0 do
-while step < 6 do
+while time < 2.0 do
 [invoke(variables.config, {force_kernel, SYMMETRIC_PAIRWISE}, {timestep, PER_PART}, NO_BARRIER)];
 time = time + variables.config[0].space.timestep
 if(time > next_print) then
@@ -191,7 +117,7 @@ if(time > next_print) then
   step = step + 1
   
   var filename = [rawstring](regentlib.c.malloc(1024))
-  format.snprint(filename, 1024, "file{}.hdf5", step);
+  format.snprint(filename, 1024, "symmetricrun/file{}.hdf5", step);
 --  var file = c.fopen(filename, "w+");
 --  for part in [neighbour_init.padded_particle_array] do
 --    if [neighbour_init.padded_particle_array][part].neighbour_part_space._valid then

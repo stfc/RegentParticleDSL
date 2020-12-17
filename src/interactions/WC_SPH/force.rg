@@ -58,6 +58,7 @@ terra kernel_deval( ui : float, wi : &float, wi_dx : &float )
   @wi_dx = w_dx
 end
 
+--Default: Laminar SPS Kernel
 function force_kernel(part1, part2, r2)
 local kernel = rquote
   var r : float = sqrtf(r2)
@@ -199,9 +200,9 @@ local kernel = rquote
   part1.interactions = part1.interactions + 1
   part2.interactions = part2.interactions + 1
   --FIXME: IMPLEMENT THESE
---  [boundary_fluid_interaction( part1, part2, r, r2, dx0, dx1, dx2)];
---  [compute_density_diffusive_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
---  [compute_shifting_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
+  [boundary_fluid_interaction( part1, part2, r, r2, dx0, dx1, dx2)];
+  [compute_density_diffusive_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
+  [compute_shifting_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
 end
 return kernel
 end
