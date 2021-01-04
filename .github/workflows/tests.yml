@@ -3,32 +3,50 @@ name: RegentParticleDSL tests
 on:
     push:
         branches:
-            - [master]
+            - 'master'
+        tags:
+            - 'v*'
     pull_request:
-        branches: [master]
-    tags:
-       - v*
+        branches: 'master'
 
 jobs:
     tests:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-16.04
         steps:
             - uses: actions/checkout@v2
-            - uses: actions/setp-python@v2
+            - uses: actions/setup-python@v2
               with:
                   python-version: 3.8
             - name: Install Dependencies
               run: |
-                  sudo apt update
-                  sudo apt install -y build-essential clang-3.5 git libclang-3.5-dev libncurses5-dev llvm-3.5-dev wget zlib1g-dev libhdf5-dev cmake vim python3 python3-pip hdf5-tools
+                  sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+                  sudo apt-get update -qq
+                  sudo apt-get install -y -qq build-essential clang-3.5 git libclang-3.5-dev libncurses5-dev llvm-3.5-dev wget zlib1g-dev libhdf5-dev cmake vim python3 python3-pip hdf5-tools g++-7 gcc-7
                   h5stat -V
                   h5cc --version
                   pip3 install --upgrade pip
                   pip3 install numpy h5py
                   git clone -b master https://github.com/StanfordLegion/legion.git
-                  LLVM_CONFIG=llvm-config-3.5 python3 legion/language/install.py --rdir=auto --hdf5 -j --no-terra-cmake
-            -name: Run examples
-            run: |
-                echo "Hello"
+                  #export LLVM_CONFIG=llvm-config-3.5
+                  export CC=gcc-7
+                  export CXX=g++-7
+                  gcc -v
+                  g++-7 -v
+                  clang-3.5 --version
+                  export LLVM_CONFIG=/usr/bin/llvm-config-3.5
+                  export HDF5_INCLUDE_PATH=/usr/include/
+                  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu/hdf5/serial
+                  export PATH=$PATH:/usr/bin
+                  export LIBRARY_PATH=$LD_LIBRARY_PATH
+                  export INCLUDE_PATH=/usr/include/hdf5/serial
+                  export C_INCLUDE_PATH=$INCLUDE_PATH
+                  export CPLUS_INCLUDE_PATH=$INCLUDE_PATH
+                  python3 legion/language/install.py --rdir=auto --hdf5 -j --no-terra-cmake
+                  #            - name: Run Examples
+                  #             run: |
+                   python3 tests.py   
+                  #            - name: Run examples
+                  #            run: |
+                  #                echo "Hello"
 
 
