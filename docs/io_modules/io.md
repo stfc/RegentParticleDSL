@@ -80,6 +80,22 @@ end
 ```
 would call the initialisation function using the path declared in the `file` variable, using the mapper defined in the `mapper` variable.`
 
+
+### Setting up File Ouput
+Before files can be written by the HDF5 module, this function must be called:
+```
+simple_hdf5_module.initialise_io_module( particle_array, mapper )
+```
+Parameters:
+- `particle_array`: The initial particle array symbol. Usually this is `variables.particle_array`.
+- `mapper` : A HDF5-compatible mapper between the HDF5 file format and the particle type. This is discussed later in this documentation.
+
+This function should be called exactly once (so before the main loop) before any file output calls, and after the particle array is initialised
+(so after the `initialisation` call or similar).
+
+NB. At current this is only needed if using the undocumented `write_output_inbuilt` function - however this functionality is expected to become
+required when Issue 69 is resolved (https://github.com/stfc/RegentParticleDSL/issues/69).
+
 ### File Output
 The simple HDF5 module provides a function to output the current simulation state to a HDF5 file:
 ```

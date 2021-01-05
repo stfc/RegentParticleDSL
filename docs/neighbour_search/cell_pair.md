@@ -4,10 +4,31 @@ The cell pair algorithm is an implementation of the cell-lists algorithm for CPU
 periodic, and is found in the `src/neighbour_search/cell_pair_tradequeues` directory.
 
 ## Required Headers
-The required import to use the algorithm is
+The required import to use the 3D periodic algorithm is
 ```
 require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
 local neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+```
+
+The 2D periodic algorith is imported with:
+```
+require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
+local neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
+```
+
+Non periodic algorithms are also available. 
+
+3D:
+```
+require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_3d_nonperiod.rg")
+local neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init.rg")
+```
+
+
+2D:
+```
+require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_2d_nonperiod.rg")
+local neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init.rg")
 ```
 
 ## Algorithm initialisation and maintenance
@@ -119,3 +140,5 @@ kernels.
 To maximize the combining of kernels, any kernels that do not require a specific ordering should be grouped by type in the invoke call.
 
 We recommend using the invoke syntax wherever possible.
+
+
