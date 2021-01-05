@@ -67,6 +67,7 @@ end
 task main()
 
 [initialisation_function(variables, 4096, 4.0, 4.0, 4.0)];
+[simple_hdf5_module.initialise_io_module(variables.particle_array, hdf5_write_mapper)];
 var x : int = 0
 var y : int = 0
 var z : int = 0

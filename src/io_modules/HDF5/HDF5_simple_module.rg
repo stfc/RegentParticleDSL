@@ -36,6 +36,8 @@ type_mapping["int1d"] = wrap.WRAP_H5T_STD_I64LE
 
 local hdf5_io_space = {}
 
+simple_hdf5_module.io_region = regentlib.newsymbol("io_region")
+
 --This local function creates the io field space needed for IO from a given mapper.
 local function create_io_fspace(mapper)
  --mapper_fields stores the relationship between the field name (from the mapper) and the 
@@ -112,6 +114,16 @@ local zero_part_task = generate_zero_part_func()
 local task particle_initialisation(particle_region : region(ispace(int1d), part), filename : rawstring) where writes(particle_region) do
 
 zero_part_task(particle_region)
+end
+
+function simple_hdf5_module.initialise_io_module(particle_array, mapper)
+  local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
+  local init_quote = rquote
+    var num_parts = [particle_array].ispace.bounds.hi - [particle_array].ispace.bounds.lo + 1
+    var io_space = ispace(int1d, num_parts)
+    var [simple_hdf5_module.io_region] = region(io_space, hdf5_io_space)
+  end
+  return init_quote
 end
 
 --The initialisation task for the simple hdf5 module
@@ -384,6 +396,7 @@ function simple_hdf5_module.write_output_inbuilt(filename, mapper, particle_arra
   local io_fields = terralib.newlist()
   for k, v in pairs(mapper) do
     io_fields:insert(k)
+    print(k)
   end
   --init_mapping is created from the io_type_mapping, and stores the hdf5 field name (the same as the io space name)
   --and the corresponding hdf5type declaration (taken from the type_mapping)
@@ -462,14 +475,12 @@ end
      end
      end)];
     h5lib.H5Fclose(file_id)
-    --Once the file is created, we create a region to attach the file to, and launch the copy_task to write to the file.
-    var hdfreg = region(ispace(int1d, num_parts), hdf5_io_space)
-    attach(hdf5, hdfreg.[io_fields], filename, regentlib.file_read_write)
-    acquire(hdfreg)
-    copy_task(hdfreg, particle_array)
-    release(hdfreg)
-    detach(hdf5, hdfreg)
-    __delete(hdfreg)
+    --Use the premade IO region for IO
+    attach(hdf5, [simple_hdf5_module.io_region].[io_fields], filename, regentlib.file_read_write)
+    acquire([simple_hdf5_module.io_region])
+    copy_task([simple_hdf5_module.io_region], particle_array)
+    release([simple_hdf5_module.io_region])
+    detach(hdf5, [simple_hdf5_module.io_region])
   end
   return create_code
 end

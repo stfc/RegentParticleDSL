@@ -67,6 +67,7 @@ end
 task main()
 
 [initialisation_function(variables, 13, 5.0, 5.0, 5.0)];
+[simple_hdf5_module.initialise_io_module(variables.particle_array, hdf5_write_mapper)];
 variables.particle_array[0].is_wall = FLUID
 variables.particle_array[0].core_part_space.pos_x = 0.5
 variables.particle_array[0].core_part_space.pos_y = 1.35
@@ -201,8 +202,8 @@ if(time > next_print) then
 --                                               [neighbour_init.padded_particle_array][part].rho)
 --    end
 --  end
---  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
-  [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+--  [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
 --  c.fclose(file);
   regentlib.c.free(filename)
 end
