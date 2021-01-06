@@ -43,6 +43,11 @@ local function create_io_fspace(mapper)
  --mapper_fields stores the relationship between the field name (from the mapper) and the 
  --type of the mapped field from the part structure.
  local mapper_fields = terralib.newlist()
+
+ if mapper == nil then
+    print("Nil mapper passed into HDF5 IO module, please check a valid mapper is passed into the module")
+    os.exit()
+ end
  --Loop over the key/value pairs in the mapper (io_field -> part_field)
  for k, v in pairs(mapper) do
    --Search for a matching symbol_name in the particle
@@ -194,6 +199,7 @@ end
    release(hdfreg)
    detach(hdf5, hdfreg)
    c.legion_runtime_issue_execution_fence(__runtime(), __context())
+   __delete(hdfreg)
   end
   return test
 end
