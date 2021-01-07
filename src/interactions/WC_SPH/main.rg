@@ -193,17 +193,8 @@ if(time > next_print) then
   
   var filename = [rawstring](regentlib.c.malloc(1024))
   format.snprint(filename, 1024, "file{}.hdf5", step);
---  var file = c.fopen(filename, "w+");
---  for part in [neighbour_init.padded_particle_array] do
---    if [neighbour_init.padded_particle_array][part].neighbour_part_space._valid then
---      format.fprintln(file, "{} {} {} {} ", [neighbour_init.padded_particle_array][part].core_part_space.pos_x,
---                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_y,
---                                               [neighbour_init.padded_particle_array][part].core_part_space.pos_z,
---                                               [neighbour_init.padded_particle_array][part].rho)
---    end
---  end
-  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
---  [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+--  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+  [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
 --  c.fclose(file);
   regentlib.c.free(filename)
 end

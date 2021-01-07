@@ -166,15 +166,15 @@ local kernel = rquote
 
   var dens : float = dv0*wi_dx*dx0 + dv1*wi_dx*dx1 + dv2*wi_dx*dx2
 
---  if(part1.core_part_space.id == int1d(0)) then
---    format.println("drho_dt", mj, acc, wi_dx, dx1)
+--  if(part1.core_part_space.id == int1d(1116)) then
+--    format.println("hydro_x interaction {} {} {} {}", mj, acc, wi_dx, dx1)
 --  end
   part1.drho_dt = part1.drho_dt + (mj * dens)
   part1.a_hydro_x = part1.a_hydro_x - (mj * acc * wi_dx * dx0)
   part1.a_hydro_y = part1.a_hydro_y - (mj * acc * wi_dx * dx1)
   part1.a_hydro_z = part1.a_hydro_z - (mj * acc * wi_dx * dx2)
 
---  if(part2.core_part_space.id == int1d(0)) then
+--  if(part2.core_part_space.id == int1d(1116)) then
 --    format.println("hydro_y interaction {} {} {} {}", mi, acc, wj_dx, dx1)
 --  end
   --if(part2.core_part_space.id == int1d(0)) then
