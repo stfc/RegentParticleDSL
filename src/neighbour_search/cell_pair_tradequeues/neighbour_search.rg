@@ -5,7 +5,7 @@
 
 import "regent"
 
-require("defaults")
+--require("defaults")
 require("src/neighbour_search/cell_pair_tradequeues/cell")
 local compute_privileges = require("src/utils/compute_privilege")
 local format = require("std/format")
