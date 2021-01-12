@@ -182,7 +182,7 @@ var step_count = 0
 
 --__demand(__trace)
 --while time < 2.0 do
-while step < 6 do
+while step < 20 do
 [invoke(variables.config, {force_kernel, SYMMETRIC_PAIRWISE}, {timestep, PER_PART}, NO_BARRIER)];
 time = time + variables.config[0].space.timestep
 if(time > next_print) then
@@ -191,12 +191,13 @@ if(time > next_print) then
   next_print = next_print + 0.001
   step = step + 1
   
-  var filename = [rawstring](regentlib.c.malloc(1024))
-  format.snprint(filename, 1024, "file{}.hdf5", step);
---  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+  var filename_rawstring = [rawstring](regentlib.c.malloc(1024));
+  format.snprint(filename_rawstring, 99, "file{}.hdf5", step);
+  var filename : regentlib.string = [regentlib.string](filename_rawstring);
   [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
+--  [simple_hdf5_module.write_output_manual( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
 --  c.fclose(file);
-  regentlib.c.free(filename)
+  regentlib.c.free(filename_rawstring)
 end
 
 compute_timestep(neighbour_init.padded_particle_array, variables.config)

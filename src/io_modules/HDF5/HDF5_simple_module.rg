@@ -291,7 +291,7 @@ end
 end
 
 
-function simple_hdf5_module.write_output(filename, mapper, particle_array)
+function simple_hdf5_module.write_output_manual(filename, mapper, particle_array)
   --Create the field space and the io_type_mapping from create_io_fspace
   local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
   --Mapper fields creates a mapping between the io fspace and part fspace.
@@ -388,7 +388,7 @@ end
 --filename : string -- Filename to write to
 --mapper : table -- Mapping between IO fields and part type
 --particle_array : symbol -- The regent symbol (usually variables.particle_array) representing the particle array.
-function simple_hdf5_module.write_output_inbuilt(filename, mapper, particle_array)
+function simple_hdf5_module.write_output(filename, mapper, particle_array)
   --Create the field space and the io_type_mapping from create_io_fspace
   local hdf5_io_space, io_type_mapping = create_io_fspace(mapper)
   --Mapper fields creates a mapping between the io fspace and part fspace.
@@ -402,7 +402,6 @@ function simple_hdf5_module.write_output_inbuilt(filename, mapper, particle_arra
   local io_fields = terralib.newlist()
   for k, v in pairs(mapper) do
     io_fields:insert(k)
-    print(k)
   end
   --init_mapping is created from the io_type_mapping, and stores the hdf5 field name (the same as the io space name)
   --and the corresponding hdf5type declaration (taken from the type_mapping)
@@ -443,26 +442,46 @@ function simple_hdf5_module.write_output_inbuilt(filename, mapper, particle_arra
     end
   
 end
-  
-  local create_code = rquote
-    --Create the file
-    wrap.init_wrapper()
-  
-    var file_id = h5lib.H5Fcreate(filename, wrap.WRAP_H5F_ACC_TRUNC, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
-    regentlib.assert(file_id > 0, "Failed to create file")
+
+  local __demand(__leaf) task count_valid(particles : region(ispace(int1d), part)) : int where reads(particles) do
+
     var num_parts = 0
-    for part in particle_array.ispace do
+    for part in particles.ispace do
       var valid = true
       [neighbour_search_validity:map( function(element)
         local field_path = string_to_field_path.get_field_path(element.field)
         return rquote
-          valid = valid and ([particle_array][part].[field_path] == [element.result]);
+          valid = valid and (particles[part].[field_path] == [element.result]);
         end
       end)];
       if valid then
         num_parts = num_parts + 1
       end
-    end  
+    end 
+    return num_parts 
+  end
+
+  local __demand(__inner) task do_copy(particles : region(ispace(int1d), part), io_reg : region(ispace(int1d), hdf5_io_space), 
+                               filename : regentlib.string) where
+                               reads(particles, io_reg), writes(particles, io_reg) do
+    format.println("{}", filename)
+    --Use the premade IO region for IO
+    attach(hdf5, io_reg.[io_fields], filename, regentlib.file_read_write)
+    acquire(io_reg)
+    copy_task(io_reg, particles)
+    release(io_reg)
+    detach(hdf5, io_reg)
+  end
+  
+  local create_code = rquote
+    --Create the file
+    wrap.init_wrapper()
+    format.println("{}",filename)
+    var counter : int = 0
+    var file_id = h5lib.H5Fcreate(filename, wrap.WRAP_H5F_ACC_TRUNC, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
+    --var file_id = h5lib.H5Fcreate(filename, wrap.WRAP_H5F_ACC_TRUNC, wrap.WRAP_H5P_DEFAULT, wrap.WRAP_H5P_DEFAULT)
+    regentlib.assert(file_id > 0, "Failed to create file")
+    var num_parts = count_valid(particle_array)
     var h_dims : h5lib.hsize_t[1]
     h_dims[0] = num_parts
     var dim = h5lib.H5Screate_simple(1, h_dims, [&uint64](0))
@@ -481,12 +500,7 @@ end
      end
      end)];
     h5lib.H5Fclose(file_id)
-    --Use the premade IO region for IO
-    attach(hdf5, [simple_hdf5_module.io_region].[io_fields], filename, regentlib.file_read_write)
-    acquire([simple_hdf5_module.io_region])
-    copy_task([simple_hdf5_module.io_region], particle_array)
-    release([simple_hdf5_module.io_region])
-    detach(hdf5, [simple_hdf5_module.io_region])
+    do_copy(particle_array, [simple_hdf5_module.io_region], filename)
   end
   return create_code
 end
