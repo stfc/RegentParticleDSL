@@ -9,3 +9,6 @@ import "regent"
 --the require decelarations.
 require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_part")
 require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_config")
+
+neighbour_search_validity = terralib.newlist()
+neighbour_search_validity:insert({field="neighbour_part_space._valid", result=true})

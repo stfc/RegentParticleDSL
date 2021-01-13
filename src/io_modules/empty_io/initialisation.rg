@@ -31,7 +31,5 @@ end
 
 task particle_initialisation(particle_region : region(ispace(int1d), part)) where writes(particle_region) do
 
-zero_core_part(particle_region)
-zero_neighbour_part(particle_region)
-
+ [generate_zero_part_quote(particle_region)];
 end

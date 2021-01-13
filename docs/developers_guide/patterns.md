@@ -84,3 +84,29 @@ end)]
 ```
 We define that the `element` variable is each element of the `part_structure` list (the table we input previously). We then create a quote, and access the
 two regions at the `part` index, and splice the `.field` field path to access the same field from both regions.
+
+### Design of module imports.
+
+The initial strategy for importing modules was to have everything separate, hence the complete separation of the 2D and 3D periodic tradequeue system. 
+However, when designing the non-periodic version, it became apparent that we could create unique 2D and 3D headers, and have each other header required shared between the modules. This is done by the version-specific header setting a global value:
+```
+DSL_DIMENSIONALITY = 2
+```
+
+While this pollutes the global namespace, this can be a reserved variable name. With this set, the shared headers then do:
+```
+  if DSL_DIMENSIONALITY == 2 then
+    neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/2d_neighbour_init")
+  elseif DSL_DIMENSIONALITY == 3 then
+    neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/3d_neighbour_init")
+  end
+  return neighbour_init
+```
+which enables importing only the necessary modules.
+
+If possible, it would be nice to be able to import these headers with a function call, e.g.
+```
+require("path/to/nonperiodic_header")
+set_dimensionality(2)
+```
+and have that setup the appropriate system, however we have not yet tried implementing this setup.

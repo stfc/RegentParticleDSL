@@ -230,7 +230,16 @@ if DEBUG ~= nil and DEBUG then
       for cell in neighbour_init.cell_partition.colors do
         for part in neighbour_init.cell_partition[cell] do
           if neighbour_init.cell_partition[cell][part].neighbour_part_space._valid then
-            regentlib.assert(neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id == int2d(cell), "particle found in wrong cell")
+            if neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id ~= int2d(cell) then
+                format.println("Particle in {} {}, expected in {} {}", cell.x, cell.y, neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id.x, 
+                            neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id.y)
+--                format.println("Velocity is {} {}, a_const is {} {}", neighbour_init.cell_partition[cell][part].core_part_space.vel_x,
+--                                neighbour_init.cell_partition[cell][part].core_part_space.vel_y,
+--                                neighbour_init.cell_partition[cell][part].a_const_x,
+--                                neighbour_init.cell_partition[cell][part].a_const_y)
+--                format.println("ID is {}",  neighbour_init.cell_partition[cell][part].core_part_space.id)
+                regentlib.assert(neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id == int2d(cell), "particle found in wrong cell")
+            end
           end
         end
       end    

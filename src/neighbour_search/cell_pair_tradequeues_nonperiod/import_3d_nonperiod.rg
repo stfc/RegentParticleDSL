@@ -10,3 +10,6 @@ DSL_DIMENSIONALITY = 3
 --the require decelarations.
 require("src/neighbour_search/cell_pair_tradequeues_nonperiod/3d_neighbour_part")
 require("src/neighbour_search/cell_pair_tradequeues_nonperiod/3d_neighbour_config")
+
+neighbour_search_validity = terralib.newlist()
+neighbour_search_validity:insert({field="neighbour_part_space._valid", result=true})

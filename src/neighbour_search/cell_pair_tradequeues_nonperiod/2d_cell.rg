@@ -72,8 +72,8 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   var x_cells : int = floord(x_space / config[0].neighbour_config.max_cutoff)
   var y_cells : int = floord(y_space / config[0].neighbour_config.max_cutoff)
   --Always have to have 3x3
-  x_cells = regentlib.fmax(x_cells, 3)
-  y_cells = regentlib.fmax(y_cells, 3)
+  x_cells = regentlib.fmax(x_cells, 9)
+  y_cells = regentlib.fmax(y_cells, 9)
 
   --Aim for at least 200 PPC  
   var count = particles.bounds.hi - particles.bounds.lo
