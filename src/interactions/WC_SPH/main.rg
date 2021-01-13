@@ -192,7 +192,7 @@ if(time > next_print) then
   step = step + 1
   
   var filename_rawstring = [rawstring](regentlib.c.malloc(1024));
-  format.snprint(filename_rawstring, 99, "file{}.hdf5", step);
+  format.snprint(filename_rawstring, 1024, "file{}.hdf5", step);
   var filename : regentlib.string = [regentlib.string](filename_rawstring);
   [simple_hdf5_module.write_output( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
 --  [simple_hdf5_module.write_output_manual( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];

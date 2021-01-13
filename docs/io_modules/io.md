@@ -93,9 +93,6 @@ Parameters:
 This function should be called exactly once (so before the main loop) before any file output calls, and after the particle array is initialised
 (so after the `initialisation` call or similar).
 
-NB. At current this is only needed if using the undocumented `write_output_inbuilt` function - however this functionality is expected to become
-required when Issue 69 is resolved (https://github.com/stfc/RegentParticleDSL/issues/69).
-
 ### File Output
 The simple HDF5 module provides a function to output the current simulation state to a HDF5 file:
 ```
@@ -103,7 +100,7 @@ simple_hdf5_module.write_output( filename, mapper, particle_array )
 ```
 
 Parameters:
-- `filename`: A full or relative path to the required HDF5 output file location.
+- `filename`: A full or relative path to the required HDF5 output file location. This must be a regentlib.string variable (discussed shortly).
 - `mapper`: A HDF5-compatible mapper between the HDF5 file and the particle type. This is discussed later in this documentation.
 - `particle_array`: The particle array symbol. Usually this is `variables.particle_array`
 
@@ -114,9 +111,25 @@ and requires surrounding square brackets([...];). For example:
 ```
 task main()
 ...
-[simple_hdf5_module.write_output( "path/to/output.hdf5", mapper, variables.particle_array)];
+[simple_hdf5_module.write_output( filename, mapper, variables.particle_array)];
 ```
-would create a new hdf5 file at `path/to/output` using the mapper defined in the `mapper` variable.
+would create a new hdf5 file at the location stored in `filename` using the mapper defined in the `mapper` variable.
+
+The filename variable must be a `regentlib.string` typed variable. The easiest way to do this (for a fixed string) is to simply declare it:
+```
+var filename : regentlib.string = [regentlib.string]("path/to/file.hdf5")
+```
+
+If you want a filepath that varies (for example with step count), you can instead do:
+```
+var rawfile : rawstring = [rawstring] regentlib.c.malloc(1024)
+format.snprint(rawfile, 1024, "path/to/file_{}.hdf5", step);
+var filename : regentlib.string = [regentlib.string](rawfile)
+[simple_hdf5_module.write_output(filename, ...)];
+regentlib.c.free(rawfile)
+```
+
+
 
 ### Mappers for the simple HDF5 module
 The mapper is a required part of the HDF5 module, which enables the program to understand how to read and write HDF5 files for a given application.
