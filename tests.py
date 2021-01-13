@@ -32,7 +32,6 @@ def run_tests():
     define_tests()
     test_num = 0
     start=datetime.now()
-    copy = subprocess.run(["cp", "examples/interaction_count/defaults.rg", "."])
     for i in range(len(x_counts)):
         for j in range(len(y_counts)):
             for k in range(len(z_counts)):

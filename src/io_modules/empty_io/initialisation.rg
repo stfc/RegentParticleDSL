@@ -5,7 +5,6 @@
 
 import "regent"
 
-require("defaults")
 require("src/particles/init_part")
 
 local c = regentlib.c

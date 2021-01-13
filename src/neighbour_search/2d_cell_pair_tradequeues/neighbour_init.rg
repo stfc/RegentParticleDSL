@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-require("src/neighbour_search/2d_cell_pair_tradequeues/cell")
 require("src/particles/init_part")
 
 local string_to_field_path = require("src/utils/string_to_fieldpath")

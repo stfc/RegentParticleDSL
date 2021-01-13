@@ -5,8 +5,6 @@
 
 import "regent"
 
-require("src/particles/core_part")
-
 fspace part{
   neighbour_part_space : neighbour_part,
   core_part_space : core_part,

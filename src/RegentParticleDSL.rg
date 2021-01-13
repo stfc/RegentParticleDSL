@@ -38,6 +38,7 @@ function setup_part()
     if settings.DIMENSIONALITY == 3 then
       require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
     else
+      print("Importing 2D periodic")
       require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
     end
   else
@@ -60,12 +61,13 @@ if settings.PERIODICITY then
     require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
     neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
   else
+    print("Importing 2D periodic setup DSL")
     require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
     neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
   end
 else
   require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_search")
-  neighbour_init = require("src/neighbour_search/cell_pair_tracequeues_nonperiod/neighbour_init")
+  neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init")
 end
 
 

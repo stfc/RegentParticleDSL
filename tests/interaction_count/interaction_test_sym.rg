@@ -5,15 +5,16 @@
 
 import "regent"
 
-require("defaults")
+require("src/RegentParticleDSL")
+set_dimensionality(3)
+set_periodicity(true)
+setup_part()
 local format = require("std/format")
 --TODO: We want to make this not just specific to a single Issue: #46
 require("src/particles/core_part")
-require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
-require("defaults")
-neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
-require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-require("src/neighbour_search/cell_pair_tradequeues/cell")
+require("examples/interaction_count/interaction_count_part")
+setup_dsl()
+
 require("examples/interaction_count/interaction_count_kernel")
 require("examples/interaction_count/infrastructure/interaction_count_init")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")

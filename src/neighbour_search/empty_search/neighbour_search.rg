@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-
 local compute_privileges = require("src/utils/compute_privilege")
 local format = require("std/format")
 local string_to_field_path = require("src/utils/string_to_fieldpath")

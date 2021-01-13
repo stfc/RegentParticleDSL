@@ -1,6 +1,5 @@
 import "regent"
 
-require("defaults")
 require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
 require("src/particles/init_part")
 

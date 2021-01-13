@@ -4,9 +4,6 @@
 --Author Aidan Chalk, STFC Hartree Centre
 
 import "regent"
-require("src/particles/core_part")
-
-print("ISPH Part imported")
 
 fspace part{
   core_part_space : core_part,
