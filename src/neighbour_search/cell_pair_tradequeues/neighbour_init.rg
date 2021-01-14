@@ -149,7 +149,7 @@ check_command_line()
 function neighbour_init.update_cells(variables)
 
 --__demand(__leaf)
-local task compute_new_dests(particles : region(ispace(int1d), part), config : region(ispace(int1d), config_type)) where
+local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), part), config : region(ispace(int1d), config_type)) where
   reads(particles, config), writes(particles.neighbour_part_space.cell_id, particles.core_part_space) do
   for particle in particles do
     --Ignore non-valid particles
@@ -183,7 +183,7 @@ local task compute_new_dests(particles : region(ispace(int1d), part), config : r
 end
 
 --__demand(__leaf)
-local task tradequeue_push(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell_id : int3d, neighbour : int3d) : bool where
+local __demand(__leaf) task tradequeue_push(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell_id : int3d, neighbour : int3d) : bool where
     reads(parts, tradequeue), writes(tradequeue, parts) do
 
     --Keep track of whether the tradequeues succeed
@@ -238,7 +238,7 @@ end
 end 
 
 --__demand(__leaf)
-local task tradequeue_pull(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell : int3d) : bool where
+local __demand(__leaf) task tradequeue_pull(parts : region(ispace(int1d), part), tradequeue : region(ispace(int1d), part), cell : int3d) : bool where
     reads(parts, tradequeue), writes(tradequeue, parts) do
 
     --Keep track of whether the tradequeues succeed

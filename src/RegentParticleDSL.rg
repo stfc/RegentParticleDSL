@@ -15,6 +15,7 @@ variables = {}
 
 variables.config = regentlib.newsymbol("config")
 variables.particle_array = regentlib.newsymbol("particle_region")
+variables.io_array = regentlib.newsymbol("io_array")
 
 function set_dimensionality(dimensions)
   if(dimensions ~= 2 and dimensions ~= 3 ) then

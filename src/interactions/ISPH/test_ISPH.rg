@@ -15,7 +15,6 @@ set_dimensionality(2)
 set_periodicity(false)
 setup_part()
 local format = require("std/format")
---TODO: We want to make this not just specific to a single Issue: #46
 require("src/interactions/ISPH/ISPH_part")
 setup_dsl()
 isph_module = require("src/io_modules/ISPH/2d_isph_module")

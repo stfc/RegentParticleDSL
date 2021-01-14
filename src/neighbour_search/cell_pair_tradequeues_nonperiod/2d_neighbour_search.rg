@@ -54,7 +54,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 end
 
-local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
+local __demand(__leaf) task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [write2_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
  [coherences] do
@@ -126,7 +126,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) ) 
 end
 
-local task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
+local __demand(__leaf) task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [write2_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
  [coherences] do
@@ -187,7 +187,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 end
-local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+local __demand(__leaf) task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
@@ -250,7 +250,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts2 ) )
 end
 
-local task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+local __demand(__leaf) task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
@@ -316,7 +316,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
-local task self_task([parts1], config : region(ispace(int1d),config_type)) where
+local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d),config_type)) where
   [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
                                  reads(parts1.neighbour_part_space._valid), reads(config),
    [coherences] do
@@ -385,7 +385,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
-local task self_task([parts1], config : region(ispace(int1d),config_type)) where
+local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d),config_type)) where
   [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
                                  reads(parts1.neighbour_part_space._valid), reads(config),
    [coherences] do
@@ -444,7 +444,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
-local task self_task([parts1], config : region(ispace(int1d), config_type)) where
+local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
                                   reads(parts1.neighbour_part_space._valid), reads(config),
    [coherences] do
@@ -507,7 +507,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
-local task self_task([parts1], config : region(ispace(int1d), config_type)) where
+local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(parts1.core_part_space.{pos_x, pos_y, cutoff}), 
                                   reads(parts1.neighbour_part_space._valid), reads(config),
    [coherences] do
@@ -695,7 +695,7 @@ else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
 
-local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
+local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(config), [coherences] do
    for part1 in [parts1].ispace do
      if [parts1][part1].neighbour_part_space._valid then
@@ -734,7 +734,7 @@ if update_neighbours then
 else
   coherences:insert( regentlib.coherence( regentlib.exclusive, parts1 ) )
 end
-local task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
+local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs], reads(config), [coherences] do
    for part1 in [parts1].ispace do
      if [parts1][part1].neighbour_part_space._valid then
@@ -747,7 +747,7 @@ end
 
 function generate_per_part_task_bool_return ( kernel_name )
 
-local task per_part_bool_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) : bool where
+local __demand(__leaf) task per_part_bool_task(parts1 : region(ispace(int1d),part), config : region(ispace(int1d), config_type)) : bool where
    reads(parts1, config), writes(parts1) do
    var return_val : bool = false
    for part1 in parts1.ispace do
