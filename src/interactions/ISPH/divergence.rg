@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-
 --h = 1.3 * dx
 --kernelchoice=7
 --h2 = h*h

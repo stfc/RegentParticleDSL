@@ -5,7 +5,6 @@
 
 import "regent"
 
-require("defaults")
 require("src/neighbour_search/cell_pair_v2/cell")
 compute_privileges = require("src/utils/compute_privilege")
 format = require("std/format")

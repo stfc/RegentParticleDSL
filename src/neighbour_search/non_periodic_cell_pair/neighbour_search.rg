@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-
 task zero_neighbour_part(particle_region : region(ispace(int1d), part)) where writes(particle_region.neighbour_part_space) do
   fill(particle_region.neighbour_part_space.cell_id, int3d({0,0,0}))
 end

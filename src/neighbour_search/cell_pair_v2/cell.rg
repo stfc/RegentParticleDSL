@@ -5,8 +5,6 @@
 
 import "regent"
 
-require("defaults")
-
 local format = require("std/format")
 
 local stdlib = terralib.includec("stdlib.h")

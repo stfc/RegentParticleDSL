@@ -5,9 +5,6 @@
 
 import "regent"
 
---require("src/particles/core_part")
---require("src/neighbour_search/default_neighbour_search")
-require("defaults")
 
 --Definition of the default particle type with no extra data.
 fspace part{

@@ -4,7 +4,6 @@
 --Author Aidan Chalk, STFC Hartree Centre
 
 import "regent"
-require("defaults")
 local string_to_field_path = require("src/utils/string_to_fieldpath")
 local recursive_fields = require("src/utils/recursive_fields")
 

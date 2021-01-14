@@ -10,16 +10,18 @@ h3 = global(double, h2:get()*h:get())
 ad_7 = global(double, 3.0/(359.0*M_PI*h3:get()))
 ad_7h = global(double, ad_7:get() / h:get())
 
-require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_2d_nonperiod")
-require("defaults")
-neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init")
-require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_search")
-require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
+require("src/RegentParticleDSL")
+set_dimensionality(2)
+set_periodicity(false)
+setup_part()
+local format = require("std/format")
+require("src/interactions/ISPH/ISPH_part")
+setup_dsl()
 isph_module = require("src/io_modules/ISPH/2d_isph_module")
 
-variables = {}
-variables.config = regentlib.newsymbol("config")
-variables.particle_array = regentlib.newsymbol("particle_region")
+--variables = {}
+--variables.config = regentlib.newsymbol("config")
+--variables.particle_array = regentlib.newsymbol("particle_region")
 
 require("src/interactions/ISPH/divergence")
 

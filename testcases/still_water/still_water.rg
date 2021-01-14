@@ -1,11 +1,13 @@
 import "regent"
 
-require("src/particles/core_part")
-require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_2d_nonperiod")
-require("defaults")
-neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init")
-require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_search")
-require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
+require("src/RegentParticleDSL")
+set_dimensionality(2)
+set_periodicity(false)
+setup_part()
+local format = require("std/format")
+require("src/interactions/WC_SPH/WCSPH_part")
+setup_dsl()
+
 require("src/interactions/WC_SPH/timestep")
 require("src/interactions/WC_SPH/import_WCSPH")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
@@ -16,10 +18,6 @@ local sqrtf = regentlib.sqrt(float)
 
 local CFL_condition = global(float, 0.1)
 local soundspeed = global(float, 221.47)
-
-variables = {}
-variables.config = regentlib.newsymbol("config")
-variables.particle_array = regentlib.newsymbol("particle_array")
 
 local hdf5_mapper = {}
 hdf5_mapper["smoothing_length"] = "h"

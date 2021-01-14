@@ -5,18 +5,20 @@
 
 import "regent"
 
-require("defaults")
-require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
-neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
-require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-require("src/neighbour_search/cell_pair_tradequeues/cell")
+require("src/RegentParticleDSL")
+set_dimensionality(3)
+set_periodicity(true)
+setup_part()
+local format = require("std/format")
+require("examples/interaction_count/interaction_count_part")
+setup_dsl()
+
 require("examples/interaction_count/interaction_count_kernel")
 require("examples/interaction_count/infrastructure/interaction_count_init")
 simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
 
 local c = regentlib.c
 format = require("std/format")
-variables = require("examples/interaction_count/infrastructure/interaction_count_variables")
 local stdlib = terralib.includec("stdlib.h")
 
 local hdf5_read_mapper = {}

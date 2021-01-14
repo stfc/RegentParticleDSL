@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-
 fspace part{
   a : int32,
   b : uint32,

@@ -5,7 +5,6 @@
 
 import "regent"
 
-require("defaults")
 require("src/particles/init_part")
 
 string_to_field_path = require("src/utils/string_to_fieldpath")

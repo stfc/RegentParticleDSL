@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-
 --This function sorts particles into their relevant cubic cell.
 --Each particle is sorted into a int3d cell value, with the cell with position 0.0, 0.0, 0.0 
 --being {0,0,0}.

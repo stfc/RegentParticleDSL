@@ -5,8 +5,6 @@
 
 import "regent"
 
-require("defaults")
-
 --Symmetric interaction count kernel
 function symmetric_interaction_count_kernel(part1, part2, r2)
 local kernel = rquote

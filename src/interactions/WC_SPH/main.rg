@@ -1,11 +1,13 @@
 import "regent"
 
-require("src/particles/core_part")
-require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
-require("defaults")
-neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
-require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-require("src/neighbour_search/cell_pair_tradequeues/cell")
+require("src/RegentParticleDSL")
+set_dimensionality(3)
+set_periodicity(true)
+setup_part()
+local format = require("std/format")
+require("src/interactions/WC_SPH/WCSPH_part")
+setup_dsl()
+
 require("src/io_modules/empty_io/import_empty_io")
 require("src/interactions/WC_SPH/timestep")
 require("src/interactions/WC_SPH/import_WCSPH")
@@ -17,12 +19,6 @@ local sqrtf = regentlib.sqrt(float)
 
 local CFL_condition = global(float, 0.1)
 local soundspeed = global(float, 221.47)
-
-variables = {}
-variables.config = regentlib.newsymbol("config")
-variables.particle_array = regentlib.newsymbol("particle_array")
-
-variables.io_array = regentlib.newsymbol("io_array")
 
 local hdf5_write_mapper = {}
 hdf5_write_mapper["cutoff"] = "core_part_space.cutoff"
@@ -181,8 +177,7 @@ var step = 0
 var step_count = 0
 
 --__demand(__trace)
---while time < 2.0 do
-while step < 20 do
+while time < 2.0 do
 [invoke(variables.config, {force_kernel, SYMMETRIC_PAIRWISE}, {timestep, PER_PART}, NO_BARRIER)];
 time = time + variables.config[0].space.timestep
 if(time > next_print) then
