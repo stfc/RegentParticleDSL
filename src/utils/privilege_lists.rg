@@ -48,7 +48,7 @@ function privilege_lists.get_privileges_symmetric_pair_task( parts1, parts2, rea
         end
     end
     for _, v in pairs(reduc2) do
-        reduc2_privs:insert( regentlib.privilege(regentlib.reduces(v[2]), parts1, string_to_field_path.get_field_path(v[1])))
+        reduc2_privs:insert( regentlib.privilege(regentlib.reduces(v[2]), parts2, string_to_field_path.get_field_path(v[1])))
         if v[1] == "core_part_space.pos_x" or v[1] == "core_part_space.pos_y" or v[1] == "core_part_space.pos_z" then
             update_neighbours = true
         end
