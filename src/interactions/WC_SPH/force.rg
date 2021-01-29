@@ -192,8 +192,8 @@ local kernel = rquote
   var dvdr : float = dv0*dx0 + dv1*dx1 + dv2*dx2
   var dvdr_rr2 : float = dvdr * inv_r2eta2
   --FIXME : Sort out MAX function
-  part1.max_visc max= max(part1.max_visc, dvdr_rr2)
-  part2.max_visc max= max(part2.max_visc, dvdr_rr2)
+  part1.max_visc max= dvdr_rr2
+  part2.max_visc max= dvdr_rr2
 
   part1.interactions += 1
   part2.interactions += 1
