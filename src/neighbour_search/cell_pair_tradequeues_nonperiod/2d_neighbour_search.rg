@@ -28,7 +28,7 @@ local update_neighbours, read1_privs, read2_privs, write1_privs, write2_privs, r
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
 
 local __demand(__leaf) task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
-  where [read1_privs], [read2_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs]
+  where [read1_privs], [read2_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs],
   reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
  [coherences] do
@@ -484,7 +484,9 @@ local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lis
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
 local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs], [reduc1_privs], reads(config), [coherences] do
+   [read1_privs], [write1_privs], [reduc1_privs], reads(config), [coherences],
+   reads( parts1.neighbour_part_space._valid )
+   do
    for part1 in [parts1].ispace do
      if [parts1][part1].neighbour_part_space._valid then
        [kernel_list:map( function(kernel) 
@@ -506,7 +508,9 @@ local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lis
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
 local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs], [reduc1_privs], reads(config), [coherences] do
+   [read1_privs], [write1_privs], [reduc1_privs], reads(config), [coherences],
+   reads( parts1.neighbour_part_space._valid )
+   do
    for part1 in [parts1].ispace do
      if [parts1][part1].neighbour_part_space._valid then
          [kernel_name(rexpr [parts1][part1] end, rexpr config[0] end)]
