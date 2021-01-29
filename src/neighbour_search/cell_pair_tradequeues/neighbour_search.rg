@@ -84,7 +84,7 @@ local __demand(__leaf) task pairwise_task([parts1], [parts2], config : region(is
   where [read1_privs], [read2_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs], reads(config), 
   reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
- [coherences] do
+  [coherences] do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
    var box_z = config[0].space.dim_z
@@ -381,7 +381,7 @@ local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lis
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
 local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs],[reduc1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
+   [read1_privs], [write1_privs], [reduc1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
                                   reads(parts1.neighbour_part_space._valid), reads(config),
    [coherences] do
    var box_x = config[0].space.dim_x
