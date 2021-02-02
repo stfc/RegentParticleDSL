@@ -106,9 +106,9 @@ local kernel = rquote
   part1.a_hydro_y += (mj*temp_i*multiplier_i*dv1)
   part1.a_hydro_z += (mj*temp_i*multiplier_i*dv2)
 
-  part2.a_hydro_x -= (mi*temp_j*multiplier_j*dv0)
-  part2.a_hydro_y -= (mi*temp_j*multiplier_j*dv1)
-  part2.a_hydro_z -= (mi*temp_j*multiplier_j*dv2)
+  part2.a_hydro_x += -(mi*temp_j*multiplier_j*dv0)
+  part2.a_hydro_y += -(mi*temp_j*multiplier_j*dv1)
+  part2.a_hydro_z += -(mi*temp_j*multiplier_j*dv2)
 
   --Compute turbulence
   var tau_xx : float = part1.tau_xx + part2.tau_xx
@@ -126,9 +126,9 @@ local kernel = rquote
   part1.a_hydro_y += hydro1
   part1.a_hydro_z += hydro2
 
-  part2.a_hydro_x -= hydro0
-  part2.a_hydro_y -= hydro1
-  part2.a_hydro_z -= hydro2
+  part2.a_hydro_x += -hydro0
+  part2.a_hydro_y += -hydro1
+  part2.a_hydro_z += -hydro2
 
   --Compute velocity gradiants
   var mj_over_rhoj : float = mj * rhoj_inv
@@ -168,9 +168,9 @@ local kernel = rquote
 --    format.println("hydro_x interaction {} {} {} {}", mj, acc, wi_dx, dx1)
 --  end
   part1.drho_dt += (mj * dens)
-  part1.a_hydro_x -= (mj * acc * wi_dx * dx0)
-  part1.a_hydro_y -= (mj * acc * wi_dx * dx1)
-  part1.a_hydro_z -= (mj * acc * wi_dx * dx2)
+  part1.a_hydro_x += -(mj * acc * wi_dx * dx0)
+  part1.a_hydro_y += -(mj * acc * wi_dx * dx1)
+  part1.a_hydro_z += -(mj * acc * wi_dx * dx2)
 
 --  if(part2.core_part_space.id == int1d(1116)) then
 --    format.println("hydro_y interaction {} {} {} {}", mi, acc, wj_dx, dx1)
