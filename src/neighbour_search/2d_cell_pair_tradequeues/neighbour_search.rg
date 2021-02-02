@@ -416,34 +416,43 @@ local symmetric = rquote
     var cutoff = config[0].neighbour_config.max_cutoff
     var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
     var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
-    for cell1 in cell_space.colors do
-        cell_self_task(cell_space[cell1], config)
-        --Loops non inclusive, positive only direction.
-        for x = -x_radii, x_radii+1 do
-          for y = -y_radii, y_radii+1 do
-            if(not (x == 0 and y == 0) ) then
-              var cell2_x = cell1.x + x
-              var cell2_y = cell1.y + y
-              if cell2_x < 0 then
-                cell2_x = cell2_x + x_count
-              end
-              if cell2_y < 0 then
-                cell2_y = cell2_y + y_count
-              end
-              var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
-              --Weird if statement to handle max_cutoff >= half the boxsize
-              if( cell_greater_equal(cell1, cell2)
-              or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                      (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
-              or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
-              ) then
-              else
-                --symmetric
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+    --We want to trace all the tasks here
+    __demand(__trace)
+    do
+        --Spawn all the self tasks first, which can be an index launch!
+        __demand(__index_launch)
+        for cell1 in cell_space.colors do
+            cell_self_task(cell_space[cell1], config)
+        end
+        --Now spawn all the pairs
+        for cell1 in cell_space.colors do
+            --Loops non inclusive, positive only direction.
+            for x = -x_radii, x_radii+1 do
+              for y = -y_radii, y_radii+1 do
+                if(not (x == 0 and y == 0) ) then
+                  var cell2_x = cell1.x + x
+                  var cell2_y = cell1.y + y
+                  if cell2_x < 0 then
+                    cell2_x = cell2_x + x_count
+                  end
+                  if cell2_y < 0 then
+                    cell2_y = cell2_y + y_count
+                  end
+                  var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
+                  --Weird if statement to handle max_cutoff >= half the boxsize
+                  if( cell_greater_equal(cell1, cell2)
+                  or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                          (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
+                  or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
+                  ) then
+                  else
+                    --symmetric
+                    cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                  end
+                end
               end
             end
-          end
-        end
+    end
     end
     [update_neighbours_quote];
 end
@@ -477,36 +486,43 @@ local asymmetric = rquote
     var cutoff = config[0].neighbour_config.max_cutoff
     var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
     var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
-    for cell1 in cell_space.colors do
-        cell_self_task(cell_space[cell1], config)
-        --Loops non inclusive, positive only direction.
-        for x = -x_radii, x_radii+1 do
-          for y = -y_radii, y_radii+1 do
-            if(not (x == 0 and y == 0 ) ) then
-              var cell2_x = cell1.x + x
-              var cell2_y = cell1.y + y
-              if cell2_x < 0 then
-                cell2_x = cell2_x + x_count
-              end
-              if cell2_y < 0 then
-                cell2_y = cell2_y + y_count
-              end
-              var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
-              --if statement to handle max_cutoff >= half the boxsize
-                  --Handle radius overlap
-              if( cell_greater_equal(cell1, cell2)
-              or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                      (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
-              or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
-              ) then
-               else
-                --Asymmetric, launch tasks both ways
-                cell_pair_task(cell_space[cell1], cell_space[cell2], config)
-                cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+    __demand(__trace)
+    do
+        --Launch self tasks then pair tasks
+        __demand(__index_launch)
+        for cell1 in cell_space.colors do
+            cell_self_task(cell_space[cell1], config)
+        end
+        for cell1 in cell_space.colors do
+            --Loops non inclusive, positive only direction.
+            for x = -x_radii, x_radii+1 do
+              for y = -y_radii, y_radii+1 do
+                if(not (x == 0 and y == 0 ) ) then
+                  var cell2_x = cell1.x + x
+                  var cell2_y = cell1.y + y
+                  if cell2_x < 0 then
+                    cell2_x = cell2_x + x_count
+                  end
+                  if cell2_y < 0 then
+                    cell2_y = cell2_y + y_count
+                  end
+                  var cell2 : int2d = int2d({ (cell2_x)%x_count, (cell2_y)%y_count })
+                  --if statement to handle max_cutoff >= half the boxsize
+                      --Handle radius overlap
+                  if( cell_greater_equal(cell1, cell2)
+                  or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
+                                                          (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y))
+                  or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y))
+                  ) then
+                   else
+                    --Asymmetric, launch tasks both ways
+                    cell_pair_task(cell_space[cell1], cell_space[cell2], config)
+                    cell_pair_task(cell_space[cell2], cell_space[cell1], config)
+                  end
+                end
               end
             end
-          end
-        end
+         end
     end
     [update_neighbours_quote];
 end
@@ -593,11 +609,12 @@ end
 local runner = rquote
 
     --For each cell, call the task!
+    __demand(__index_launch)
     for cell1 in cell_space.colors do
        per_part_task(cell_space[cell1], config)
     end
    [update_neighbours_quote];
-end
+nd
 
 return runner
 end
