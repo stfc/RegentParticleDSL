@@ -7,6 +7,7 @@ import "regent"
 
 --Other headers
 local compute_privileges = require("src/utils/compute_privilege")
+local kernel_combine = require("src/utils/kernel_combine")
 --By default, asking for PAIRWISE gives a SYMMETRIC_PAIRWISE operation
 SYMMETRIC_PAIRWISE = 1
 PAIRWISE = 1
@@ -22,79 +23,166 @@ SINGLE_KERNEL=1001
 --FIXME: Handle reductions
 local function is_safe_to_combine(kernel, combined_kernels) 
 --For now we ignore this
-  local pre_read1 = terralib.newlist()
-  local pre_write1 = terralib.newlist()
   local hash_r1 = {}
   local hash_w1 = {}
+  local hash_re1 = {}
+  local reducs = {}
+  local safe_to_combine = true
   --Compute the read/write requirements for the already combined kernels
   for _, kernel in pairs(combined_kernels) do
-    local temp_r1, temp_r2, temp_w1, temp_w2 = compute_privileges.two_region_privileges(kernel)
+    local temp_r1, temp_r2, temp_w1, temp_w2, temp_re1, temp_re2 = compute_privileges.two_region_privileges(kernel)
     --Merge the read/writes for this kernel with previous ones, keeping uniqueness
     for _,v in pairs(temp_r1) do
       if( not hash_r1[v]) then
-        pre_read1:insert(v)
         hash_r1[v] = true
       end
     end
     for _,v in pairs(temp_r2) do
       if( not hash_r1[v]) then
-        pre_read1:insert(v)
         hash_r1[v] = true
       end
     end
     for _,v in pairs(temp_w1) do
       if( not hash_w1[v]) then
-        pre_write1:insert(v)
         hash_w1[v] = true
       end
     end
     for _,v in pairs(temp_w2) do
       if( not hash_w1[v]) then
-        pre_write1:insert(v)
         hash_w1[v] = true
       end
     end
+   for _,v in pairs(temp_re1) do
+        if( not hash_re1[v[1]]) then
+            hash_re1[v[1]] = true
+            table.insert(reducs, v)
+        else -- if we hash is true we need to check its the same operator
+            local found = false
+            for _,v1 in pairs(reducs) do
+                if v1[1] == v[1] and v1[2] == v[2] then
+                  found = true
+                elseif v1[1] == v[1] then
+                  --Can't combine as we have a multi reduction operator on a single field already
+                  safe_to_combine = false
+                end
+            end
+            if (not found) then
+                hash_re1[v[1]] = true
+                table.insert(reducs, v)
+            end
+        end
+   end
+   for _,v in pairs(temp_re2) do
+        if( not hash_re1[v[1]]) then
+            hash_re1[v[1]] = true
+            table.insert(reducs, v)
+        else -- if we hash is true we need to check its the same operator
+            local found = false
+            for _,v1 in pairs(reducs) do
+                if v1[1] == v[1] and v1[2] == v[2] then
+                  found = true
+                elseif v1[1] == v[1] then
+                  --Can't combine as we have a multi reduction operator on a single field already
+                  safe_to_combine = false
+                end
+            end
+            if (not found) then
+                hash_re1[v[1]] = true
+                table.insert(reducs, v)
+            end
+        end
+   end
   end
 
 
 
 
 
-local read1, read2, write1, write2 = compute_privileges.two_region_privileges( kernel )
-local safe_to_combine = true
+local read1, read2, write1, write2, reduc1, reduc2 = compute_privileges.two_region_privileges( kernel )
+local can_be_combined = true
 for _, v in pairs(write1) do
   if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" or v == "core_part_space.cutoff" then
     safe_to_combine = false
+    can_be_combined = false
   end
   --Handle WaW or WaR dependencies
-  if (hash_w1[v]) or (hash_r1[v]) then
+  if (hash_w1[v]) or (hash_r1[v]) or (hash_re1[v]) then
     safe_to_combine = false
   end
 end
 for _, v in pairs(write2) do
   if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" or v == "core_part_space.cutoff" then
     safe_to_combine = false
+    can_be_combined = false
   end
   --Handle WaW or WaR dependencies
-  if (hash_w1[v]) or (hash_r1[v]) then
+  if (hash_w1[v]) or (hash_r1[v]) or (hash_re1[v]) then
     safe_to_combine = false
   end
 end
 for _,v in pairs(read1) do
   --Handle RaW dependency
-  if (hash_w1[v]) then
+  if (hash_w1[v]) or (hash_re1[v]) then
     safe_to_combine = false
   end
 end
 for _,v in pairs(read2) do
   --Handle RaW dependency
-  if (hash_w1[v]) then
+  if (hash_w1[v]) or (hash_re1[v]) then
     safe_to_combine = false
   end
 end
---TODO: Ignore this for now
-safe_to_combine = false
-return safe_to_combine
+for _, v in pairs(reduc1) do
+  if v[1] =="core_part_space.pos_x" or v[1] == "core_part_space.pos_y" or v[1] == "core_part_space.pos_z" or v[1] == "core_part_space.cutoff" then
+    safe_to_combine = false
+    can_be_combined = false
+  end
+  --Check if ReaW or ReaR
+  if (hash_w1[v[1]]) or (hash_r1[v[1]]) then
+    safe_to_combine = false
+  end
+  --Check reduction compatability
+  if (hash_re1[v[1]]) then
+      --Check if the operator is the same
+      for _,v1 in pairs(reducs) do
+          if v1[1] == v[1] and v1[2] ~= v[2] then
+            safe_to_combine = false
+          end
+          --We also need to add this into check (since another reduction on the same thing would hurt parallelism if we combine)
+          if v1[1] ~= v[1] then
+            hash_re1[v[1]] = true
+            table.insert(reducs, v)
+          end
+      end
+  end
+end
+for _, v in pairs(reduc2) do
+  if v[1] =="core_part_space.pos_x" or v[1] == "core_part_space.pos_y" or v[1] == "core_part_space.pos_z" or v[1] == "core_part_space.cutoff" then
+    safe_to_combine = false
+    can_be_combined = false
+  end
+  --Check if ReaW or ReaR
+  if (hash_w1[v[1]]) or (hash_r1[v[1]]) then
+    safe_to_combine = false
+  end
+  --Check reduction compatability
+  if (hash_re1[v[1]]) then
+      --Check if the operator is the same
+      for _,v1 in pairs(reducs) do
+          if v1[1] == v[1] and v1[2] ~= v[2] then
+            safe_to_combine = false
+          end
+          --We also need to add this into check (since another reduction on the same thing would hurt parallelism if we combine)
+          if v1[1] ~= v[1] then
+            hash_re1[v[1]] = true
+            table.insert(reducs, v)
+          end
+      end
+  end
+end
+
+
+return safe_to_combine, can_be_combined
 end
 
 local function invoke_multikernel(config, ...)
@@ -126,9 +214,13 @@ for i= 1, select("#",...) do
           table.insert(kernels, func)
         elseif safe_to_combine then
           if #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
-            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_assymetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == PER_PART then
-            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) )
           end
 
           kernels = {}
@@ -136,11 +228,17 @@ for i= 1, select("#",...) do
           last_type = SYMMETRIC_PAIRWISE
         else --GENERATE PREVIOUS AND CURRENT
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
-            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_symmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
-            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_asymmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == PER_PART then
-            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition) )
           end
           if can_be_combined then
             kernels = {}
@@ -158,9 +256,13 @@ for i= 1, select("#",...) do
           table.insert(kernels, func)
         elseif safe_to_combine then
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
-            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_symmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition ) ) 
           elseif #kernels > 0 and last_type == PER_PART then
-            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+--            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) ) 
           end
 
           kernels = {}
@@ -168,11 +270,17 @@ for i= 1, select("#",...) do
           last_type = ASYMMETRIC_PAIRWISE
         else --GENERATE PREVIOUS AND CURRENT
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
-            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_symmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
-            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == PER_PART then
-            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( run_per_particle_task_multikernel( combined_kernel, config, neighbour_init.cell_partition ) )
           end
 
           if can_be_combined then
@@ -191,9 +299,13 @@ for i= 1, select("#",...) do
           table.insert(kernels, func)
         elseif safe_to_combine then
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
-            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+          --  quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_symmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
-            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           end
 
           kernels = {}
@@ -201,11 +313,17 @@ for i= 1, select("#",...) do
           last_type = PER_PART
         else --GENERATE PREVIOUS AND CURRENT
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
-            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_symmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
-            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == PER_PART then
-            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            local combined_kernel = kernel_combine.combine_kernels(kernels)
+            --quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+            quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition) )
           end
           if can_be_combined then
             kernels = {}
@@ -225,11 +343,17 @@ for i= 1, select("#",...) do
   end
   --Generate the final quote
   if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
-    quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+    local combined_kernel = kernel_combine.combine_kernels(kernels)
+    --quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+    quote_list:insert( create_symmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
   elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
-    quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+    local combined_kernel = kernel_combine.combine_kernels(kernels)
+    --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
+    quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
   elseif #kernels > 0 and last_type == PER_PART then
-    quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+    local combined_kernel = kernel_combine.combine_kernels(kernels)
+    --quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
+    quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) )
   end
   local barrier_quote = rquote
   end
