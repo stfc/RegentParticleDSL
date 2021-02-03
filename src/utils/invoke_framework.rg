@@ -215,11 +215,9 @@ for i= 1, select("#",...) do
         elseif safe_to_combine then
           if #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_assymetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == PER_PART then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) )
           end
 
@@ -229,15 +227,12 @@ for i= 1, select("#",...) do
         else --GENERATE PREVIOUS AND CURRENT
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_symmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_asymmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == PER_PART then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition) )
           end
           if can_be_combined then
@@ -257,11 +252,9 @@ for i= 1, select("#",...) do
         elseif safe_to_combine then
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_symmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition ) ) 
           elseif #kernels > 0 and last_type == PER_PART then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
---            quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) ) 
           end
 
@@ -271,16 +264,13 @@ for i= 1, select("#",...) do
         else --GENERATE PREVIOUS AND CURRENT
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_symmetric_pairwise_runner( combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == PER_PART then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
-            quote_list:insert( run_per_particle_task_multikernel( combined_kernel, config, neighbour_init.cell_partition ) )
+            quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) )
           end
 
           if can_be_combined then
@@ -300,11 +290,9 @@ for i= 1, select("#",...) do
         elseif safe_to_combine then
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-          --  quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_symmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           end
 
@@ -314,15 +302,12 @@ for i= 1, select("#",...) do
         else --GENERATE PREVIOUS AND CURRENT
           if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_symmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition) )
           elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
           elseif #kernels > 0 and last_type == PER_PART then
             local combined_kernel = kernel_combine.combine_kernels(kernels)
-            --quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
             quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition) )
           end
           if can_be_combined then
@@ -344,15 +329,12 @@ for i= 1, select("#",...) do
   --Generate the final quote
   if #kernels > 0 and last_type == SYMMETRIC_PAIRWISE then
     local combined_kernel = kernel_combine.combine_kernels(kernels)
-    --quote_list:insert( create_symmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
     quote_list:insert( create_symmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
   elseif #kernels > 0 and last_type == ASYMMETRIC_PAIRWISE then
     local combined_kernel = kernel_combine.combine_kernels(kernels)
-    --quote_list:insert( create_asymmetric_pairwise_runner_multikernel(config, neighbour_init.cell_partition, unpack(kernels) ) )
     quote_list:insert( create_asymmetric_pairwise_runner(combined_kernel, config, neighbour_init.cell_partition ) )
   elseif #kernels > 0 and last_type == PER_PART then
     local combined_kernel = kernel_combine.combine_kernels(kernels)
-    --quote_list:insert( run_per_particle_task_multikernel( config, neighbour_init.cell_partition, unpack(kernels) ) )
     quote_list:insert( run_per_particle_task( combined_kernel, config, neighbour_init.cell_partition ) )
   end
   local barrier_quote = rquote
