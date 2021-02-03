@@ -139,19 +139,19 @@ task particles_to_cells(particles : region(ispace(int1d), part),
     if x_cell >= config[0].neighbour_config.x_cells then
        x_cell = config[0].neighbour_config.x_cells-1
     end
-    if x_cell < 0 then
+    if x_cell < int1d(0) then
        x_cell = 0
     end
     if y_cell >= config[0].neighbour_config.y_cells then
        y_cell = config[0].neighbour_config.y_cells-1
     end
-    if y_cell < 0 then
+    if y_cell < int1d(0) then
        y_cell = 0
     end
     if z_cell >= config[0].neighbour_config.z_cells then
        z_cell = config[0].neighbour_config.z_cells-1
     end
-    if z_cell < 0 then
+    if z_cell < int1d(0) then
        z_cell = 0
     end
 --    format.println("{} {} {}", x_cell, y_cell, z_cell)
