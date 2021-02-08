@@ -160,7 +160,7 @@ function TerraList:flatten(res)
     return res
 end
 
---TODO: New tradequeue push implementation
+--New tradequeue push implementation
 local __demand(__leaf) task tradequeue_push( cell_id : int3d, 
                                              particles : region(ispace(int1d), part),
                                              config : region(ispace(int1d), config_type),
@@ -261,13 +261,13 @@ do
 end
 
 
---TODO: New tradequeue pull implementation
+--: New tradequeue pull implementation
 local __demand(__leaf) task tradequeue_pull( cell_id : int3d,
                                              particles : region(ispace(int1d), part),
                                              config : region(ispace(int1d), config_type),
                                              [tradequeues] ) where
       reads(config), reads writes(particles),
-      --We write to all the fields in each of the tradeQueue partitions
+      --We read to all the fields in each of the tradeQueue partitions
       [tradequeues:map(function(queue)
         return part_structure:map(function (element)
             return regentlib.privilege(regentlib.reads, queue, element.field)
@@ -328,6 +328,8 @@ do
                                  particles[part].[element.field] = queue[pos].[element.field]
                                end
                              end)];                            
+                            particles[part].neighbour_part_space._transfer_dir = 0
+                            particles[part].neighbour_part_space._transfer_pos = 0
                         end
                     end
                 end            
@@ -353,7 +355,7 @@ local __demand(__inline) task partition_tradequeue_by_cells( tradequeue : region
       --Ensure we wrap the cell indices (we add # cells to each dimension to handle negative values)
       var color : int3d = (cell - offset + {count_xcells, count_ycells, count_zcells}) % {count_xcells, count_ycells, count_zcells}
       --Indices for this color are number of elements per cell (count/n_cells) * (3D to 1D conversion)
-      var oneD_color : int1d = (cell.x*count_ycells*count_zcells) + (cell.y*count_zcells) + cell.z;
+      var oneD_color : int1d = (color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z;
       var rect = rect1d{
         lo = (count/n_cells)*(oneD_color),
         hi = (count/n_cells)*(oneD_color+1) - 1
@@ -420,7 +422,6 @@ end
 
 --This function updates the cells to reflect any motion that occurs in the system. We repartition only as required, but never change
 --the number of cells at this point due to causing issues with various assumptions in the system at the moment.
---TODO: New update_cells function
 function neighbour_init.update_cells(variables)
 
 local update_cells_quote = rquote
@@ -455,7 +456,7 @@ end
 --Initialise the data structures needed for the TradeQueue implementation of cell lists
 --The assumption is that the variables.particle_array has been initialised using IO module
 --or similar and is ready to start the simulation
---TODO: Ideally after this function is called variables.particle_array
+--Ideally after this function is called variables.particle_array
 function neighbour_init.initialise(variables)
 
 local initialisation_quote = rquote                                                                                                                                          --Initialise the particle to cell mapping as for normal cell lists. We need to know how much to pad the array by initially
@@ -496,7 +497,7 @@ local initialisation_quote = rquote                                             
   --We clear out the originally allocated memory because we don't really want that to exist.
   __delete([variables.particle_array]);
 
---TODO: Init Tradequeues
+--Init Tradequeues
   --The wrapper here is an inline way to create this for all 26 directions inside Regent code, since we're using
   -- symbols to generate this. We could do this with neighbour_init.TradeQueues:map(...) but we may in the future
   --vary tradequeue size based on direction.
