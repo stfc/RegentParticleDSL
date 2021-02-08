@@ -9,6 +9,8 @@ require("src/neighbour_search/cell_pair_tradequeues_nonperiod/cell")
 local compute_privileges = require("src/utils/compute_privilege")
 local format = require("std/format")
 local string_to_field_path = require("src/utils/string_to_fieldpath")
+local coherence_compute = require("src/utils/coherence_computing")
+local privilege_lists = require("src/utils/privilege_lists")
 local c = regentlib.c
 
 local abs = regentlib.fabs(double)
