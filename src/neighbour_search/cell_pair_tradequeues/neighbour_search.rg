@@ -623,7 +623,7 @@ local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lists.get_privileges_self_task( parts1, read1, {}, write1, {}, reduc1, {} )
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
+local __demand(__leaf) task per_part_task([parts1], config : region(ispace(int1d), config_type)) where
    [read1_privs], [write1_privs],[reduc1_privs], reads(config), [coherences], 
    reads( parts1.neighbour_part_space._valid )
    do
@@ -633,7 +633,7 @@ local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d
      end
    end
 end
-return pairwise_task, update_neighbours
+return per_part_task, update_neighbours
 end
 
 function generate_per_part_task_bool_return ( kernel_name )
