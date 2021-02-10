@@ -614,7 +614,7 @@ local runner = rquote
        per_part_task(cell_space[cell1], config)
     end
    [update_neighbours_quote];
-nd
+end
 
 return runner
 end
