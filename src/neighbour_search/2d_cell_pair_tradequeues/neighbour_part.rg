@@ -16,6 +16,8 @@ fspace neighbour_part{
 
  cell_id : int2d,
  _valid : bool,
+ _transfer_dir: int,
+ _transfer_pos: int1d,
 --FIXME: Think about adding the following fields to enable optimisations
 -- old_pos_x : double,
 -- old_pos_y : double,

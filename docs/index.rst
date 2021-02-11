@@ -20,6 +20,7 @@ Regent programming language (http://regent-lang.org/)
    intro/templates
    io_modules/io
    neighbour_search/cell_pair
+   effective_use/efficient_kernels
    developers_guide/utils
    developers_guide/patterns
 

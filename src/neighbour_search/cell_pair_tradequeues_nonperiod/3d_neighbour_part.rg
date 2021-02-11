@@ -15,5 +15,6 @@ fspace neighbour_part{
 
  cell_id : int3d,
  _valid : bool,
-
+ _transfer_dir: int,
+ _transfer_pos: int1d,
 }

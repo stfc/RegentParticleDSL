@@ -97,11 +97,12 @@ task main()
         next_print = next_print + 0.001
         step = step + 1
     
-        var filename = [rawstring](regentlib.c.malloc(1024))
-        format.snprint(filename, 1024, "testcases/still_water/outputs/file{}.hdf5", step);
+        var rawfilename = [rawstring](regentlib.c.malloc(1024))
+        format.snprint(rawfilename, 1024, "testcases/still_water/outputs/file{}.hdf5", step);
+        var filename = [regentlib.string](rawfilename);
     --  [simple_hdf5_module.write_output_inbuilt( filename, hdf5_write_mapper, neighbour_init.padded_particle_array)];
         [simple_hdf5_module.write_output( filename, hdf5_mapper, neighbour_init.padded_particle_array)];
-        regentlib.c.free(filename)
+        regentlib.c.free(rawfilename)
     end
     
     compute_timestep(neighbour_init.padded_particle_array, variables.config)

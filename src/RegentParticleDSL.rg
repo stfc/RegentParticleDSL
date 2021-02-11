@@ -1,6 +1,7 @@
 import "regent"
 
 require("src/particles/core_part")
+require("src/utils/invoke_framework")
 
 --Settings table
 local settings = {}

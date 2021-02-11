@@ -1,7 +1,5 @@
 import "regent"
 
-require("defaults")
-
 local sqrtf = regentlib.sqrt(float)
 
 
@@ -104,13 +102,13 @@ local kernel = rquote
   var multiplier_i : float = dx0*dx0*wi_dx + dx1*dx1*wi_dx + dx2*dx2*wi_dx
   var multiplier_j : float = dx0*dx0*wj_dx + dx1*dx1*wj_dx + dx2*dx2*wj_dx
 
-  part1.a_hydro_x = part1.a_hydro_x + (mj*temp_i*multiplier_i*dv0)
-  part1.a_hydro_y = part1.a_hydro_y + (mj*temp_i*multiplier_i*dv1)
-  part1.a_hydro_z = part1.a_hydro_z + (mj*temp_i*multiplier_i*dv2)
+  part1.a_hydro_x += (mj*temp_i*multiplier_i*dv0)
+  part1.a_hydro_y += (mj*temp_i*multiplier_i*dv1)
+  part1.a_hydro_z += (mj*temp_i*multiplier_i*dv2)
 
-  part2.a_hydro_x = part1.a_hydro_x - (mi*temp_j*multiplier_j*dv0)
-  part2.a_hydro_y = part1.a_hydro_y - (mi*temp_j*multiplier_j*dv1)
-  part2.a_hydro_z = part1.a_hydro_z - (mi*temp_j*multiplier_j*dv2)
+  part2.a_hydro_x += -(mi*temp_j*multiplier_j*dv0)
+  part2.a_hydro_y += -(mi*temp_j*multiplier_j*dv1)
+  part2.a_hydro_z += -(mi*temp_j*multiplier_j*dv2)
 
   --Compute turbulence
   var tau_xx : float = part1.tau_xx + part2.tau_xx
@@ -124,13 +122,13 @@ local kernel = rquote
   var hydro1 : float =  mi_mj * (tau_xy*dx0 + tau_yy * dx1 + tau_yz * dx2);
   var hydro2 : float =  mi_mj * (tau_xz*dx0 + tau_yz * dx1 + tau_zz * dx2);
   
-  part1.a_hydro_x = part1.a_hydro_x + hydro0
-  part1.a_hydro_y = part1.a_hydro_y + hydro1
-  part1.a_hydro_z = part1.a_hydro_z + hydro2
+  part1.a_hydro_x += hydro0
+  part1.a_hydro_y += hydro1
+  part1.a_hydro_z += hydro2
 
-  part2.a_hydro_x = part1.a_hydro_x - hydro0
-  part2.a_hydro_y = part1.a_hydro_y - hydro1
-  part2.a_hydro_z = part1.a_hydro_z - hydro2
+  part2.a_hydro_x += -hydro0
+  part2.a_hydro_y += -hydro1
+  part2.a_hydro_z += -hydro2
 
   --Compute velocity gradiants
   var mj_over_rhoj : float = mj * rhoj_inv
@@ -142,25 +140,25 @@ local kernel = rquote
   var dv_over_rho_y_j : float = dv1 * mi_over_rhoi
   var dv_over_rho_z_j : float = dv2 * mi_over_rhoi
 
-  part1.grad_v_xx = part1.grad_v_xx + (dv_over_rho_x_i * dx0)
-  part1.grad_v_xy = part1.grad_v_xy + (dv_over_rho_x_i * dx1)
-  part1.grad_v_xz = part1.grad_v_xz + (dv_over_rho_x_i * dx2)
-  part1.grad_v_xy = part1.grad_v_xy + (dv_over_rho_y_i * dx0)
-  part1.grad_v_yy = part1.grad_v_yy + (dv_over_rho_y_i * dx1)
-  part1.grad_v_yz = part1.grad_v_yz + (dv_over_rho_y_i * dx2)
-  part1.grad_v_xz = part1.grad_v_xz + (dv_over_rho_z_i * dx0)
-  part1.grad_v_yz = part1.grad_v_yz + (dv_over_rho_z_i * dx1)
-  part1.grad_v_zz = part1.grad_v_zz + (dv_over_rho_z_i * dx2)
+  part1.grad_v_xx += (dv_over_rho_x_i * dx0)
+  part1.grad_v_xy += (dv_over_rho_x_i * dx1)
+  part1.grad_v_xz += (dv_over_rho_x_i * dx2)
+  part1.grad_v_xy += (dv_over_rho_y_i * dx0)
+  part1.grad_v_yy += (dv_over_rho_y_i * dx1)
+  part1.grad_v_yz += (dv_over_rho_y_i * dx2)
+  part1.grad_v_xz += (dv_over_rho_z_i * dx0)
+  part1.grad_v_yz += (dv_over_rho_z_i * dx1)
+  part1.grad_v_zz += (dv_over_rho_z_i * dx2)
 
-  part2.grad_v_xx = part2.grad_v_xx + (dv_over_rho_x_j * dx0)
-  part2.grad_v_xy = part2.grad_v_xy + (dv_over_rho_x_j * dx1)
-  part2.grad_v_xz = part2.grad_v_xz + (dv_over_rho_x_j * dx2)
-  part2.grad_v_xy = part2.grad_v_xy + (dv_over_rho_y_j * dx0)
-  part2.grad_v_yy = part2.grad_v_yy + (dv_over_rho_y_j * dx1)
-  part2.grad_v_yz = part2.grad_v_yz + (dv_over_rho_y_j * dx2)
-  part2.grad_v_xz = part2.grad_v_xz + (dv_over_rho_z_j * dx0)
-  part2.grad_v_yz = part2.grad_v_yz + (dv_over_rho_z_j * dx1)
-  part2.grad_v_zz = part2.grad_v_zz + (dv_over_rho_z_j * dx2)
+  part2.grad_v_xx += (dv_over_rho_x_j * dx0)
+  part2.grad_v_xy += (dv_over_rho_x_j * dx1)
+  part2.grad_v_xz += (dv_over_rho_x_j * dx2)
+  part2.grad_v_xy += (dv_over_rho_y_j * dx0)
+  part2.grad_v_yy += (dv_over_rho_y_j * dx1)
+  part2.grad_v_yz += (dv_over_rho_y_j * dx2)
+  part2.grad_v_xz += (dv_over_rho_z_j * dx0)
+  part2.grad_v_yz += (dv_over_rho_z_j * dx1)
+  part2.grad_v_zz += (dv_over_rho_z_j * dx2)
 
   var acc : float = (part1.pressure + part2.pressure) * ((rhoi_inv * rhoj_inv) * r_inv)
 
@@ -169,10 +167,10 @@ local kernel = rquote
 --  if(part1.core_part_space.id == int1d(1116)) then
 --    format.println("hydro_x interaction {} {} {} {}", mj, acc, wi_dx, dx1)
 --  end
-  part1.drho_dt = part1.drho_dt + (mj * dens)
-  part1.a_hydro_x = part1.a_hydro_x - (mj * acc * wi_dx * dx0)
-  part1.a_hydro_y = part1.a_hydro_y - (mj * acc * wi_dx * dx1)
-  part1.a_hydro_z = part1.a_hydro_z - (mj * acc * wi_dx * dx2)
+  part1.drho_dt += (mj * dens)
+  part1.a_hydro_x += -(mj * acc * wi_dx * dx0)
+  part1.a_hydro_y += -(mj * acc * wi_dx * dx1)
+  part1.a_hydro_z += -(mj * acc * wi_dx * dx2)
 
 --  if(part2.core_part_space.id == int1d(1116)) then
 --    format.println("hydro_y interaction {} {} {} {}", mi, acc, wj_dx, dx1)
@@ -185,20 +183,20 @@ local kernel = rquote
   --  end
   --  format.println("other part is real? {}", x)
   --end
-  part2.drho_dt = part2.drho_dt + (mi*dens)
-  part2.a_hydro_x = part2.a_hydro_x + (mi * acc * wj_dx * dx0)
-  part2.a_hydro_y = part2.a_hydro_y + (mi * acc * wj_dx * dx1)
-  part2.a_hydro_z = part2.a_hydro_z + (mi * acc * wj_dx * dx2)
+  part2.drho_dt += (mi*dens)
+  part2.a_hydro_x += (mi * acc * wj_dx * dx0)
+  part2.a_hydro_y += (mi * acc * wj_dx * dx1)
+  part2.a_hydro_z += (mi * acc * wj_dx * dx2)
 
   --Store viscous effect towards CFL condition
   var dvdr : float = dv0*dx0 + dv1*dx1 + dv2*dx2
   var dvdr_rr2 : float = dvdr * inv_r2eta2
   --FIXME : Sort out MAX function
-  part1.max_visc = regentlib.fmax(part1.max_visc, dvdr_rr2)
-  part2.max_visc = regentlib.fmax(part2.max_visc, dvdr_rr2)
+  part1.max_visc max= dvdr_rr2
+  part2.max_visc max= dvdr_rr2
 
-  part1.interactions = part1.interactions + 1
-  part2.interactions = part2.interactions + 1
+  part1.interactions += 1
+  part2.interactions += 1
   --FIXME: IMPLEMENT THESE
   [boundary_fluid_interaction( part1, part2, r, r2, dx0, dx1, dx2)];
   [compute_density_diffusive_term(part1, part2, r2, r, wi_dx, wj_dx, dx)];
