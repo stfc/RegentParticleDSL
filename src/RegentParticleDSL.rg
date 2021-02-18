@@ -1,12 +1,12 @@
 import "regent"
 
 require("src/particles/core_part")
-require("src/utils/invoke_framework")
 
 --Settings table
-local settings = {}
-settings.DIMENSIONALITY = 3
-settings.PERIODICITY = true
+DSL_settings = {}
+DSL_settings.DIMENSIONALITY = 3
+DSL_settings.PERIODICITY = true
+DSL_settings.TIMING = false
 
 --Set empty neighbour init global variable
 neighbour_init = {}
@@ -23,7 +23,7 @@ function set_dimensionality(dimensions)
     print("Dimensionality other than 2D and 3D not currently supported")
     os.exit(1)
   end
-  settings.DIMENSIONALITY = dimensions
+  DSL_settings.DIMENSIONALITY = dimensions
 end
 
 function set_periodicity(periodicity)
@@ -31,20 +31,23 @@ function set_periodicity(periodicity)
     print("Periodicity input must be a boolean")
     os.exit(1)
   end
-  settings.PERIODICITY = periodicity
+  DSL_settings.PERIODICITY = periodicity
+end
+
+function enable_timing()
+  DSL_settings.TIMING = true
 end
 
 function setup_part()
 --Periodic imports
-  if settings.PERIODICITY then
-    if settings.DIMENSIONALITY == 3 then
+  if DSL_settings.PERIODICITY then
+    if DSL_settings.DIMENSIONALITY == 3 then
       require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
     else
-      print("Importing 2D periodic")
       require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
     end
   else
-    if settings.DIMENSIONALITY == 3 then
+    if DSL_settings.DIMENSIONALITY == 3 then
       require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_3d_nonperiod")
     else
       require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_2d_nonperiod")
@@ -56,10 +59,11 @@ end
 
 function setup_dsl()
 require("src/config/space")
+require("src/config/timing")
 require("src/config/default_config")
 --Periodic imports
-if settings.PERIODICITY then
-  if settings.DIMENSIONALITY == 3 then
+if DSL_settings.PERIODICITY then
+  if DSL_settings.DIMENSIONALITY == 3 then
     require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
     neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
   else
@@ -75,5 +79,6 @@ end
 
 
 
+  require("src/utils/invoke_framework")
 
 end

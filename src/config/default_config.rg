@@ -8,7 +8,8 @@ import "regent"
 
 fspace config_type{
   space : space_config_type,
-  neighbour_config : neighbour_config_type
+  neighbour_config : neighbour_config_type,
+  timing_config : timing_config_type
   
 }
 

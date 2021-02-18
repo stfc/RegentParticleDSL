@@ -447,9 +447,27 @@ if update_neighbours then
   temp_variables.config = config
   update_neighbours_quote = neighbour_init.update_cells(temp_variables)
 end
+local start_timing_quote = rquote
+
+end
+local end_timing_quote = rquote
+
+end
+if DSL_settings.TIMING then
+  local starttime = regentlib.newsymbol()
+  local endtime = regentlib.newsymbol()
+  start_timing_quote = rquote
+    var [starttime] = c.legion_get_current_time_in_micros()
+  end
+  end_timing_quote = rquote
+    var [endtime] = c.legion_get_current_time_in_micros();
+    [variables.config][0].timing_config.user_task_time = [variables.config][0].timing_config.user_task_time + ([endtime] - [starttime])
+  end
+end
 
 local symmetric = rquote
     --Do all cell2s in the positive direction
+    [start_timing_quote];
     var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
     var x_count = config[0].neighbour_config.x_cells
     var y_count = config[0].neighbour_config.y_cells
@@ -503,6 +521,7 @@ local symmetric = rquote
             end
         end
     end
+    [end_timing_quote];
     [update_neighbours_quote];
 end
 return symmetric
@@ -524,8 +543,26 @@ if update_neighbours then
   update_neighbours_quote = neighbour_init.update_cells(temp_variables)
 end
 
+local start_timing_quote = rquote
+
+end
+local end_timing_quote = rquote
+
+end
+if DSL_settings.TIMING then
+  local starttime = regentlib.newsymbol()
+  local endtime = regentlib.newsymbol()
+  start_timing_quote = rquote
+    var [starttime] = c.legion_get_current_time_in_micros()
+  end
+  end_timing_quote = rquote
+    var [endtime] = c.legion_get_current_time_in_micros();
+    [variables.config][0].timing_config.user_task_time = [variables.config][0].timing_config.user_task_time + ([endtime] - [starttime])
+  end
+end
 
 local asymmetric = rquote
+    [start_timing_quote];
     --Do all cell2s in the positive direction
     var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
     var x_count = config[0].neighbour_config.x_cells
@@ -582,6 +619,7 @@ local asymmetric = rquote
             end
         end
     end
+    [end_timing_quote];
     [update_neighbours_quote];
 end
 return asymmetric
@@ -664,13 +702,34 @@ if update_neighbours then
   temp_variables.config = config
   update_neighbours_quote = neighbour_init.update_cells(temp_variables)
 end
+
+local start_timing_quote = rquote
+
+end
+local end_timing_quote = rquote
+
+end
+if DSL_settings.TIMING then
+  local starttime = regentlib.newsymbol()
+  local endtime = regentlib.newsymbol()
+  start_timing_quote = rquote
+    var [starttime] = c.legion_get_current_time_in_micros()
+  end
+  end_timing_quote = rquote
+    c.legion_runtime_issue_execution_fence(__runtime(), __context())
+    var [endtime] = c.legion_get_current_time_in_micros();
+    [variables.config][0].timing_config.user_task_time = [variables.config][0].timing_config.user_task_time + ([endtime] - [starttime])
+  end
+end
 local runner = rquote
 
+    [start_timing_quote];
     --For each cell, call the task!
     __demand(__index_launch)
     for cell1 in cell_space.colors do
        per_part_task(cell_space[cell1], config)
     end
+   [end_timing_quote];
    [update_neighbours_quote];
 end
 

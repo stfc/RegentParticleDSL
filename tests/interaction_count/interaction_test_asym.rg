@@ -48,58 +48,75 @@ hdf5_write_mapper["ids"] = "core_part_space.id"
 local c = regentlib.c
 local cstring = terralib.includec("string.h")
 
-local input_file = "tests/interaction_count/test.hdf5"
-local solution_file = "tests/interaction_count/test2.hdf5"
-local x_cell = 3.0
-local y_cell = 3.0
-local z_cell = 3.0
+--local input_file = "tests/interaction_count/test.hdf5"
+--local solution_file = "tests/interaction_count/test2.hdf5"
+--local x_cell = 3.0
+--local y_cell = 3.0
+--local z_cell = 3.0
+--
+--
+--local function getarg(key)
+--  for i=0, #arg-1 do
+--    if(arg[i] == key) then
+--      return arg[i+1]
+--    end
+--  end
+--  print("FAILURE: Failed to find input argument")
+--  os.exit(1)
+--  return nil
+--end
+--
+--local function get_optional_arg(key)
+--  for i=0, #arg-1 do
+--    if(arg[i] == key) then
+--      return arg[i+1]
+--    end
+--  end
+--  return nil
+--end
+--
+--local function read_args()
+--  local read_val = get_optional_arg("-input")
+--  if(read_val ~= nil) then
+--    input_file = read_val
+--  end
+--  read_val = get_optional_arg("-solution")
+--  if(read_val ~= nil) then
+--    solution_file = read_val
+--  end
+--  read_val = get_optional_arg("-x_cell")
+--  if(read_val ~= nil) then
+--    x_cell = tonumber(read_val)
+--  end
+--  read_val = get_optional_arg("-y_cell")
+--  if(read_val ~= nil) then
+--    y_cell = tonumber(read_val)
+--  end
+--  read_val = get_optional_arg("-z_cell")
+--  if(read_val ~= nil) then
+--    z_cell = tonumber(read_val)
+--  end
+--end
+--read_args()
 
-
-local function getarg(key)
-  for i=0, #arg-1 do
-    if(arg[i] == key) then
-      return arg[i+1]
+local cstring = terralib.includec("string.h")
+local cstdio = terralib.includec("stdio.h")
+local terra get_optional_arg( arg_name : rawstring )
+  var args = c.legion_runtime_get_input_args()
+  var i = 1
+  while i < args.argc do
+--    cstdio.printf("%s\n", args.argv[i])
+    if cstring.strcmp(args.argv[i], arg_name) == 0 then
+      if i + 1 < args.argc then
+        return args.argv[i+1]
+      else
+        return nil
+      end
     end
+    i = i + 1
   end
-  print("FAILURE: Failed to find input argument")
-  os.exit(1)
   return nil
 end
-
-local function get_optional_arg(key)
-  for i=0, #arg-1 do
-    if(arg[i] == key) then
-      return arg[i+1]
-    end
-  end
-  return nil
-end
-
-local function read_args()
-  local read_val = get_optional_arg("-input")
-  if(read_val ~= nil) then
-    input_file = read_val
-  end
-  read_val = get_optional_arg("-solution")
-  if(read_val ~= nil) then
-    solution_file = read_val
-  end
-  read_val = get_optional_arg("-x_cell")
-  if(read_val ~= nil) then
-    x_cell = tonumber(read_val)
-  end
-  read_val = get_optional_arg("-y_cell")
-  if(read_val ~= nil) then
-    y_cell = tonumber(read_val)
-  end
-  read_val = get_optional_arg("-z_cell")
-  if(read_val ~= nil) then
-    z_cell = tonumber(read_val)
-  end
-end
-read_args()
-
-
 
 --Aymmetric interaction count kernel
 --function asymmetric_interaction_count_kernel(part1, part2, r2)
@@ -133,7 +150,18 @@ reads(computed.interactions, solution.interactions, computed.core_part_space.id,
   format.println("All interactions computed correctly!")
 end
 
+local input_file = regentlib.newsymbol("input_file")
+local solution_file = regentlib.newsymbol("solution_file")
+local x_cell = regentlib.newsymbol("x_cell")
+local y_cell = regentlib.newsymbol("y_cell")
+local z_cell = regentlib.newsymbol("z_cell")
+
 task main_task()
+  var [input_file] = [regentlib.string](get_optional_arg("-input"));
+  var [solution_file] = [regentlib.string](get_optional_arg("-solution"));
+  var [x_cell] = c.atof(get_optional_arg("-x_cell"));
+  var [y_cell] = c.atof(get_optional_arg("-y_cell"));
+  var [z_cell] = c.atof(get_optional_arg("-z_cell"));
   [simple_hdf5_module.initialisation( input_file, hdf5_read_mapper, variables, x_cell, y_cell, z_cell)];
 --
   [neighbour_init.initialise(variables)];
@@ -145,4 +173,13 @@ task main_task()
   comparison(neighbour_init.padded_particle_array, variables.solution_array);
 end
 
-regentlib.start(main_task)
+terra set_mappers()
+
+end
+
+  local root_dir = "./tests/interaction_count/"
+  local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
+  local link_flags = terralib.newlist({"-L" .. out_dir, "-lhdf5"})
+  local exe = os.getenv('OBJNAME') or "tests/interaction_count/interaction_test_asym.exe"
+  regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
+--regentlib.start(main_task)

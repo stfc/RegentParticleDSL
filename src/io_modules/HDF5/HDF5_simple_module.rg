@@ -78,7 +78,7 @@ end
 --all the fields expected in the file are present.
 local function get_particle_count_task(filename, init_mapping)
 
-local task check_file_struc() 
+local task check_file_struc(filename : regentlib.string) 
   --Open the file
   wrap.init_wrapper()
 
@@ -115,7 +115,7 @@ end
 
 local zero_part_task = generate_zero_part_func()
 --Particle initialisation task - clears out the core_part and neighbour_part values
-local task particle_initialisation(particle_region : region(ispace(int1d), part), filename : rawstring) where writes(particle_region) do
+local task particle_initialisation(particle_region : region(ispace(int1d), part), filename : regentlib.string) where writes(particle_region) do
 
 zero_part_task(particle_region)
 end
@@ -183,7 +183,7 @@ function simple_hdf5_module.read_file(filename, mapper, particle_array)
 end
 
   local test = rquote
-   var part_count = get_part_count()
+   var part_count = get_part_count(filename)
    format.println("Reading {} particles from the HDF5 file", part_count)
    var particle_space = ispace(int1d, part_count)
    var [particle_array] = region(particle_space, part)
@@ -267,7 +267,7 @@ end
   local test = rquote
    regentlib.assert(space_x > 0.0, "X dimension of the space hasn't been set")
    regentlib.assert(space_y > 0.0, "Y dimension of the space hasn't been set")
-   var part_count = get_part_count()
+   var part_count = get_part_count(filename)
    format.println("Reading {} particles from the HDF5 file", part_count)
    var particle_space = ispace(int1d, part_count)
    var [variables.particle_array] = region(particle_space, part)

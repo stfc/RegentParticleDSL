@@ -6,6 +6,7 @@
 import "regent"
 
 --Other headers
+local c = regentlib.c
 local compute_privileges = require("src/utils/compute_privilege")
 local kernel_combine = require("src/utils/kernel_combine")
 --By default, asking for PAIRWISE gives a SYMMETRIC_PAIRWISE operation
@@ -339,7 +340,7 @@ for i= 1, select("#",...) do
   end
   local barrier_quote = rquote
   end
-  if end_barrier then
+  if DSL_settings.TIMING or end_barrier then
     barrier_quote = rquote
       c.legion_runtime_issue_execution_fence(__runtime(), __context())
     end
@@ -386,7 +387,7 @@ local function invoke_per_kernel(config, ...)
   local barrier_quote = rquote
 
   end
-  if end_barrier then
+  if DSL_settings.TIMING or end_barrier then
     barrier_quote = rquote
       c.legion_runtime_issue_execution_fence(__runtime(), __context())
     end
