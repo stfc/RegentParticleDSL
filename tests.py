@@ -107,7 +107,21 @@ def run_tests():
                         print("Sol args {}".format(pop.args))
                         print("Args {}".format(pop4.args))
                         sys.exit(1)
-    print("Tests took {}".format( datetime.now()-start))
+    print("Correctness Tests took {}".format( datetime.now()-start))
+
+    print("Attempt to run \"unit\" tests")
+    reduc = subprocess.run(["legion/language/regent.py", "tests/util_testing/reduc_priv.rg"])
+    if reduc.returncode != 0:
+        print("Failed reduc privileges test")
+        sys.exit(1)
+    write = subprocess.run(["legion/language/regent.py", "tests/util_testing/write_priv.rg"])
+    if reduc.returncode != 0:
+        print("Failed write privileges test")
+        sys.exit(1)
+    read = subprocess.run(["legion/language/regent.py", "tests/util_testing/read_priv.rg"])
+    if reduc.returncode != 0:
+        print("Failed read privileges test")
+        sys.exit(1)
 
 
 
