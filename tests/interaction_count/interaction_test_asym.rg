@@ -179,7 +179,7 @@ end
 
   local root_dir = "./tests/interaction_count/"
   local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
-  local link_flags = terralib.newlist({"-L" .. out_dir, "-lhdf5"})
+  local link_flags = terralib.newlist({"-L" .. out_dir, "-lm", "-lhdf5"})
   local exe = os.getenv('OBJNAME') or "tests/interaction_count/interaction_test_asym.exe"
   regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
 --regentlib.start(main_task)
