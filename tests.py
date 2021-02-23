@@ -115,12 +115,16 @@ def run_tests():
         print("Failed reduc privileges test")
         sys.exit(1)
     write = subprocess.run(["legion/language/regent.py", "tests/util_testing/write_priv.rg"])
-    if reduc.returncode != 0:
+    if write.returncode != 0:
         print("Failed write privileges test")
         sys.exit(1)
     read = subprocess.run(["legion/language/regent.py", "tests/util_testing/read_priv.rg"])
-    if reduc.returncode != 0:
+    if read.returncode != 0:
         print("Failed read privileges test")
+        sys.exit(1)
+    comb = subprocess.run(["legion/language/regent.py", "tests/util_testing/test_combine.rg"])
+    if comb.returncode != 0:
+        print("Failed combine test")
         sys.exit(1)
 
 
