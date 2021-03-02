@@ -371,11 +371,35 @@ local function generate_range_as_terralist(lo, hi)
     return range
 end
 
+local function get_timing_quotes()
+  local start_timing_quote = rquote
+
+  end
+  local end_timing_quote = rquote
+
+  end
+  if DSL_settings.TIMING then
+    local starttime = regentlib.newsymbol()
+    local endtime = regentlib.newsymbol()
+    start_timing_quote = rquote
+      var [starttime] = c.legion_get_current_time_in_micros()
+    end
+    end_timing_quote = rquote
+      c.legion_runtime_issue_execution_fence(__runtime(), __context())
+      var [endtime] = c.legion_get_current_time_in_micros();
+      [variables.config][0].timing_config.neighbour_search_time = [variables.config][0].timing_config.neighbour_search_time + ([endtime] - [starttime])
+    end
+  end
+  return start_timing_quote, end_timing_quote
+end
+
+
 --This function updates the cells to reflect any motion that occurs in the system. We repartition only as required, but never change
 --the number of cells at this point due to causing issues with various assumptions in the system at the moment.
 function neighbour_init.update_cells(variables)
-
+local start_timing_quote, end_timing_quote = get_timing_quotes()
 local update_cells_quote = rquote
+    [start_timing_quote];
     [assert_correct_cells()];
     for cell in [neighbour_init.cell_partition].colors do
         compute_new_dests( [neighbour_init.cell_partition][cell], [variables.config]);
@@ -397,6 +421,7 @@ local update_cells_quote = rquote
     end
     c.legion_runtime_issue_execution_fence(__runtime(), __context());
     [assert_correct_cells()];
+    [end_timing_quote];
     -- TODO: If you need repartitioning for your testcase and tradequeues are not sufficient, we need a new implementation of neighbour search
     -- If this is something you need, let us know on this issue:
     -- https://github.com/stfc/RegentParticleDSL/issues/56

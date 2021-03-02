@@ -32,6 +32,16 @@ def run_tests():
     define_tests()
     test_num = 0
     start=datetime.now()
+    try:
+        build1 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_sym.rg"])
+    except:
+        print("Failed to build")
+        sys.exit(1)
+    try:
+        build2 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_asym.rg"])
+    except:
+        print("Failed to build asym")
+        sys.exit(1)
     for i in range(len(x_counts)):
         for j in range(len(y_counts)):
             for k in range(len(z_counts)):
@@ -71,7 +81,8 @@ def run_tests():
                         print("Failed for {}".format(pop.args))
                         sys.exit(1)
 
-                    pop3 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_sym.rg", "-input", "tests/interaction_count/test_0.hdf5"
+#                    pop3 = subprocess.run(["regent", "tests/interaction_count/interaction_test_sym.rg", "-input", "tests/interaction_count/test_0.hdf5"
+                    pop3 = subprocess.run(["tests/interaction_count/interaction_test_sym.exe", "-input", "tests/interaction_count/test_0.hdf5"
                                                                     , "-solution", "tests/interaction_count/solution_0.hdf5",
                                                         "-x_cell", "{}".format(box_x * 1.0),
                                                         "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False
@@ -84,7 +95,8 @@ def run_tests():
                         sys.exit(1)
                     
 
-                    pop4 = subprocess.run(["legion/language/regent.py", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_0.hdf5"
+                    #pop4 = subprocess.run(["regent", "tests/interaction_count/interaction_test_asym.rg", "-input", "tests/interaction_count/test_0.hdf5"
+                    pop4 = subprocess.run(["tests/interaction_count/interaction_test_asym.exe", "-input", "tests/interaction_count/test_0.hdf5"
                         , "-solution", "tests/interaction_count/solution_0.hdf5",
                                                         "-x_cell", "{}".format(box_x * 1.0),
                                                         "-y_cell", "{}".format(box_y), "-z_cell", "{}".format(box_z)], check=False
@@ -95,7 +107,25 @@ def run_tests():
                         print("Sol args {}".format(pop.args))
                         print("Args {}".format(pop4.args))
                         sys.exit(1)
-    print("Tests took {}".format( datetime.now()-start))
+    print("Correctness Tests took {}".format( datetime.now()-start))
+
+    print("Attempt to run \"unit\" tests")
+    reduc = subprocess.run(["legion/language/regent.py", "tests/util_testing/reduc_priv.rg"])
+    if reduc.returncode != 0:
+        print("Failed reduc privileges test")
+        sys.exit(1)
+    write = subprocess.run(["legion/language/regent.py", "tests/util_testing/write_priv.rg"])
+    if write.returncode != 0:
+        print("Failed write privileges test")
+        sys.exit(1)
+    read = subprocess.run(["legion/language/regent.py", "tests/util_testing/read_priv.rg"])
+    if read.returncode != 0:
+        print("Failed read privileges test")
+        sys.exit(1)
+    comb = subprocess.run(["legion/language/regent.py", "tests/util_testing/test_combine.rg"])
+    if comb.returncode != 0:
+        print("Failed combine test")
+        sys.exit(1)
 
 
 
