@@ -1,6 +1,6 @@
 # DSL Program Structure
 
-RegentParticleDSL programs consist of three sections:
+HartreeParticleDSL programs consist of three sections:
 
 1. The particle type declaration
 2. The kernel declaration(s)
@@ -60,7 +60,7 @@ These can be accessed safely in kernels through `part.core_part_space.pos_x` for
 
 
 ## Kernel Declarations
-Different types of Kernel are available in RegentParticleDSL. At the moment, pairwise and per-particle kernels are implemented.
+Different types of Kernel are available in HartreeParticleDSL. At the moment, pairwise and per-particle kernels are implemented.
 
 ### Pairwise Kernel
 

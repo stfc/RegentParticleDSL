@@ -54,7 +54,7 @@ simple_hdf5_module = require("src/io_modules/HDF5/HDF5_simple_module")
 and the functions are all encapsulated inside `simple_hdf5_module`.
 
 The include path of the HDF5 library needs to be set in the `HDF5_INCLUDE_PATH` environment variable. 
-If using the RegentParticleDSL docker container this will already be set.
+If using the HartreeParticleDSL docker container this will already be set.
 
 ### File Input
 The simple HDF5 module provides an initialisation function to start the program from a HDF5 file:
@@ -150,7 +150,7 @@ This example maps the HDF5 paths `Position_{x,y,z}` to the `particle_array.core_
 sections of the particle structure.
 
 NOTE: At current the simple HDF5 module does not support more than one nested field space,
- see [this issue](https://github.com/stfc/RegentParticleDSL/issues/41) and let us know
+ see [this issue](https://github.com/stfc/HartreeParticleDSL/issues/41) and let us know
  if this is required functionality so we can add it.
 
 ### HDF5 read file

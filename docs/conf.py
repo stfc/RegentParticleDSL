@@ -17,8 +17,8 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'RegentParticleDSL'
-copyright = '2020, Aidan Chalk'
+project = 'HartreeParticleDSL'
+copyright = '2021, Aidan Chalk'
 author = 'Aidan Chalk'
 
 # The full version, including alpha/beta/rc tags

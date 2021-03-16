@@ -5,7 +5,7 @@ from more commonly used languages, such as Python or C.
 
 ## Headers
 
-All files used with RegentParticleDSL must begin with the same first line:
+All files used with HartreeParticleDSL must begin with the same first line:
 ```
     import "regent"
 ```
@@ -39,7 +39,7 @@ This can be avoided by using the `local` flag, e.g:
 
 ## Regent or Lua
 
-Most code users write in RegentParticleDSL is Lua, with only code inside particle structures, kernels and
+Most code users write in HartreeParticleDSL is Lua, with only code inside particle structures, kernels and
 the main program having Regent's specific syntax. Regent variables are declared as:
 ```
     var int_variable : int = 1
@@ -50,4 +50,4 @@ have the type declared.
 The other features specific to Regent are discussed later parts of the documentation.
 
 ## Terra
-As well as Regent and Lua code, RegentParticleDSL also supports Terra code inside files: [terralang.org](http://terralang.org/).
+As well as Regent and Lua code, HartreeParticleDSL also supports Terra code inside files: [terralang.org](http://terralang.org/).

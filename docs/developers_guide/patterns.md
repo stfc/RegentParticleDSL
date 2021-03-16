@@ -1,9 +1,9 @@
 # Common implementation patterns
 
-This section of the developers guide covers common patters of code used in RegentParticleDSL, and how they work.
+This section of the developers guide covers common patters of code used in HartreeParticleDSL, and how they work.
 
 ## Data copies between Regions
-In many places in RegentParticleDSL, data is copied from multiple regions, which may be constructured from different
+In many places in HartreeParticleDSL, data is copied from multiple regions, which may be constructured from different
 field spaces. Example uses of this functionality is in the HDF5 simple IO module:
 ```
 [mapper_fields:map(function(field)
@@ -21,7 +21,7 @@ or in the tradequeue implementation in neighbour search:
 end)];
 ```
 
-These implementations make use of Terra's list functionality, some of the utility functions defined in RegentParticleDSL,
+These implementations make use of Terra's list functionality, some of the utility functions defined in HartreeParticleDSL,
 and some other code to achieve automatic generation of data copies between fields.
 
 In this section, we're going to look explicitly at copying from two regions of the same field space, as used in the tradequeue 

@@ -117,7 +117,7 @@ To run the created task, use the following signature:
 
 ## The Invoke Syntax
 
-Instead of manually creating and running tasks, RegentParticleDSL now supports a new function, called Invoke. To use the Invoke
+Instead of manually creating and running tasks, HartreeParticleDSL now supports a new function, called Invoke. To use the Invoke
 functionality, you pass the config, some tuples containing the kernel function and a type descriptor, followed by an optional
 argument to ask for a barrier at the end of the invoke call. For example, if we have two symmetric pairwise functions (named
 `sym1` and `sym2`) and a per-particle timestepping kernel (named `timestep`) we would do:
