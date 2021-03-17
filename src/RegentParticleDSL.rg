@@ -67,7 +67,6 @@ if DSL_settings.PERIODICITY then
     require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
     neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
   else
-    print("Importing 2D periodic setup DSL")
     require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
     neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
   end

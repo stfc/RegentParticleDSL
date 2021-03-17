@@ -8,13 +8,47 @@ HartreeParticleDSL programs consist of three sections:
 
 Additional functionality can be added to programs, but these are the minimum required.
 
+## Importing the DSL and setup.
+When using HartreeParticleDSL, the system is imported using the following header in the main program file:
+```
+  import "regent"
+  require("src/RegentParticleDSL")
+```
+Once the header is imported, the system provides a set of calls for setting up the particle method. These are:
+- `set_dimensionality(int)`: This call is used to set the dimensionality of the system. Currently the supported values are
+`2` or `3`. By default this is set to `3`.
+- `set_periodicity(bool)`: This call is used to enable or disable periodicity. The default is `true`.
+- `enable_timing(bool)`: This call is used to enable or disable the timing infrastructure. The default is `false`. Note: 
+Enabling the timing infrastructure can currently cause additional synchronicity, so should only be used if significant
+performance issues are occurring.
+
+Once these functions have been called with appropriate values, the user must call the `setup_part()` function. This prepares the
+DSL's internal structures to enable declaration of the particle type and kernel functions.
+
+Once the particle type has been declared, the final setup call required is to `setup_dsl()`. This imports the remaining headers required
+by the DSL, and allows the main function to be created.
+
+The overall setup for the DSL should therefore be something like:
+```
+  import "regent"
+  require("src/RegentParticleDSL")
+  set_dimensionality(2)
+  set_periodicity(true)
+  enable_timing(false)
+  setup_part()
+
+  --Declare/import particle type
+  setup_dsl()
+
+...
+``` 
+
 ## The Particle Type
 
 Regent's particle type is the main data structure used in the particle methods. A base declaration is
 available in `src/particles/default_part.rg`. The outline of the particle type is:
 ```
   import "regent"
-  require("defaults")
   
   fspace part{
     neighbour_part_space : neighbour_part,
@@ -98,16 +132,27 @@ declaration:
 
 The arguments to the function is a `part` and the `config` type. The `part` can be freely modified, while the `config` type is currently read-only.
 
-### Using kernels for code generation
+### Using kernels in the main program
 
-Once the kernels are written, they are used with the code generation functions to create the functions that one would use in the main program.
-For example, to create a per-particle function from a kernel:
+The DSL provides an `invoke` function, which is used to call kernels in the main program. The syntax for using the invoke functionality is:
 ```
-  per_particle_function = run_per_particle_task( per_particle_kernel_name )
+[invoke(variables.config, {kernel1,type1}, {kernel2,type2}, extra options)];
 ```
+The first argument to the invoke call is always the `variables.config` structure, defined by the DSL.
 
-After this call, the `per_particle_function` call is usable in the main program code. For the exact functions and arguments for a specific neighbour search
-algorithm, check the appropriate module's documentation.
+The next arguments is a group of kernels and their types. The possible types of kernels currently supported is:
+1. `SYMMETRIC_PAIRWISE` - Kernels of this type are pairwise kernels that write to both particles in the interaction.
+2. `ASYMMETRIC_PAIRWISE` - Kernels of this type are pairwise kernels that only write to `part1`.
+3. `PER_PART` - Kernels of this type are per-particle kernels applied to all particles in the system.
+
+Any number of kernels and types could be listed, e.g. `{kernel1, PER_PART}, ...., {kernel99, SYMMETRIC_PAIRWISE}`.
+
+There are also a small number of extra options available for the function, which could be used by advanced users to potentially improve performance.
+1. `BARRIER` - The barrier option forces a barrier to occur at the end of the invoke. This option is enabled by default.
+2. `NO_BARRIER` - This removes the barrier at the end of the invoke, and will always override any `BARRIER` option chosen.
+3. `MULTI_KERNEL` - This option enables the runtime system to merge multiple kernels into single tasks, which may lead to improved performance. The
+runtime system will only do this if data dependencies allow, so should never cause incorrect results. This is enabled by default.
+4. `SINGLE_KERNEL` - This option disables the runtime system from merging kernels into a single task. This always overrides any `MULTI_KERNEL` options.
 
 ## Main Program
 
@@ -115,8 +160,7 @@ The main program is broken into a few sections.
 The overall file structure would usually be similar to:
 ```
     import "regent"
-    require("defaults")
-    require("other/headers/needed")
+    --DSL setup (as shown above)
 
     task main()
       --Code goes here
@@ -127,8 +171,8 @@ The overall file structure would usually be similar to:
 
 This code sets up the headers and file, and the `regentlib.start(main)` call starts the program on the `main` task.
 
-Inside the `main` task there are a few section. First the code needs to initialise the data structures. At the moment this is done manually, however 
-IO modules will contain an initialisation function, which can be used with:
+Inside the `main` task there are a few section. First the code needs to initialise the data structures. This can be done manually (though not recommended), instead 
+IO modules contain an initialisation function, which can be used with:
 ```
     [initialisation(variables, other arguments)];
 ```
@@ -145,19 +189,17 @@ The main body of the method is free to be defined however you want, with the onl
 An example of this 
 might be:
 ```
-    local timestepping_task = run_per_particle_task( timestep )
-    local interaction_task = create_symmetric_pairwise_runner( kernel )
-
     task main()
       [initialisation(variables)];
       var time = 0.0
       var timestep = 0.001
       while(time < 1.0) do
-        interaction_task(...)
-        timestepping_task(...)
+        [invoke(...)];
         time = timestep + time
       end
     [finalisation(variables)];
     end
 ``` 
 
+The final line in the file is usually `regentlib.start(main)`, however there are possibilites to instead compile the code as a binary. 
+This use case is more complex, and out of scope for the documentation at this time, however we plan to add functionality into the DSL to enable this.
