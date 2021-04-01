@@ -7,6 +7,8 @@ DSL_settings = {}
 DSL_settings.DIMENSIONALITY = 3
 DSL_settings.PERIODICITY = true
 DSL_settings.TIMING = false
+DSL_settings.part_setup = false
+DSL_settings.dsl_setup = false
 
 --Set empty neighbour init global variable
 neighbour_init = {}
@@ -54,6 +56,9 @@ function setup_part()
     end
   end
 
+
+--Mark this as completed
+  DSL_settings.part_setup = true
 end
 
 
@@ -61,6 +66,14 @@ function setup_dsl()
 require("src/config/space")
 require("src/config/timing")
 require("src/config/default_config")
+
+--Check part setup was done
+if DSL_settings.part_setup == false then
+    print("Particle setup must be completed before the setup_dsl call")
+    os.exit(1)
+end
+
+
 --Periodic imports
 if DSL_settings.PERIODICITY then
   if DSL_settings.DIMENSIONALITY == 3 then
@@ -79,5 +92,41 @@ end
 
 
   require("src/utils/invoke_framework")
+  --Mark DSL as setup
+   DSL_settings.dsl_setup = true
 
+end
+
+--Lets run the DSL immediately. This is currently just a wrapper for regentlib.start, but lets the DSL
+--make mapper choices etc. depending on chosen options/kernels in the future.
+function run_DSL( main_function )
+  if DSL_settings.dsl_setup == false then
+    print("DSL setup must be completed before the run_dsl call")
+    os.exit(1)
+  end
+  regentlib.start(main_function)
+end
+
+
+local terra set_mappers()
+
+end
+
+--Single function for compiling the DSL
+function compile_DSL( main_function, executable_name )
+
+  if DSL_settings.dsl_setup == false then
+    print("DSL setup must be completed before the compile_dsl call")
+    os.exit(1)
+  end
+  if executable_name == nil then
+    executable_name = "a.out"
+    print("WARNING: Executable name was not given, naming it a.out")
+  end
+  --Build function
+  local root_dir = "./"
+  local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
+  local link_flags = terralib.newlist({"-L" .. out_dir, "-lm", "-lhdf5"})
+  local exe = os.getenv('OBJNAME') or executable_name
+  regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
 end
