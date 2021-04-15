@@ -47,4 +47,4 @@ format.println("{} {}", neighbour_init.padded_particle_array[0].divergence, neig
 format.println("{} {}", neighbour_init.padded_particle_array[0].interactions, neighbour_init.padded_particle_array[357558].interactions)
 end
 
-regentlib.start(main)
+run_DSL(main)

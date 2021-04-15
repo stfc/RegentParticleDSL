@@ -178,14 +178,15 @@ task main_task()
   [DSL_report_timings()];
 end
 
-terra set_mappers()
+--terra set_mappers()
+--
+--end
 
-end
-
-  local root_dir = "./tests/interaction_count/"
-  local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
-  local link_flags = terralib.newlist({"-L" .. out_dir, "-lm", "-lhdf5"})
-  local exe = os.getenv('OBJNAME') or "tests/interaction_count/interaction_test_sym.exe"
-  regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
+  compile_DSL( main_task, "tests/interaction_count/interaction_test_sym.exe")
+--  local root_dir = "./tests/interaction_count/"
+--  local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
+--  local link_flags = terralib.newlist({"-L" .. out_dir, "-lm", "-lhdf5"})
+--  local exe = os.getenv('OBJNAME') or "tests/interaction_count/interaction_test_sym.exe"
+--  regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
 
 --regentlib.start(main_task)

@@ -110,4 +110,5 @@ task main()
     end
 end
 
-regentlib.start(main)
+--regentlib.start(main)
+run_DSL(main)

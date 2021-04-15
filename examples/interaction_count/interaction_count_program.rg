@@ -60,4 +60,4 @@ task main_task()
   [simple_hdf5_module.write_output("examples/interaction_count/basic_test.hdf5", hdf5_write_mapper, neighbour_init.padded_particle_array)];
 end
 
-regentlib.start(main_task)
+run_DSL(main_task)
