@@ -201,4 +201,5 @@ end
 
 end
 
-regentlib.start(main)
+run_DSL(main)
+--regentlib.start(main)

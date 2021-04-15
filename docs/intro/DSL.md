@@ -166,10 +166,10 @@ The overall file structure would usually be similar to:
       --Code goes here
     end
 
-    regentlib.start(main)
+    run_DSL(main)
 ```
 
-This code sets up the headers and file, and the `regentlib.start(main)` call starts the program on the `main` task.
+This code sets up the headers and file, and the `run_DSL(main)` call starts the program on the `main` task.
 
 Inside the `main` task there are a few section. First the code needs to initialise the data structures. This can be done manually (though not recommended), instead 
 IO modules contain an initialisation function, which can be used with:
@@ -201,5 +201,4 @@ might be:
     end
 ``` 
 
-The final line in the file is usually `regentlib.start(main)`, however there are possibilites to instead compile the code as a binary. 
-This use case is more complex, and out of scope for the documentation at this time, however we plan to add functionality into the DSL to enable this.
+The final line in the file is usually `run_DSL(main)` (or `compile_DSL` to compile the code as a binary). 
