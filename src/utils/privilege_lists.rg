@@ -128,5 +128,38 @@ function privilege_lists.get_privileges_self_task( parts1, read1, read2, write1,
     return update_neighbours, read1_privs, write1_privs, reduc1_privs
 end
 
+function privilege_lists.get_privileges_per_part( part1, read1, write1, reduc1, config, configread, configreduc)
+
+    local read1_privs = terralib.newlist()
+    local write1_privs = terralib.newlist()
+    local reduc1_privs = terralib.newlist()
+    local readconf_privs = terralib.newlist()
+    local reducconf_privs = terralib.newlist()
+    local update_neighbours = false
+    for _, v in pairs(read1) do
+        read1_privs:insert( regentlib.privilege(regentlib.reads, parts1, string_to_field_path.get_field_path(v)))
+    end
+    for _, v in pairs(write1) do
+        write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
+        if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" then
+            update_neighbours = true
+        end
+    end
+    for _, v in pairs(reduc1) do
+        reduc1_privs:insert( regentlib.privilege(regentlib.reduces(v[2]), parts1, string_to_field_path.get_field_path(v[1])))
+        if v[1] == "core_part_space.pos_x" or v[1] == "core_part_space.pos_y" or v[1] == "core_part_space.pos_z" then
+            update_neighbours = true
+        end
+    end
+    for _,v in pairs(configread) do
+        readconf_privs:insert( regentlib.privilege(regentlib.reads, config, string_to_field_path.get_field_path(v)))
+    end
+    for _, v in pairs(configreduc) do
+        reducconf_privs:insert( regentlib.privilege(regentlib.reduces(v[2]), config, string_to_field_path.get_field_path(v[1])))
+    end
+
+    return update_neighbours, read1_privs, write1_privs, reduc1_privs, readconf_privs, reducconf_privs
+end
+
 return privilege_lists
 

@@ -573,14 +573,15 @@ end
 -----------------------------------------
 
 --Generate a task to be executed on every particle in the system, using a list of kernels
-function generate_per_part_task_multikernel( kernel_list, read1, write1, reduc1 )
+function generate_per_part_task_multikernel( kernel_list, read1, write1, reduc1, readconf, reducconf )
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
-local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lists.get_privileges_self_task( parts1, read1, {}, write1, {}, reduc1, {} )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local update_neighbours, read1_privs, write1_privs, reduc1_privs, readconf_privs, reducconf_privs =                                                                                                                    privilege_lists.get_privileges_per_part(parts1, read1, write1, reduc1, config, readconf, reducconf)
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task pairwise_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs], [reduc1_privs], reads(config), [coherences],
+local __demand(__leaf) task pairwise_task([parts1], [config]) where
+   [read1_privs], [write1_privs], [reduc1_privs], [readconf_privs], [reducconf_privs], [coherences],
    reads( parts1.neighbour_part_space._valid )
    do
    for part1 in [parts1].ispace do
@@ -597,14 +598,15 @@ end
 
 
 --Generate a task to be executed on every particle in the system
-function generate_per_part_task( kernel_name, read1, write1, reduc1 )
+function generate_per_part_task( kernel_name, read1, write1, reduc1, readconf, reducconf )
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
-local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lists.get_privileges_self_task( parts1, read1, {}, write1, {}, reduc1, {} )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local update_neighbours, read1_privs, write1_privs, reduc1_privs, readconf_privs, reducconf_privs =                                                                                                                    privilege_lists.get_privileges_per_part(parts1, read1, write1, reduc1, config, readconf, reducconf)
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task per_part_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs], [reduc1_privs], reads(config), [coherences],
+local __demand(__leaf) task per_part_task([parts1], [config]) where
+   [read1_privs], [write1_privs], [reduc1_privs], [readconf_privs], [reducconf_privs], [coherences],
    reads( parts1.neighbour_part_space._valid ) 
    do
    for part1 in [parts1].ispace do
@@ -635,7 +637,7 @@ function run_per_particle_task( kernel_name, config, cell_space )
 
 local read1, read2, write1, write2, reduc1, reduc2 = compute_privileges.two_region_privileges(kernel_name)
 local need_tradequeues = false
-local per_part_task, update_neighbours = generate_per_part_task( kernel_name, read1, write1, reduc1 )
+local per_part_task, update_neighbours = generate_per_part_task( kernel_name, read1, write1, reduc1, read2, reduc2 )
 local update_neighbours_quote = rquote
 
 end
