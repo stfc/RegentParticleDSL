@@ -205,6 +205,16 @@ do
     if toTransfer ~= 0 then
         var s : rawstring
         s = [rawstring] (regentlib.c.malloc(512))
+        for part in particles.ispace do
+            if particles[part].neighbour_part_space.cell_id ~= cell_id and particles[part].neighbour_part_space._transfer_dir == 0 then
+                format.println("Part should go to {} {} {}  from {} {} {} and has velocity {} {} {}", 
+                                particles[part].neighbour_part_space.cell_id.x,
+                                particles[part].neighbour_part_space.cell_id.y,
+                                particles[part].neighbour_part_space.cell_id.z,
+                                cell_id.x, cell_id.y, cell_id.z, particles[part].core_part_space.vel_x,
+                                particles[part].core_part_space.vel_y, particles[part].core_part_space.vel_z)
+            end
+        end
         format.snprintln(s,512, "Particle moving to non-adjacent cell from cell {} {} {}", cell_id.x, cell_id.y, cell_id.z)
         regentlib.assert(toTransfer == 0, s)
         regentlib.c.free(s)

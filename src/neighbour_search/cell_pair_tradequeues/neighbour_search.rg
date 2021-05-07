@@ -18,17 +18,18 @@ local ceil = regentlib.ceil(double)
 
 
 --This function assumes the cutoff is the same for both particles
-function generate_symmetric_pairwise_task_multikernel( kernel_list, read1, read2, write1, write2, reduc1, reduc2 )
+function generate_symmetric_pairwise_task_multikernel( kernel_list, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
-local update_neighbours, read1_privs, read2_privs, write1_privs, write2_privs, reduc1_privs, reduc2_privs = 
-      privilege_lists.get_privileges_symmetric_pair_task( parts1, parts2, read1, read2,
-              write1, write2, reduc1, reduc2 )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local update_neighbours, read1_privs, read2_privs, read3_privs, write1_privs, write2_privs, reduc1_privs, reduc2_privs, reduc3_privs = 
+      privilege_lists.get_privileges_symmetric_pair_task( parts1, parts2, config, read1, read2, read3,
+              write1, write2, reduc1, reduc2, reduc3 )
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
 
-local __demand(__leaf) task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
-  where [read1_privs], [read2_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs], reads(config), 
+local __demand(__leaf) task pairwise_task([parts1], [parts2], [config])
+  where [read1_privs], [read2_privs], [read3_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs], [reduc3_privs], reads(config.space), 
   reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
  [coherences] do
@@ -71,17 +72,19 @@ end
 
 
 --This function assumes the cutoff is the same for both particles
-function generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2, reduc1, reduc2 )
+function generate_symmetric_pairwise_task( kernel_name, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
-local update_neighbours, read1_privs, read2_privs, write1_privs, write2_privs, reduc1_privs, reduc2_privs = 
-      privilege_lists.get_privileges_symmetric_pair_task( parts1, parts2, read1, read2,
-              write1, write2, reduc1, reduc2 )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local update_neighbours, read1_privs, read2_privs, read3_privs, write1_privs, write2_privs, reduc1_privs, reduc2_privs, reduc3_privs = 
+      privilege_lists.get_privileges_symmetric_pair_task( parts1, parts2, config, read1, read2, read3,
+              write1, write2, reduc1, reduc2, reduc3 )
+--Also need to include the space in the reads part of the config
+--read3_privs:insert( regentlib.privilege(regentlib.reads, config, string_to_field_path.get_field_path("space")))
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
-
-local __demand(__leaf) task pairwise_task([parts1], [parts2], config : region(ispace(int1d), config_type))
-  where [read1_privs], [read2_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs], reads(config), 
+local __demand(__leaf) task pairwise_task([parts1], [parts2], [config] )
+  where [read1_privs], [read2_privs], [read3_privs], [write1_privs], [write2_privs], [reduc1_privs], [reduc2_privs], [reduc3_privs], reads(config.space), 
   reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
@@ -276,15 +279,16 @@ end
 
 --Generate a self task
 --This function assumes the cutoff is the same for both particles
-function generate_symmetric_self_task( kernel_name, read1, read2, write1, write2, reduc1, reduc2 )
+function generate_symmetric_self_task( kernel_name, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
-local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lists.get_privileges_self_task( parts1, read1, read2, write1, write2, reduc1, reduc2 )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local update_neighbours, read1_privs, readconf_privs, write1_privs, reduc1_privs, reducconf_privs = privilege_lists.get_privileges_self_task( parts1, config, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d),config_type)) where
-  [read1_privs], [write1_privs], [reduc1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
-                                 reads(parts1.neighbour_part_space._valid), reads(config),
+local __demand(__leaf) task self_task([parts1], [config]) where
+  [read1_privs], [readconf_privs], [write1_privs], [reduc1_privs], [reducconf_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
+                                 reads(parts1.neighbour_part_space._valid), reads(config.space),
    [coherences] do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
@@ -435,10 +439,11 @@ task cell_greater_equal(cell1 : int3d, cell2 : int3d) : bool
 end
 
 function create_symmetric_pairwise_runner( kernel_name, config, cell_space )
-local read1, read2, write1, write2, reduc1, reduc2 = compute_privileges.two_region_privileges( kernel_name )
-local cell_pair_task, update_neighbours1 = generate_symmetric_pairwise_task( kernel_name, read1, read2, write1, write2, reduc1, reduc2 )
-local cell_self_task, update_neighbours2 = generate_symmetric_self_task( kernel_name, read1, read2, write1, write2, reduc1, reduc2 )
+local read1, read2, read3, write1, write2, write3, reduc1, reduc2, reduc3 = compute_privileges.three_region_privileges( kernel_name )
+local cell_pair_task, update_neighbours1 = generate_symmetric_pairwise_task( kernel_name, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
+local cell_self_task, update_neighbours2 = generate_symmetric_self_task( kernel_name, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 local update_neighbours = update_neighbours1 or update_neighbours2
+print("Created symmetric pairwise runner")
 local update_neighbours_quote = rquote
 
 end
@@ -635,7 +640,6 @@ function generate_per_part_task_multikernel( kernel_list, read1, write1, reduc1,
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
---local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lists.get_privileges_self_task( parts1, read1, {}, write1, {}, reduc1, {} )
 local update_neighbours, read1_privs, write1_privs, reduc1_privs, readconf_privs, reducconf_privs = 
                                             privilege_lists.get_privileges_per_part(parts1, read1, write1, reduc1, config, readconf, reducconf)
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)

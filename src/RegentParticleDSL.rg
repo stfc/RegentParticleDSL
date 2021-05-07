@@ -40,6 +40,7 @@ function enable_timing()
   DSL_settings.TIMING = true
 end
 
+
 function setup_part()
 --Periodic imports
   if DSL_settings.PERIODICITY then
@@ -61,6 +62,52 @@ function setup_part()
   DSL_settings.part_setup = true
 end
 
+dl_meso_config_mod = nil
+dl_meso_field_mod = nil
+dl_meso_start_mod = nil
+dl_meso_statistics_mod = nil
+dl_meso_timing_mod = nil
+dl_meso_init = nil
+
+function import_dl_meso( custom_config_path, custom_part_path)
+    setup_part()
+    if custom_part_path ~= nil then
+        require(custom_part_path)
+    else
+        require("src/io_modules/dl_meso/dl_meso_particle")
+    end
+    require("src/config/space")
+    require("src/config/timing")
+    if custom_config_path ~= nil then
+        require(custom_config_path)
+    else
+        require("src/io_modules/dl_meso/dl_meso_config")
+    end
+
+    if DSL_settings.PERIODICITY then
+      if DSL_settings.DIMENSIONALITY == 3 then
+        require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+        neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+      else
+        require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
+        neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
+      end
+    else
+      require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_search")
+      neighbour_init = require("src/neighbour_search/cell_pair_tradequeues_nonperiod/neighbour_init")
+    end
+    require("src/utils/invoke_framework")
+    DSL_settings.dsl_setup = true
+    require("src/io_modules/dl_meso/read_dl_meso")
+    require("src/io_modules/dl_meso/write_dl_meso")
+    dl_meso_config_mod = require("src/io_modules/dl_meso/dl_meso_config_mod")
+    dl_meso_field_mod = require("src/io_modules/dl_meso/dl_meso_field_mod")
+    dl_meso_start_mod = require("src/io_modules/dl_meso/dl_meso_start_mod")
+    dl_meso_statistics_mod = require("src/io_modules/dl_meso/dl_meso_statistics_mod")
+    dl_meso_timing_mod = require("src/io_modules/dl_meso/dl_meso_timing")
+    dl_meso_init = require("src/io_modules/dl_meso/dl_meso_initialise")
+    print("Imported DL_MESO modules correctly")
+end
 
 function setup_dsl()
 require("src/config/space")

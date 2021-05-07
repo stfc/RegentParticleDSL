@@ -1,0 +1,20 @@
+DL_MESO mixture example (serial)
+
+volume 1100.0
+temperature 1.0
+cutoff 1.25
+
+timestep 0.01
+steps 20
+equilibration steps 10
+scale temperature every 10
+trajectory 20 10
+stats every 10
+stack size 10
+print every 10
+job time 3600.0
+close time 200.0
+
+ensemble nvt mdvv
+
+finish

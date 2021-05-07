@@ -9,7 +9,7 @@ require("src/particles/core_part")
 
 fspace part{
   core_part_space : core_part,
---  neighbour_part_space : neighbour_part,
+  neighbour_part_space : neighbour_part,
 
   lab : int32, -- This could be jsut core_part_space.id - we'll see
   ltp : int, --Particle species
@@ -19,4 +19,8 @@ fspace part{
   fxx : double, --Force components
   fyy : double,
   fzz : double,
+
+  fvx : double, --variable particle force
+  fvy : double,
+  fvz : double,
 }

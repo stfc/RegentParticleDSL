@@ -14,7 +14,7 @@ local io_utils = require("src/io_modules/dl_meso/io_utils")
 local c_math = terralib.includec("math.h")
 
 task write_output_summary( time : double, lbegin : bool, l_scr : bool, config : region(ispace(int1d), config_type) ) where reads(config.stpte,
-                            config.stppe, config.stpvir, config.stpprs, config.stpttp, config.rav, config.nstep)
+                            config.stppe, config.stpvir, config.stpprs, config.stpttp, config.rav, config.nstep, config.stptke)
 do
 
     --We don't keep file open here
@@ -41,7 +41,7 @@ do
         c_stdio.fprintf(OUTPUT, "%10s", buffer)
         c_stdio.fprintf(OUTPUT, "  ")
         c_stdio.fprintf(OUTPUT, "%12.6e  %12.6e  %12.6e  %12.6e  %12.6e  %12.6e\n", config[0].stpte, config[0].stppe,
-                              config[0].stpvir, config[0].stpprs, config[0].stpttp )
+                              config[0].stpvir, config[0].stptke, config[0].stpprs, config[0].stpttp )
         c_stdio.fprintf(OUTPUT, " %10.3f  %12.6e  %12.6e  %12.6e  %12.6e  %12.6e  %12.6e\n", time,
                               config[0].rav[0], config[0].rav[1], config[0].rav[7], config[0].rav[8],
                               config[0].rav[9], config[0].rav[12] )
@@ -73,6 +73,7 @@ do
         for i=0,95 do
             c_stdio.fprintf(OUTPUT, "-")
         end
+        c_stdio.fprintf(OUTPUT, "\n")
     --elseif ....
     --end
     c_stdio.fclose(OUTPUT)
@@ -137,7 +138,7 @@ end
 task write_history_header(config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part)) where 
                                                                                 reads(config.nstep, config.kres, config.text,
                                                                                     config.nspe, config.nusyst, config.nsyst,
-                                                                                    config.ktype, config.namtmp, config.filesize,
+                                                                                    config.ktype, config.namspe, config.filesize,
                                                                                     config.numframe, config.masstmp, config.chgetmp,
                                                                                     config.vvv, config.markerpos, config.headersize),
                                                                                 reads(parts.lab, parts.ltp, parts.ltm),
@@ -195,7 +196,7 @@ do
             var k = ( (i+1) *(i+1)) / 2 - 1
             if config[0].ktype[k] == -1 then
                 --Write name
-                c_string.strcpy(&(name[0]), config[0].namtmp[i])
+                c_string.strcpy(&(name[0]), config[0].namspe[i])
                 c_stdio.fwrite(&(name[0]), [terralib.sizeof(int8)],8,HISTORY)
                 --Write mass
                 var mass = config[0].masstmp[i]
@@ -211,7 +212,7 @@ do
                 c_stdio.fwrite(&(buffer[0]), [terralib.sizeof(int32)], 1, HISTORY)
             elseif config[0].ktype[k] < 3 then
                 --Write name
-                c_string.strcpy(&(name[0]), config[0].namtmp[i])
+                c_string.strcpy(&(name[0]), config[0].namspe[i])
                 c_stdio.fwrite(&(name[0]), [terralib.sizeof(int8)], 8 ,HISTORY)
                 --Write mass
                 var mass = config[0].masstmp[i]
@@ -227,7 +228,7 @@ do
                 c_stdio.fwrite(&(buffer[0]), [terralib.sizeof(int32)], 1, HISTORY)
             elseif config[0].ktype[k] == 3 then
                 --Write name
-                c_string.strcpy(&(name[0]), config[0].namtmp[i])
+                c_string.strcpy(&(name[0]), config[0].namspe[i])
                 c_stdio.fwrite(&(name[0]), [terralib.sizeof(int8)],8,HISTORY)
                 --Write mass
                 var mass = config[0].masstmp[i]
@@ -340,6 +341,8 @@ do
     --Continue from 2478
     var double_buffer : &double = [&double](regentlib.c.malloc([terralib.sizeof(double)] * 3*(config[0].keytrj + 1) * config[0].nsyst))
     var labs : &int32 = [&int32](regentlib.c.malloc([terralib.sizeof(int32)] * config[0].nsyst))
+--    regentlib.assert(double_buffer ~= nil, "Failed to allocate double_buffer")
+--    regentlib.assert(labs ~= nil, "Failed to allocate labs")
     if config[0].keytrj == 0 then
         var ii = 0
         for i in parts.ispace do
@@ -383,10 +386,13 @@ do
     --
     c_stdio.fwrite(double_buffer, [terralib.sizeof(double)],  3*(config[0].keytrj + 1) * config[0].nsyst, HISTORY)
 
+    format.println("freeing labs in write_history")
     regentlib.c.free(labs)
+    format.println("freeing double_buffer in write_history")
     regentlib.c.free(double_buffer)
+    format.println("Closing HISTORY file")
     c_stdio.fclose(HISTORY)
-
+    format.println("End of write_history")
 end
 
 task write_export( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
@@ -396,10 +402,12 @@ task write_export( config : region(ispace(int1d), config_type), parts : region(i
                                                                                         parts.ltm, parts.ltp),
                                                                                 writes(config.numframe, config.filesize)
 do
-
+    format.println("Starting write_export")
     --Collect the variables
     var int_buf : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof( int32 )] * 3 * config[0].nsyst ))
-    var double_buf : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof( double)] * 9 * config[0].nsyst))
+    var double_buf : &double = [&double](regentlib.c.malloc( [terralib.sizeof( double)] * 9 * config[0].nsyst))
+--    regentlib.assert(int_buf ~= [&int32](0), "Failed to allocate double_buffer")
+--    regentlib.assert(double_buf ~= [&double](0), "Failed to allocate double_buffer")
     var i : int32
     var ii : int32 = 0
     for i in parts.ispace do
@@ -446,7 +454,7 @@ do
     c_stdio.fwrite(int_buf, [terralib.sizeof(int32)], 3 * config[0].nsyst, export)
     c_stdio.fwrite(double_buf, [terralib.sizeof(double)], 9 * config[0].nsyst, export)
 
-
+    format.println("Freeing in write_export")
     regentlib.c.free(int_buf)
     regentlib.c.free(double_buf)
 
@@ -454,23 +462,24 @@ do
  
 end
 
-task write_revive( config : region(ispace(int1d), config_type) ) where reads(config.text,
-                                                                             config.upx, config.upy, config.upz,
-                                                                             config.fpx, config.fpy, config.fpz,
-                                                                             config.nstep, config.nav, config.nstk,
-                                                                             config.stpte, config.stppe, config.stpee,
-                                                                             config.stpse, config.stpbe, config.stpae,
-                                                                             config.stpde, config.stpvir, config.stptke,
-                                                                             config.stpprs, config.stpvlm, config.stpzts,
-                                                                             config.stpttp, config.stptpx, config.stptpy,
-                                                                             config.stptpz, config.stpbdl, config.stpang, 
-                                                                             config.stpdhd, config.rav, config.ave,
-                                                                             config.flc, config.zum, config.nstk,
-                                                                             config.stkpe, config.stkee, config.stkse,
-                                                                             config.stkde, config.stkae, config.stkbe,
-                                                                             config.stkvir, config.stkvlm, config.stkzts,
-                                                                             config.stktkex, config.stktkey, config.stktkez,
-                                                                             config.mt)
+__demand(__inline)
+task write_revive( config : region(ispace(int1d), config_type) ) where reads(config) --.text,
+                                                                            -- config.upx, config.upy, config.upz,
+                                                                            -- config.fpx, config.fpy, config.fpz,
+                                                                            -- config.nstep, config.nav, config.nstk,
+                                                                            -- config.stpte, config.stppe, config.stpee,
+                                                                            -- config.stpse, config.stpbe, config.stpae,
+                                                                            -- config.stpde, config.stpvir, config.stptke,
+                                                                            -- config.stpprs, config.stpvlm, config.stpzts,
+                                                                            -- config.stpttp, config.stptpx, config.stptpy,
+                                                                            -- config.stptpz, config.stpbdl, config.stpang, 
+                                                                            -- config.stpdhd, config.rav, config.ave,
+                                                                            -- config.flc, config.zum, config.nstk,
+                                                                            -- config.stkpe, config.stkee, config.stkse,
+                                                                            -- config.stkde, config.stkae, config.stkbe,
+                                                                            -- config.stkvir, config.stkvlm, config.stkzts,
+                                                                            -- config.stktkex, config.stktkey, config.stktkez,
+                                                                            -- config.mt)
 do
     var REVIVE = c_stdio.fopen('REVIVE', 'wb')
 --     write simulation name, barostat properties and statistical accumulators
@@ -623,29 +632,30 @@ task write_config()
 end
 
 task write_output_result( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part) ) where
-                                                                        reads(config.text,
-                                                                             config.upx, config.upy, config.upz,
-                                                                             config.fpx, config.fpy, config.fpz,
-                                                                             config.nstep, config.nav, config.nstk,
-                                                                             config.stpte, config.stppe, config.stpee,
-                                                                             config.stpse, config.stpbe, config.stpae,
-                                                                             config.stpde, config.stpvir, config.stptke,
-                                                                             config.stpprs, config.stpvlm, config.stpzts,
-                                                                             config.stpttp, config.stptpx, config.stptpy,
-                                                                             config.stptpz, config.stpbdl, config.stpang, 
-                                                                             config.stpdhd, config.rav, config.ave,
-                                                                             config.flc, config.zum, config.nstk,
-                                                                             config.stkpe, config.stkee, config.stkse,
-                                                                             config.stkde, config.stkae, config.stkbe,
-                                                                             config.stkvir, config.stkvlm, config.stkzts,
-                                                                             config.stktkex, config.stktkey, config.stktkez,
-                                                                             config.mt, config.nsyst),
+                                                                        reads(config), --.text,
+--                                                                             config.upx, config.upy, config.upz,
+--                                                                             config.fpx, config.fpy, config.fpz,
+--                                                                             config.nstep, config.nav, config.nstk,
+--                                                                             config.stpte, config.stppe, config.stpee,
+--                                                                             config.stpse, config.stpbe, config.stpae,
+--                                                                             config.stpde, config.stpvir, config.stptke,
+--                                                                             config.stpprs, config.stpvlm, config.stpzts,
+--                                                                             config.stpttp, config.stptpx, config.stptpy,
+--                                                                             config.stptpz, config.stpbdl, config.stpang, 
+--                                                                             config.stpdhd, config.rav, config.ave,
+--                                                                             config.flc, config.zum, config.nstk,
+--                                                                             config.stkpe, config.stkee, config.stkse,
+--                                                                             config.stkde, config.stkae, config.stkbe,
+--                                                                             config.stkvir, config.stkvlm, config.stkzts,
+--                                                                             config.stktkex, config.stktkey, config.stktkez,
+--                                                                             config.mt), reads(config.nsyst),
                                                                                         reads(parts.core_part_space,
                                                                                         parts.lab, parts.atmnam),
                                                                         writes(config.flc)
 do
   --Line 3044
     write_revive(config)
+    format.println("Hello after write_revive")
     var OUTPUT = c_stdio.fopen("OUTPUT", "a")
     var i : int32
     
@@ -666,7 +676,7 @@ do
             c_stdio.fprintf(OUTPUT, "-")
         end
         c_stdio.fprintf(OUTPUT, "\n       ")
-        c_stdio.fprintf(OUTPUT, "step      en-total      pe-total     vir-total      ke-total      pressure   temperature\n ")
+        c_stdio.fprintf(OUTPUT, "en-total      pe-total     vir-total      ke-total      pressure   temperature\n ")
         for i=0, 95 do
             c_stdio.fprintf(OUTPUT, "-")
         end
@@ -757,4 +767,28 @@ do
         write_export(config, parts, time)
     end
 
+end
+
+task write_output_header(config : region(ispace(int1d), config_type)) where reads(config.l_scr)
+do
+    regentlib.assert(config[0].l_scr == false, "Not yet supporting output to stdio")
+    
+    var OUTPUT = c_stdio.fopen('OUTPUT', 'w') --Overwrites any existing file
+    c_stdio.fprintf(OUTPUT, " ***********************  HartreeParticleDSL implementation of  \n")
+    c_stdio.fprintf(OUTPUT, "                          ukri stfc daresbury laboratory dissipative\n")
+    c_stdio.fprintf(OUTPUT, "                          particle dynamics program DL_MESO_DPD\n")
+    c_stdio.fprintf(OUTPUT, "                          author: a.b.g. chalk\n")
+    c_stdio.fprintf(OUTPUT, "  D L _ M E S O _ D P D   original authors of DL_MESO_DPD:\n")
+    c_stdio.fprintf(OUTPUT, "                                        w. smith & m. a. seaton\n")
+    c_stdio.fprintf(OUTPUT, "                                                                   \n")
+    c_stdio.fprintf(OUTPUT, "                          Based upon dl_meso version:\n")
+    c_stdio.fprintf(OUTPUT, "                          dl_meso version 2.8 rev 00, october 2020\n")
+    c_stdio.fprintf(OUTPUT, " ***********************  copyright (c) 2021 UKRI STFC Hartree Centre\n\n")
+
+    c_stdio.fprintf(OUTPUT, " **************************************************************************\n")
+    c_stdio.fprintf(OUTPUT, " *********************       RUNNING WITH REGENT        *******************\n")
+    c_stdio.fprintf(OUTPUT, " *********************         (LITTLE ENDIAN)          *******************\n")
+    c_stdio.fprintf(OUTPUT, " **************************************************************************\n")
+   
+    c_stdio.fclose(OUTPUT) 
 end

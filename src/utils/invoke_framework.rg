@@ -22,7 +22,7 @@ MULTI_KERNEL=1000
 SINGLE_KERNEL=1001
 
 --FIXME: Handle reductions
-local function is_safe_to_combine(kernel, combined_kernels) 
+local function is_safe_to_combine(kernel, combined_kernels, type_iterate) 
 --For now we ignore this
   local hash_r1 = {}
   local hash_w1 = {}
@@ -31,7 +31,12 @@ local function is_safe_to_combine(kernel, combined_kernels)
   local safe_to_combine = true
   --Compute the read/write requirements for the already combined kernels
   for _, kernel in pairs(combined_kernels) do
-    local temp_r1, temp_r2, temp_w1, temp_w2, temp_re1, temp_re2 = compute_privileges.two_region_privileges(kernel)
+    local temp_r1, temp_r2, temp_r3, temp_w1, temp_w2, temp_re1, temp_re2, temp_re3 = nil
+    if type_iterate == PER_PART then
+        temp_r1, temp_r2, temp_w1, temp_w2, temp_re1, temp_re2 = compute_privileges.two_region_privileges(kernel)
+    else
+        temp_r1, temp_r2, temp_r3, temp_w1, temp_w2, temp_re1, temp_re2, temp_re3 = compute_privileges.three_region_privileges(kernel)
+    end
     --Merge the read/writes for this kernel with previous ones, keeping uniqueness
     for _,v in pairs(temp_r1) do
       if( not hash_r1[v]) then
@@ -99,7 +104,12 @@ local function is_safe_to_combine(kernel, combined_kernels)
 
 
 
-local read1, read2, write1, write2, reduc1, reduc2 = compute_privileges.two_region_privileges( kernel )
+local read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 = nil
+if type_iterate == PER_PART then
+    read1, read2, write1, write2, reduc1, reduc2 = compute_privileges.two_region_privileges( kernel )
+else
+    read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 =  compute_privileges.three_region_privileges(kernel)
+end
 local can_be_combined = true
 for _, v in pairs(write1) do
   if v == "core_part_space.pos_x" or v == "core_part_space.pos_y" or v == "core_part_space.pos_z" or v == "core_part_space.cutoff" then
@@ -210,7 +220,7 @@ for i= 1, select("#",...) do
       local type_iterate = v[2]
  --I think we can refactor this using some functions to make the code cleaner, and just check if last_type == type_iterate. AC
       if type_iterate == SYMMETRIC_PAIRWISE then
-        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels)
+        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels, type_iterate)
         if safe_to_combine and last_type == SYMMETRIC_PAIRWISE then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -247,7 +257,7 @@ for i= 1, select("#",...) do
           end
         end
       elseif type_iterate == ASYMMETRIC_PAIRWISE then
-        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels)
+        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels, type_iterate)
         if safe_to_combine and last_type == ASYMMETRIC_PAIRWISE then
           table.insert(kernels, func)
         elseif safe_to_combine then
@@ -285,7 +295,7 @@ for i= 1, select("#",...) do
           end
         end
       elseif type_iterate == PER_PART then
-        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels)
+        local safe_to_combine, can_be_combined = is_safe_to_combine(func, kernels, type_iterate)
         if safe_to_combine and last_type == PER_PART then
           table.insert(kernels, func)
         elseif safe_to_combine then

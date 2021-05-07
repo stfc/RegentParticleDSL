@@ -202,6 +202,21 @@ local function two_region_privilege_map(node, sym1, sym2, read_sym1, read_sym2, 
       elseif(symbol == 2) then
         write_sym2:insert(name)
       end
+    else
+        if node.lhs[1]:is(ast.specialized.expr.IndexAccess) then
+            local z = node.lhs[1]
+            while z.value:is(ast.specialized.expr.IndexAccess) do
+                z = z.value
+            end
+            if z.value:is(ast.specialized.expr.FieldAccess) then
+                local name, symbol = traverse_fieldaccess_postorder_two_region(z.value,sym1, sym2)
+                if(symbol == 1) then
+                    write_sym1:insert(name)
+                elseif(symbol == 2) then
+                    write_sym2:insert(name)
+                end
+            end
+        end
     end
   --Second case - For all field accesses we assume they are read from (though in some cases they are only
   --written to, I don't think that adding a read requirement should cause any issues)
@@ -253,9 +268,10 @@ end
 
 
 function compute_privileges.three_region_privileges(kernel_name)
-  local r1 = regentlib.newsymbol("region1")
-  local r2 = regentlib.newsymbol("region2")
-  local r3 = regentlib.newsymbol("region3")
+  local part1 = regentlib.newsymbol("part1")
+  local part2 = regentlib.newsymbol("part2")
+  local r2 = regentlib.newsymbol("r2")
+  local config = regentlib.newsymbol("config")
   local read1 = terralib.newlist()
   local read2 = terralib.newlist()
   local read3 = terralib.newlist()
@@ -265,8 +281,8 @@ function compute_privileges.three_region_privileges(kernel_name)
   local reduc1 = terralib.newlist()
   local reduc2 = terralib.newlist()
   local reduc3 = terralib.newlist()
-  local kernel = kernel_name(r1, r2, r3)
-  traverse_specialized_postorder_three_region( three_region_privilege_map, kernel.ast, r1, r2, r3, read1, read2, read3, write1, write2, write3,
+  local kernel = kernel_name(part1, part2, r2, config)
+  traverse_specialized_postorder_three_region( three_region_privilege_map, kernel.ast, part1, part2, config, read1, read2, read3, write1, write2, write3,
                                                 reduc1, reduc2, reduc3 )
   local hash = {}
   local temp = terralib.newlist()

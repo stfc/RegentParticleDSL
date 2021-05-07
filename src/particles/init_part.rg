@@ -8,6 +8,7 @@ local string_to_field_path = require("src/utils/string_to_fieldpath")
 local recursive_fields = require("src/utils/recursive_fields")
 
 local default_value_table = {}
+default_value_table["int"] = rexpr 0 end
 default_value_table["int32"] = rexpr 0 end
 default_value_table["uint32"] = rexpr 0 end
 default_value_table["int64"] = rexpr 0 end
@@ -32,9 +33,14 @@ end
 local mapping_table = terralib.newlist()
 for k, _ in pairs(field_strings) do
   if( default_value_table[string_table[k]] == nil) then
-    print("No default value set for type: ".. string_table[k]..". Please create an issue to get this added")
+    if type(string_table[k]) ~= "boolean" then
+        print("No default value set for type: ".. string_table[k]..". Please create an issue to get this added")
+    else
+        print("WARNING: Cannot yet initialise arrays, field ".. field_strings[k].." is not zeroed")
+    end
+  else
+    mapping_table:insert({name = string_to_field_path.get_field_path(field_strings[k]), type = string_table[k], default_val = default_value_table[string_table[k]]})
   end
-  mapping_table:insert({name = string_to_field_path.get_field_path(field_strings[k]), type = string_table[k], default_val = default_value_table[string_table[k]]})
 end
 
 return rquote
@@ -60,9 +66,14 @@ end
 local mapping_table = terralib.newlist()
 for k, _ in pairs(field_strings) do
   if( default_value_table[string_table[k]] == nil) then
-    print("No default value set for type: ".. string_table[k]..". Please create an issue to get this added")
+    if type(string_table[k]) ~= "boolean" then
+        print("No default value set for type: ".. string_table[k]..". Please create an issue to get this added")
+    else
+        print("WARNING: Cannot yet initialise arrays, field ".. field_strings[k].." is not zeroed")
+    end
+  else
+    mapping_table:insert({name = string_to_field_path.get_field_path(field_strings[k]), type = string_table[k], default_val = default_value_table[string_table[k]]})
   end
-  mapping_table:insert({name = string_to_field_path.get_field_path(field_strings[k]), type = string_table[k], default_val = default_value_table[string_table[k]]})
 end
 
 

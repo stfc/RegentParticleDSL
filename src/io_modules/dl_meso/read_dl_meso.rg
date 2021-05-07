@@ -19,7 +19,7 @@ local c_math = terralib.includec("math.h")
 local EOF = -1
 
 task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : bool, lrcut : bool, nspe : &int,
-                --  namtmp : &&&int8, masstmp : &&double, chgetmp : &&double )--,  ...)
+                --  namspe : &&&int8, masstmp : &&double, chgetmp : &&double )--,  ...)
                ( config : region(ispace(int1d), config_type)) where writes(config), reads(config) do
     var record : int8[201]
     var record1 : int8[201]
@@ -125,15 +125,13 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
 
   config[0].npot = config[0].nspe * (config[0].nspe + 1) / 2
   --Allocate arrays
---  var temp_namtmp : &&int8 = [&&int8](regentlib.c.malloc([terralib.sizeof(&int8)] * inspe))
+--  var temp_namspe : &&int8 = [&&int8](regentlib.c.malloc([terralib.sizeof(&int8)] * inspe))
 --  for i = 0, inspe do
---    temp_namtmp[i] = [&int8] (regentlib.c.malloc([terralib.sizeof(int8)]*9))
+--    temp_namspe[i] = [&int8] (regentlib.c.malloc([terralib.sizeof(int8)]*9))
 --  end
 --  var temp_masstmp : &double = [&double] (regentlib.c.malloc([terralib.sizeof(double)] * inspe))
 --  var temp_chgetmp : &double = [&double] (regentlib.c.malloc([terralib.sizeof(double)] * inspe))
-   --TODO: Rest of implementation 
    --Ignore bonds etc. for now
-  --TODO: Urgent - Implement reading specie names
   --Second pass to pull species names (and in the future other things)
   FIELD = c_stdio.fopen("FIELD", "r")
 
@@ -161,7 +159,7 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
             if c_string.strlen(word) > 8 then
                 regentlib.assert(false, "Name of species too long (max length is 8 characters)")
             end
-            c_string.strcpy(config[0].namtmp[i], word)
+            c_string.strcpy(config[0].namspe[i], word)
             config[0].masstmp[i] = io_utils.get_double(record1, 2)
             config[0].chgetmp[i] = io_utils.get_double(record1, 3)
             --TODO: NYI FROZEN Ignoring frozen for now
@@ -184,7 +182,7 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
 --  @cutoff = rcut
 --  @nspe = inspe
 --
---  @namtmp = temp_namtmp
+--  @namspe = temp_namspe
 --  @masstmp = temp_masstmp
 --  @chgetmp = temp_chgetmp
 
@@ -200,7 +198,12 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
   var FIELD = c_stdio.fopen("FIELD", "r")
   --Skip the first line (this is a title)
   c_stdio.fscanf(FIELD,  "%*[^\n]\n")
-
+    --TODO NYI: engunit
+    --if config[0].engunit == 1 then
+    --    config[0].eunit = config[0].temp
+    --else
+        config[0].eunit = 1.0
+    --end
   var record : int8[201]
   var record1 : int8[201]
   var key : &int8 = [&int8](regentlib.c.malloc(64))
@@ -228,7 +231,12 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
   interact[0] = [&bool](regentlib.c.malloc([terralib.sizeof(bool)] * config[0].npot))
   interact[1] = [&bool](regentlib.c.malloc([terralib.sizeof(bool)] * config[0].npot))
   interact[2] = [&bool](regentlib.c.malloc([terralib.sizeof(bool)] * config[0].npot))
-
+--Iniitalise interact to false
+    for i=0, config[0].npot do
+        interact[0][i] = false
+        interact[1][i] = false
+        interact[2][i] = false
+    end
 --  var vvv : &&double
 --  vvv = [&&double](regentlib.c.malloc([terralib.sizeof(&double)] * mxprm))
 --  for i=0, mxprm do
@@ -255,7 +263,17 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
     if c_string.strcmp(key, "close") == 0 then
         finish = false
         regentlib.c.free(key)
-        break 
+        break
+    --TODO SPECIES!!!! -- Line 2061 in dl_meso
+    elseif c_string.strcmp(key, "species") == 0 then
+        for i = 0, config[0].nspe do
+            c_stdio.fgets(record1, 200, FIELD)
+            regentlib.c.free(word)
+            word = io_utils.get_word(record1, 4)
+            config[0].nspec[i] = c_stdlib.atoi(word)
+            config[0].nusystcell = config[0].nusystcell + config[0].nspec[i]
+        end 
+        config[0].nsystcell = config[0].nsystcell + config[0].nusystcell
     elseif c_string.strcmp(key, "molecul") == 0 then
       --TODO: NYI Molecules
     elseif c_string.strcmp(key, "interactions") == 0 then
@@ -270,7 +288,7 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
             spename[8] = int8(0)
             ispe = -1
             for j=0,config[0].nspe do
-                if c_string.strcmp(spename, config[0].namtmp[j]) == 0 then
+                if c_string.strcmp(spename, config[0].namspe[j]) == 0 then
                     ispe = j
                 end
             end
@@ -290,7 +308,7 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
             spename[8] = int8(0)
             jspe = -1
             for j=0, config[0].nspe do
-                if c_string.strcmp(spename, config[0].namtmp[j]) == 0 then
+                if c_string.strcmp(spename, config[0].namspe[j]) == 0 then
                     jspe = j
                 end
             end
@@ -304,7 +322,7 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
                 c_stdlib.exit(47) 
             end
 
-            --FIXME: This is a bit weird due to conversion to C (0-based) from Fortran - need to check.
+            --FIXME: This is a bit weird due to conversion to C (0-based) from Fortran - need to check. Looks good.
             if (ispe>jspe) then
                 k = (( (ispe+1) * ispe) / 2 + jspe+1) - 1
             else
@@ -380,7 +398,6 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
                     c_stdlib.exit(51) 
                 end
                 k = (( (j+1) * j) /2 + (i+1)) - 1               
-            
                 --TODO: NYI Frozen (line 2582)
                 if( (not interact[0][k]) or (not interact[1][k]) or (not interact[2][k])) then 
                     --Continue from line 2588
@@ -399,7 +416,7 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
                         if interact[0][k] then 
                             aa = config[0].vvv[0][k]
                         else
-                            aa = regentlib.c.sqrt( config[0].vvv[0][ispe] * config[0].vvv[1][ispe] )
+                            aa = regentlib.c.sqrt( config[0].vvv[0][ispe] * config[0].vvv[0][jspe] )
                             config[0].vvv[0][k] = aa
                         end
                         if interact[1][k] then
@@ -433,15 +450,15 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
 --TODO: Support nfold
 --!     determine numbers of particles, bonds etc. from unit cell values
 --
---      nsyst = nsystcell * nfold
---      nusyst = nusystcell * nfold
+      config[0].nsyst = config[0].nsystcell -- * nfold
+      config[0].nusyst = config[0].nusystcell -- * nfold
 --      nfsyst = nfsystcell * nfold
 --      numbond = numbondcell * nfold
 --      numcon = numconcell * nfold
 --      numang = numangcell * nfold
 --      numdhd = numdhdcell * nfold
 --      numexc = numexccell * nfold
---      nspec = nspec * nfold
+        config[0].nspec = config[0].nspec --* nfold
 --      nspecmol = nspecmol * nfold
 --      nummol = nummolcell * nfold
 
@@ -530,7 +547,7 @@ task read_control(config : region(ispace(int1d), config_type), l_readvol : bool,
                                                 config.itype, config.btype, config.nseql, config.ldyn, config.nsbpo, config.nsbts,
                                                 config.ltemp, config.nstk, config.iscorr, config.lcorr, config.nrun, config.temp,
                                                 config.straj, config.ntraj, config.keytrj, config.ltraj, config.tstep, config.rtstep,
-                                                config.tstepsq, config.volm, config.space)
+                                                config.tstepsq, config.volm, config.space, config.text)
 do
     
     var record : int8[201]
@@ -552,7 +569,13 @@ do
         c_stdlib.exit(21) 
     end
     --Skip the title line
-    c_stdio.fscanf(CONTROL,  "%*[^\n]\n")
+--    c_stdio.fscanf(CONTROL,  "%*[^\n]\n")
+    --Read the title line into the text field.
+    c_stdio.fgets(record, 80, CONTROL)
+    --Can't call strcpy on fields of the region (no aliasing allowed)
+    for i = 0, 81 do
+        config[0].text[i] = record[i]
+    end
     var finish : bool = true
     while finish do
         var err = c_stdio.fgets(record, 200, CONTROL)
