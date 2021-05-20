@@ -9,6 +9,7 @@ DSL_settings.PERIODICITY = true
 DSL_settings.TIMING = false
 DSL_settings.part_setup = false
 DSL_settings.dsl_setup = false
+DSL_settings.ALLTOALL = false
 
 --Set empty neighbour init global variable
 neighbour_init = {}
@@ -40,12 +41,20 @@ function enable_timing()
   DSL_settings.TIMING = true
 end
 
+--NB: Only supports 3D periodic
+function enable_all_to_all()
+  DSL_settings.ALLTOALL = true
+end
 
 function setup_part()
 --Periodic imports
   if DSL_settings.PERIODICITY then
     if DSL_settings.DIMENSIONALITY == 3 then
-      require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+        if DSL_settings.ALLTOALL then
+            require("src/neighbour_search/all_to_all/import_alltoall") 
+        else
+            require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+        end
     else
       require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
     end
@@ -86,8 +95,13 @@ function import_dl_meso( custom_config_path, custom_part_path)
 
     if DSL_settings.PERIODICITY then
       if DSL_settings.DIMENSIONALITY == 3 then
-        require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-        neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+        if DSL_settings.ALLTOALL then
+            require("src/neighbour_search/all_to_all/neighbour_search")
+            neighbour_init = require("src/neighbour_search/all_to_all/neighbour_init")
+        else
+            require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+            neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+        end
       else
         require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
         neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")

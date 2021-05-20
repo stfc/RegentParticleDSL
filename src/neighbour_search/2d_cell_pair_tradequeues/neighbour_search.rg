@@ -120,7 +120,7 @@ local update_neighbours, read1_privs, read2_privs, write1_privs, reduc1_privs =
               write1, reduc1 )
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
 
-local __demand(__leaf) task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+local __demand(__leaf) task asym_pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [reduc1_privs],
   reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
@@ -166,7 +166,7 @@ local update_neighbours, read1_privs, read2_privs, write1_privs, reduc1_privs =
               write1, reduc1 )
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
 
-local __demand(__leaf) task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+local __demand(__leaf) task asym_pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [reduc1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
@@ -563,7 +563,7 @@ local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
 local update_neighbours, read1_privs, write1_privs, reduc1_privs, readconf_privs, reducconf_privs =                                                                                                                    privilege_lists.get_privileges_per_part(parts1, read1, write1, reduc1, config, readconf, reducconf)
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task pairwise_task([parts1], [config]) where
+local __demand(__leaf) task per_part_task([parts1], [config]) where
    [read1_privs], [write1_privs], [reduc1_privs], [readconf_privs], [reducconf_privs], [coherences],
    reads( parts1.neighbour_part_space._valid ) 
    do

@@ -137,7 +137,7 @@ local update_neighbours, read1_privs, read2_privs, write1_privs, reduc1_privs =
               write1, reduc1 )
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
 
-local __demand(__leaf) task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+local __demand(__leaf) task asym_pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [reduc1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
@@ -186,7 +186,7 @@ local update_neighbours, read1_privs, read2_privs, write1_privs, reduc1_privs =
       privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, read1, read2,
               write1, reduc1 )
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
-local __demand(__leaf) task pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
+local __demand(__leaf) task asym_pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
   where [read1_privs], [read2_privs], [write1_privs], [reduc1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
@@ -322,7 +322,6 @@ local __demand(__leaf) task self_task([parts1], [config]) where
        end
      end
    end
-
 end
 return self_task, update_neighbours
 end
@@ -443,7 +442,6 @@ local read1, read2, read3, write1, write2, write3, reduc1, reduc2, reduc3 = comp
 local cell_pair_task, update_neighbours1 = generate_symmetric_pairwise_task( kernel_name, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 local cell_self_task, update_neighbours2 = generate_symmetric_self_task( kernel_name, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
 local update_neighbours = update_neighbours1 or update_neighbours2
-print("Created symmetric pairwise runner")
 local update_neighbours_quote = rquote
 
 end
@@ -644,7 +642,7 @@ local update_neighbours, read1_privs, write1_privs, reduc1_privs, readconf_privs
                                             privilege_lists.get_privileges_per_part(parts1, read1, write1, reduc1, config, readconf, reducconf)
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task pairwise_task([parts1], [config]) where
+local __demand(__leaf) task per_part_task([parts1], [config]) where
    [read1_privs], [write1_privs], [reduc1_privs], [readconf_privs], [reducconf_privs], [coherences], 
    reads( parts1.neighbour_part_space._valid )
    do

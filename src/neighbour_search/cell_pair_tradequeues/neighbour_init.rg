@@ -33,6 +33,7 @@ end
 
 neighbour_init.cell_partition = regentlib.newsymbol("padded_cell_partition")
 
+
 local DEBUG = true
 
 --Use terralib list for this isntead of lua table
@@ -574,6 +575,13 @@ local initialisation_quote = rquote                                             
 end
 
 return initialisation_quote
+end
+
+__demand(__inline)
+task neighbour_init.check_valid(ns : neighbour_part)
+
+    return ns._valid
+    
 end
 
 return neighbour_init

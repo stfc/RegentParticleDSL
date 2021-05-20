@@ -301,7 +301,7 @@ end
 task write_history(config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
                                                                                 reads(config),
                                                                                         reads(parts.core_part_space,
-                                                                                        parts.lab, parts.fxx, parts.fyy, parts.fzz),
+                                                                                        parts.lab, parts.fxx, parts.fyy, parts.fzz, parts.neighbour_part_space),
                                                                                 writes(config.numframe, config.filesize)
 do
 
@@ -341,43 +341,49 @@ do
     --Continue from 2478
     var double_buffer : &double = [&double](regentlib.c.malloc([terralib.sizeof(double)] * 3*(config[0].keytrj + 1) * config[0].nsyst))
     var labs : &int32 = [&int32](regentlib.c.malloc([terralib.sizeof(int32)] * config[0].nsyst))
---    regentlib.assert(double_buffer ~= nil, "Failed to allocate double_buffer")
---    regentlib.assert(labs ~= nil, "Failed to allocate labs")
+    regentlib.assert(not isnull(double_buffer), "Failed to allocate double_buffer")
+    regentlib.assert(not isnull(labs), "Failed to allocate labs")
     if config[0].keytrj == 0 then
         var ii = 0
         for i in parts.ispace do
-            double_buffer[3*ii] = parts[i].core_part_space.pos_x
-            double_buffer[3*ii+1] = parts[i].core_part_space.pos_y
-            double_buffer[3*ii+2] = parts[i].core_part_space.pos_z
-            labs[ii] = parts[i].lab
-            ii = ii + 1
+            if neighbour_init.check_valid(parts[i].neighbour_part_space) then
+                double_buffer[3*ii] = parts[i].core_part_space.pos_x
+                double_buffer[3*ii+1] = parts[i].core_part_space.pos_y
+                double_buffer[3*ii+2] = parts[i].core_part_space.pos_z
+                labs[ii] = parts[i].lab
+                ii = ii + 1
+            end
         end
     elseif config[0].keytrj == 1 then
         var ii = 0
         for i in parts.ispace do
-            double_buffer[6*ii] = parts[i].core_part_space.pos_x
-            double_buffer[6*ii+1] = parts[i].core_part_space.pos_y
-            double_buffer[6*ii+2] = parts[i].core_part_space.pos_z
-            double_buffer[6*ii+3] = parts[i].core_part_space.vel_x
-            double_buffer[6*ii+4] = parts[i].core_part_space.vel_y
-            double_buffer[6*ii+5] = parts[i].core_part_space.vel_z
-            labs[ii] = parts[i].lab
-            ii = ii + 1
+            if neighbour_init.check_valid(parts[i].neighbour_part_space) then
+                double_buffer[6*ii] = parts[i].core_part_space.pos_x
+                double_buffer[6*ii+1] = parts[i].core_part_space.pos_y
+                double_buffer[6*ii+2] = parts[i].core_part_space.pos_z
+                double_buffer[6*ii+3] = parts[i].core_part_space.vel_x
+                double_buffer[6*ii+4] = parts[i].core_part_space.vel_y
+                double_buffer[6*ii+5] = parts[i].core_part_space.vel_z
+                labs[ii] = parts[i].lab
+                ii = ii + 1
+            end
         end
     elseif config[0].keytrj == 2 then
         var ii = 0
         for i in parts.ispace do
-            double_buffer[9*ii] = parts[i].core_part_space.pos_x
-            double_buffer[9*ii+1] = parts[i].core_part_space.pos_y
-            double_buffer[9*ii+2] = parts[i].core_part_space.pos_z
-            double_buffer[9*ii+3] = parts[i].core_part_space.vel_x
-            double_buffer[9*ii+4] = parts[i].core_part_space.vel_y
-            double_buffer[9*ii+5] = parts[i].core_part_space.vel_z
-            double_buffer[9*ii+6] = parts[i].fxx
-            double_buffer[9*ii+7] = parts[i].fyy
-            double_buffer[9*ii+8] = parts[i].fzz
-            labs[ii] = parts[i].lab
-            ii = ii + 1
+            if neighbour_init.check_valid(parts[i].neighbour_part_space) then
+                double_buffer[9*ii] = parts[i].core_part_space.pos_x
+                double_buffer[9*ii+1] = parts[i].core_part_space.pos_y
+                double_buffer[9*ii+2] = parts[i].core_part_space.pos_z
+                double_buffer[9*ii+3] = parts[i].core_part_space.vel_x
+                double_buffer[9*ii+4] = parts[i].core_part_space.vel_y
+                double_buffer[9*ii+5] = parts[i].core_part_space.vel_z
+                double_buffer[9*ii+6] = parts[i].fxx
+                double_buffer[9*ii+7] = parts[i].fyy
+                double_buffer[9*ii+8] = parts[i].fzz
+                labs[ii] = parts[i].lab
+                ii = ii + 1
+            end
         end
     end
 
@@ -385,45 +391,41 @@ do
     c_stdio.fwrite(labs, [terralib.sizeof(int32)], config[0].nsyst, HISTORY)
     --
     c_stdio.fwrite(double_buffer, [terralib.sizeof(double)],  3*(config[0].keytrj + 1) * config[0].nsyst, HISTORY)
-
-    format.println("freeing labs in write_history")
     regentlib.c.free(labs)
-    format.println("freeing double_buffer in write_history")
     regentlib.c.free(double_buffer)
-    format.println("Closing HISTORY file")
     c_stdio.fclose(HISTORY)
-    format.println("End of write_history")
 end
 
 task write_export( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
                                                                                 reads(config),
                                                                                         reads(parts.core_part_space,
                                                                                         parts.lab, parts.fxx, parts.fyy, parts.fzz,
-                                                                                        parts.ltm, parts.ltp),
+                                                                                        parts.ltm, parts.ltp, parts.neighbour_part_space),
                                                                                 writes(config.numframe, config.filesize)
 do
-    format.println("Starting write_export")
     --Collect the variables
     var int_buf : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof( int32 )] * 3 * config[0].nsyst ))
     var double_buf : &double = [&double](regentlib.c.malloc( [terralib.sizeof( double)] * 9 * config[0].nsyst))
---    regentlib.assert(int_buf ~= [&int32](0), "Failed to allocate double_buffer")
---    regentlib.assert(double_buf ~= [&double](0), "Failed to allocate double_buffer")
+    regentlib.assert(not isnull(int_buf), "Failed to allocate double_buffer")
+    regentlib.assert(not isnull(double_buf), "Failed to allocate double_buffer")
     var i : int32
     var ii : int32 = 0
     for i in parts.ispace do
-        int_buf[ii*3] = parts[i].lab
-        int_buf[ii*3+1] = parts[i].ltp
-        int_buf[ii*3+2] = parts[i].ltm
-        double_buf[9*ii] = parts[i].core_part_space.pos_x
-        double_buf[9*ii+1] = parts[i].core_part_space.pos_y
-        double_buf[9*ii+2] = parts[i].core_part_space.pos_z
-        double_buf[9*ii+3] = parts[i].core_part_space.vel_x
-        double_buf[9*ii+4] = parts[i].core_part_space.vel_y
-        double_buf[9*ii+5] = parts[i].core_part_space.vel_z
-        double_buf[9*ii+6] = parts[i].fxx
-        double_buf[9*ii+7] = parts[i].fyy
-        double_buf[9*ii+8] = parts[i].fzz
-        ii = ii + 1
+        if neighbour_init.check_valid(parts[i].neighbour_part_space) then
+            int_buf[ii*3] = parts[i].lab
+            int_buf[ii*3+1] = parts[i].ltp
+            int_buf[ii*3+2] = parts[i].ltm
+            double_buf[9*ii] = parts[i].core_part_space.pos_x
+            double_buf[9*ii+1] = parts[i].core_part_space.pos_y
+            double_buf[9*ii+2] = parts[i].core_part_space.pos_z
+            double_buf[9*ii+3] = parts[i].core_part_space.vel_x
+            double_buf[9*ii+4] = parts[i].core_part_space.vel_y
+            double_buf[9*ii+5] = parts[i].core_part_space.vel_z
+            double_buf[9*ii+6] = parts[i].fxx
+            double_buf[9*ii+7] = parts[i].fyy
+            double_buf[9*ii+8] = parts[i].fzz
+            ii = ii + 1
+        end
     end
     
     var export = c_stdio.fopen('export', 'wb')
@@ -454,7 +456,6 @@ do
     c_stdio.fwrite(int_buf, [terralib.sizeof(int32)], 3 * config[0].nsyst, export)
     c_stdio.fwrite(double_buf, [terralib.sizeof(double)], 9 * config[0].nsyst, export)
 
-    format.println("Freeing in write_export")
     regentlib.c.free(int_buf)
     regentlib.c.free(double_buf)
 
@@ -655,7 +656,6 @@ task write_output_result( config : region(ispace(int1d), config_type), parts : r
 do
   --Line 3044
     write_revive(config)
-    format.println("Hello after write_revive")
     var OUTPUT = c_stdio.fopen("OUTPUT", "a")
     var i : int32
     
@@ -733,7 +733,7 @@ do
     if(config[0].nsyst > 0) then
         c_stdio.fprintf(OUTPUT, "\n final particle positions and velocities\n\n")
         var k = regentlib.fmax(1, config[0].nsyst/20)
-        for i=0, config[0].nsyst, k do
+        for i=0, config[0].nsyst, k do --FIXME: Validity check
             --if bond then
             --else
                 c_stdio.snprintf(&(buffer[0]), 25, "%i", parts[int1d(i)].lab)
@@ -754,7 +754,7 @@ task gather_write_data( lexport : bool, lhistory : bool, time : double,
                                                                                 reads(config),
                                                                                         reads(parts.core_part_space,
                                                                                         parts.lab, parts.fxx, parts.fyy, parts.fzz,
-                                                                                        parts.ltm, parts.ltp),
+                                                                                        parts.ltm, parts.ltp, parts.neighbour_part_space),
                                                                                 writes(config.numframe, config.filesize)
 
 do

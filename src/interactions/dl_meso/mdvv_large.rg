@@ -1,7 +1,6 @@
 import "regent"
 
 require("src/RegentParticleDSL")
-enable_all_to_all()
 import_dl_meso()
 
 function reassign_particle_properties(part1, config)

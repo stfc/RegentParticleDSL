@@ -203,6 +203,7 @@ local function two_region_privilege_map(node, sym1, sym2, read_sym1, read_sym2, 
         write_sym2:insert(name)
       end
     else
+        --For array accesses, we recurse until we find a non-array access and then check if its a FieldAccess
         if node.lhs[1]:is(ast.specialized.expr.IndexAccess) then
             local z = node.lhs[1]
             while z.value:is(ast.specialized.expr.IndexAccess) do
