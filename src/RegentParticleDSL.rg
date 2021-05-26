@@ -10,6 +10,9 @@ DSL_settings.TIMING = false
 DSL_settings.part_setup = false
 DSL_settings.dsl_setup = false
 DSL_settings.ALLTOALL = false
+DSL_settings.HIGHPERFORMANCE = true
+
+DSL_settings.mapper_path = nil
 
 --Set empty neighbour init global variable
 neighbour_init = {}
@@ -20,6 +23,10 @@ variables = {}
 variables.config = regentlib.newsymbol("config")
 variables.particle_array = regentlib.newsymbol("particle_region")
 variables.io_array = regentlib.newsymbol("io_array")
+
+function disable_high_performance()
+    DSL_settings.HIGHPERFORMANCE = false
+end
 
 function set_dimensionality(dimensions)
   if(dimensions ~= 2 and dimensions ~= 3 ) then
@@ -51,18 +58,27 @@ function setup_part()
   if DSL_settings.PERIODICITY then
     if DSL_settings.DIMENSIONALITY == 3 then
         if DSL_settings.ALLTOALL then
-            require("src/neighbour_search/all_to_all/import_alltoall") 
+            require("src/neighbour_search/all_to_all/import_alltoall")
+            DSL_settings.mapper_path = "src/mappers/tradequeue_mapper.cc"
         else
-            require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+            if DSL_settings.HIGHPERFORMANCE then
+                require("src/neighbour_search/HP_cell_pair_tradequeues/import_cell_pair")
+            else
+                require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
+                DSL_settings.mapper_path = "src/mappers/tradequeue_mapper.cc"
+            end
         end
     else
       require("src/neighbour_search/2d_cell_pair_tradequeues/import_cell_pair")
+      DSL_settings.mapper_path = "src/mappers/tradequeue_mapper.cc"
     end
   else
     if DSL_settings.DIMENSIONALITY == 3 then
       require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_3d_nonperiod")
+      DSL_settings.mapper_path = "src/mappers/tradequeue_mapper.cc"
     else
       require("src/neighbour_search/cell_pair_tradequeues_nonperiod/import_2d_nonperiod")
+      DSL_settings.mapper_path = "src/mappers/tradequeue_mapper.cc"
     end
   end
 
@@ -99,8 +115,13 @@ function import_dl_meso( custom_config_path, custom_part_path)
             require("src/neighbour_search/all_to_all/neighbour_search")
             neighbour_init = require("src/neighbour_search/all_to_all/neighbour_init")
         else
-            require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-            neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+            if DSL_settings.HIGHPERFORMANCE then
+                require("src/neighbour_search/HP_cell_pair_tradequeues/neighbour_search")
+                neighbour_init = require("src/neighbour_search/HP_cell_pair_tradequeues/neighbour_init")
+            else
+                require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+                neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+            end
         end
       else
         require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
@@ -138,8 +159,18 @@ end
 --Periodic imports
 if DSL_settings.PERIODICITY then
   if DSL_settings.DIMENSIONALITY == 3 then
-    require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
-    neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+        if DSL_settings.ALLTOALL then
+            require("src/neighbour_search/all_to_all/neighbour_search")
+            neighbour_init = require("src/neighbour_search/all_to_all/neighbour_init")
+        else
+            if DSL_settings.HIGHPERFORMANCE then
+                require("src/neighbour_search/HP_cell_pair_tradequeues/neighbour_search")
+                neighbour_init = require("src/neighbour_search/HP_cell_pair_tradequeues/neighbour_init")
+            else
+                require("src/neighbour_search/cell_pair_tradequeues/neighbour_search")
+                neighbour_init = require("src/neighbour_search/cell_pair_tradequeues/neighbour_init")
+            end
+        end
   else
     require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_search")
     neighbour_init = require("src/neighbour_search/2d_cell_pair_tradequeues/neighbour_init")
@@ -158,6 +189,53 @@ end
 
 end
 
+function compile_mapper_run()
+    if DSL_settings.mapper_path == nil then
+        return
+    end
+    --Compile and link the mapper.
+    --Find mapper file name
+    local fileindices = string.find(DSL_settings.mapper_path, "[A-Za-z0-9_%-]*.cc")
+    local filename = string.sub(DSL_settings.mapper_path, fileindices)
+    local includepath = string.sub(DSL_settings.mapper_path, 0, fileindices-1)
+
+    --Setup includepath for compiler
+    local root_dir = "./"
+    local include_path = ""
+    local include_dirs = terralib.newlist()
+    include_dirs:insert("-I")
+    include_dirs:insert(root_dir)
+    for path in string.gmatch(os.getenv("INCLUDE_PATH"), "[^;]+") do
+        include_path = include_path .. " -I " .. path
+        include_dirs:insert("-I")
+        include_dirs:insert(path)
+    end
+    include_dirs:insert("-I")
+    include_dirs:insert(includepath)
+    include_path = include_path .. " -I " .. includepath
+
+    local mapper_cc = DSL_settings.mapper_path
+    local mapper_so = os.tmpname() .. ".so"
+    local cxx = os.getenv('CXX') or 'c++'
+    local cxx_flags = os.getenv('CXXFLAGS') or ''
+    cxx_flags = cxx_flags .. " -O2 -Wall -Werror"
+    --Not yet working on Mac. circuit_mapper has some stuff to detect Darwin
+    cxx_flags = cxx_flags .. " -shared -fPIC"
+    local cmd = (cxx .. " " .. cxx_flags .. " " .. include_path .. " " ..
+                mapper_cc .. " -o " .. mapper_so)
+    if os.execute(cmd) ~= 0 then
+        print("Error: failed to compile " .. mapper_cc)
+        assert(false)
+    end
+
+    regentlib.linklibrary(mapper_so)
+    print("header is", includepath .. string.gsub(filename, "%.cc", ".h"))
+    local cmapper = terralib.includec(includepath .. string.gsub(filename, "%.cc", ".h"), include_dirs)
+    return cmapper 
+    
+    
+end
+
 --Lets run the DSL immediately. This is currently just a wrapper for regentlib.start, but lets the DSL
 --make mapper choices etc. depending on chosen options/kernels in the future.
 function run_DSL( main_function )
@@ -165,7 +243,14 @@ function run_DSL( main_function )
     print("DSL setup must be completed before the run_dsl call")
     os.exit(1)
   end
-  regentlib.start(main_function)
+  print(DSL_settings.mapper_path)
+  if DSL_settings.mapper_path ~= nil then
+    local cmapper = compile_mapper_run()
+    regentlib.start(main_function, cmapper.register_mappers)
+    --regentlib.start(main_function, mapper function TODO
+  else
+    regentlib.start(main_function)
+  end
 end
 
 

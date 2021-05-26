@@ -213,28 +213,28 @@ function forces_mdvv(part1, part2, r2, config)
         --sum of forces
         var sumforce : double = gforce + rforce + dforce 
 
-        config.vir += -sumforce * r2
+        config.vir += 0.5* -sumforce * r2
         --assign stress terms
-        config.mdvv_type.strscxx += gforce * xdif * xdif
-        config.mdvv_type.strscxy += gforce * xdif * ydif
-        config.mdvv_type.strscxz += gforce * xdif * zdif
-        config.mdvv_type.strscyy += gforce * ydif * ydif
-        config.mdvv_type.strscyz += gforce * ydif * zdif
-        config.mdvv_type.strsczz += gforce * zdif * zdif
+        config.mdvv_type.strscxx += 0.5 * gforce * xdif * xdif
+        config.mdvv_type.strscxy += 0.5 * gforce * xdif * ydif
+        config.mdvv_type.strscxz += 0.5 * gforce * xdif * zdif
+        config.mdvv_type.strscyy += 0.5 * gforce * ydif * ydif
+        config.mdvv_type.strscyz += 0.5 * gforce * ydif * zdif
+        config.mdvv_type.strsczz += 0.5 * gforce * zdif * zdif
 
-        config.mdvv_type.strsdxx += dforce * xdif * xdif
-        config.mdvv_type.strsdxy += dforce * xdif * ydif
-        config.mdvv_type.strsdxz += dforce * xdif * zdif
-        config.mdvv_type.strsdyy += dforce * ydif * ydif
-        config.mdvv_type.strsdyz += dforce * ydif * zdif
-        config.mdvv_type.strsdzz += dforce * zdif * zdif
+        config.mdvv_type.strsdxx += 0.5 * dforce * xdif * xdif
+        config.mdvv_type.strsdxy += 0.5 * dforce * xdif * ydif
+        config.mdvv_type.strsdxz += 0.5 * dforce * xdif * zdif
+        config.mdvv_type.strsdyy += 0.5 * dforce * ydif * ydif
+        config.mdvv_type.strsdyz += 0.5 * dforce * ydif * zdif
+        config.mdvv_type.strsdzz += 0.5 * dforce * zdif * zdif
 
-        config.mdvv_type.strsrxx += rforce * xdif * xdif
-        config.mdvv_type.strsrxy += rforce * xdif * ydif
-        config.mdvv_type.strsrxz += rforce * xdif * zdif
-        config.mdvv_type.strsryy += rforce * ydif * ydif
-        config.mdvv_type.strsryz += rforce * ydif * zdif
-        config.mdvv_type.strsrzz += rforce * zdif * zdif
+        config.mdvv_type.strsrxx += 0.5 * rforce * xdif * xdif
+        config.mdvv_type.strsrxy += 0.5 * rforce * xdif * ydif
+        config.mdvv_type.strsrxz += 0.5 * rforce * xdif * zdif
+        config.mdvv_type.strsryy += 0.5 * rforce * ydif * ydif
+        config.mdvv_type.strsryz += 0.5 * rforce * ydif * zdif
+        config.mdvv_type.strsrzz += 0.5 * rforce * zdif * zdif
 
         -- assign force terms
 --        if part1.lab == 1 then
@@ -243,9 +243,6 @@ function forces_mdvv(part1, part2, r2, config)
         part1.fxx += -sumforce * xdif
         part1.fyy += -sumforce * ydif
         part1.fzz += -sumforce * zdif
-        part2.fxx += sumforce * xdif
-        part2.fyy += sumforce * ydif
-        part2.fzz += sumforce * zdif        
     end
     return forces_kernel
 end
@@ -277,7 +274,7 @@ function plcfor_mdvv()
 
         --Calculate pair forces
         --forces_mdvv
-        [invoke(variables.config, {forces_mdvv, SYMMETRIC_PAIRWISE}, BARRIER)];
+        [invoke(variables.config, {forces_mdvv, ASYMMETRIC_PAIRWISE}, BARRIER)];
 --        var sumx = 0.0
 --        var sumy = 0.0
 --        var sumz = 0.0
@@ -481,5 +478,5 @@ end
     --dl_meso_timing_mod.timchk(config) --TODO Include this.
 end
 
---run_DSL(mdvv)
-regentlib.start(mdvv)
+run_DSL(mdvv)
+--regentlib.start(mdvv)

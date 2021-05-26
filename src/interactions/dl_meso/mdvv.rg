@@ -482,5 +482,5 @@ end
     --dl_meso_timing_mod.timchk(config) --TODO Include this.
 end
 
---run_DSL(mdvv)
-regentlib.start(mdvv)
+run_DSL(mdvv)
+--regentlib.start(mdvv)
