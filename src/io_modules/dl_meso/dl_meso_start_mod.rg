@@ -305,7 +305,7 @@ do
 --Assign particle/molecule names and masses
     for i in parts.ispace do
         parts[i].core_part_space.mass = config[0].masstmp[parts[i].ltp]
-        for j =0, 25 do
+        for j =0, 9 do
             parts[i].atmnam[j] = config[0].namspe[parts[i].ltp][j]
             --TODO: NYI parts[i].molnam[j] = config[0].mol[parts[i].ltm][j]
         end

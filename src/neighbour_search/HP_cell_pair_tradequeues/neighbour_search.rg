@@ -85,17 +85,18 @@ return pairwise_task, update_neighbours
 end
 
 
-function generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1, reduc1 )
+function generate_asymmetric_pairwise_task( kernel_name, read1, read2, read3, write1, reduc1, reduc3 )
 --Asymmetric kernel can only write to part1
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
-local update_neighbours, read1_privs, read2_privs, write1_privs, reduc1_privs = 
-      privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, read1, read2,
-              write1, reduc1 )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local  update_neighbours, read1_privs, read2_privs, read3_privs, write1_privs, reduc1_privs, reduc3_privs =
+      privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, config, read1, read2, read3,
+              write1, reduc1, reduc3 )
 local coherences = coherence_compute.compute_coherences_pair_task(update_neighbours, parts1, parts2)
-local __demand(__leaf) task asym_pairwise_task([parts1], [parts2],  config : region(ispace(int1d), config_type))
-  where [read1_privs], [read2_privs], [write1_privs], [reduc1_privs], reads(config), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
+local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config] )
+  where [read1_privs], [read2_privs], [read3_privs], [write1_privs], [reduc1_privs], [reduc3_privs], reads(config.space), reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   [coherences] do
    var box_x = config[0].space.dim_x
@@ -143,7 +144,7 @@ function generate_symmetric_self_task( kernel_name, read1, read2, read3, write1,
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
-local update_neighbours, read1_privs, readconf_privs, write1_privs, reduc1_privs, reducconf_privs = privilege_lists.get_privileges_self_task( parts1, config, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
+local update_neighbours, read1_privs, readconf_privs, write1_privs, reduc1_privs, reducconf_privs = privilege_lists.get_privileges_self_task(  parts1, config, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3)
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
 local __demand(__leaf) task self_task([parts1], [config]) where
@@ -188,15 +189,18 @@ end
 
 --Generate a self task
 --This function assumes the cutoff of only the updated part is relevant
-function generate_asymmetric_self_task( kernel_name, read1, read2, write1, reduc1 )
+function generate_asymmetric_self_task( kernel_name, read1, read2, read3, write1, reduc1, reduc3 )
 --Take the privilege strings and convert them into privileges we can use to generate the task
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
-local update_neighbours, read1_privs, write1_privs, reduc1_privs = privilege_lists.get_privileges_self_task( parts1, read1, read2, write1, {}, reduc1, {} )
+local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local update_neighbours, read1_privs, readconf_privs, write1_privs, reduc1_privs, reducconf_privs = 
+                                                                   privilege_lists.get_privileges_self_task( parts1, config, read1, read2, read3,
+                                                                                                             write1, {}, reduc1, {}, reduc3 )
 local coherences = coherence_compute.compute_coherences_self_task(update_neighbours, parts1)
 
-local __demand(__leaf) task self_task([parts1], config : region(ispace(int1d), config_type)) where
-   [read1_privs], [write1_privs], [reduc1_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
-                                  reads(parts1.neighbour_part_space._valid), reads(config),
+local __demand(__leaf) task self_task([parts1], [config]) where
+   [read1_privs], [readconf_privs], [write1_privs], [reduc1_privs], [reducconf_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
+                                  reads(parts1.neighbour_part_space._valid), reads(config.space),
    [coherences] do
    var box_x = config[0].space.dim_x
    var box_y = config[0].space.dim_y
@@ -286,10 +290,10 @@ return symmetric
 end
 
 function create_asymmetric_pairwise_runner( kernel_name, config, cell_space )
-local read1, read2, write1, write2, reduc1, reduc2 = compute_privileges.two_region_privileges( kernel_name )
+local read1, read2, read3, write1, write2, write3, reduc1, reduc2, reduc3 = compute_privileges.three_region_privileges( kernel_name )
 --While write2 is computed, asymmetric kernels are not allowed to write to write2
-local cell_pair_task, update_neighbours1 = generate_asymmetric_pairwise_task( kernel_name, read1, read2, write1, reduc1 )
-local cell_self_task, update_neighbours2 = generate_asymmetric_self_task( kernel_name, read1, read2, write1, reduc1 )
+local cell_pair_task, update_neighbours1 = generate_asymmetric_pairwise_task( kernel_name, read1, read2, read3, write1, reduc1, reduc3 )
+local cell_self_task, update_neighbours2 = generate_asymmetric_self_task( kernel_name, read1, read2, read3, write1, reduc1, reduc3 )
 local update_neighbours = update_neighbours1 or update_neighbours2
 local update_neighbours_quote = rquote
 
@@ -332,9 +336,9 @@ local asymmetric = rquote
     var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
     var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z )
     --Exit gracefull if max_cutoff >= half the boxsize
-    regentlib.assert(x_radii < x_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
-    regentlib.assert(y_radii < y_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
-    regentlib.assert(z_radii < z_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
+    regentlib.assert(x_radii <= x_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
+    regentlib.assert(y_radii <= y_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
+    regentlib.assert(z_radii <= z_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
     __demand(__trace)
     do
         for x = -x_radii, x_radii+1 do
@@ -596,217 +600,4 @@ local symmetric = rquote
 end
 return symmetric
 
-end
-
--- ... should contain a list of symmetric kernel functions
-function create_asymmetric_pairwise_runner_multikernel( config, cell_space, ... )
-  local read1 = terralib.newlist()
-  local read2 = terralib.newlist()
-  local write1 = terralib.newlist()
-  local write2 = terralib.newlist()
-  local reduc1 = terralib.newlist()
-  local reduc2 = terralib.newlist()
-  if select("#", ...) == 0 then
-    print("Attempting to make a 0 kernel task")
-    return nil
-  end
-  local kernels = terralib.newlist()
-  local hash_r1 = {}
-  local hash_r2 = {}
-  local hash_w1 = {}
-  local hash_w2 = {}
-  for i=1, select("#", ...) do
-    kernels:insert(select(i, ...))
-    local temp_r1, temp_r2, temp_w1, temp_w2, temp_re1, temp_re2 = compute_privileges.two_region_privileges(select(i, ...))
-    --Merge the read/writes for this kernel with previous ones, keeping uniqueness
-    for _,v in pairs(temp_r1) do
-      if( not hash_r1[v]) then
-        read1:insert(v)
-        hash_r1[v] = true
-      end
-    end
-    for _,v in pairs(temp_r2) do
-      if( not hash_r2[v]) then
-        read2:insert(v)
-        hash_r2[v] = true
-      end
-    end
-    for _,v in pairs(temp_w1) do
-      if( not hash_w1[v]) then
-        write1:insert(v)
-        hash_w1[v] = true
-      end
-    end
-    for _,v in pairs(temp_w2) do
-      if( not hash_w2[v]) then
-        write2:insert(v)
-        hash_w2[v] = true
-      end
-    end
-    for _, v in pairs(temp_re1) do
-      local exists = false
-      for _, v2 in pairs(reduc1) do
-        if v[1] == v2[1] and v[2] == v2[2] then
-          exists = true
-        end
-      end
-      if not exists then
-        reduc1:insert(v)
-      end
-    end
-  end
-
-  --Create the tasks
-  local cell_pair_task, update_neighbours1 = generate_asymmetric_pairwise_task_multikernel( kernels, read1, read2, write1, temp_re1 )
-  local cell_self_task, update_neighbours2 = generate_asymmetric_self_task_multikernel( kernels, read1, read2, write1, temp_re1 )
-  local update_neighbours = update_neighbours1 or update_neighbours2
-  local update_neighbours_quote = rquote
-
-  end
-  if update_neighbours then
-    local temp_variables = {}
-    temp_variables.config = config
-    update_neighbours_quote = neighbour_init.update_cells(temp_variables)
-  end
-
-local asymmetric = rquote
-    --Do all cell2s in the positive direction
-    var cutoff2 = config[0].neighbour_config.max_cutoff * config[0].neighbour_config.max_cutoff
-    var x_count = config[0].neighbour_config.x_cells
-    var y_count = config[0].neighbour_config.y_cells
-    var z_count = config[0].neighbour_config.z_cells
-
-    --Compute cell radii
-    var cutoff = config[0].neighbour_config.max_cutoff
-    var x_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_x )
-    var y_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_y )
-    var z_radii : int = ceil( cutoff / config[0].neighbour_config.cell_dim_z )
-    for cell1 in cell_space.colors do
-        cell_self_task(cell_space[cell1], config)
-        --Loops non inclusive, positive only direction.
-        for x = -x_radii, x_radii+1 do
-          for y = -y_radii, y_radii+1 do
-            for z = -z_radii, z_radii + 1 do
-              if(not (x == 0 and y == 0 and z == 0) ) then
-                var cell2_x = cell1.x + x
-                var cell2_y = cell1.y + y
-                var cell2_z = cell1.z + z
-                if cell2_x < 0 then
-                  cell2_x = cell2_x + x_count
-                end
-                if cell2_y < 0 then
-                  cell2_y = cell2_y + y_count
-                end
-                if cell2_z < 0 then
-                  cell2_z = cell2_z + z_count
-                end
-                var cell2 : int3d = int3d({ (cell2_x)%x_count, (cell2_y)%y_count, (cell2_z)%z_count })
-                --if statement to handle max_cutoff >= half the boxsize
-                    --Handle radius overlap
-                if( cell_greater_equal(cell1, cell2)
-                or ((x < 0 and cell2.x <= cell1.x + x_radii and cell2.x > cell1.x) or
-                                                        (y < 0 and cell2.y <= cell1.y + y_radii and cell2.y > cell1.y) or
-                                                        (z < 0 and cell2.z <= cell1.z + z_radii and cell2.z > cell1.z))
-                or ((x > 0 and cell2.x >= cell1.x - x_radii and cell2.x < cell1.x) or (y > 0 and cell2.y >= cell1.y - y_radii and cell2.y < cell1.y)
-                    or (z > 0 and cell2.z >= cell1.z - z_radii and cell2.z < cell1.z) )
-                ) then
-                 else
-                  --Asymmetric, launch tasks both ways
-                  cell_pair_task(cell_space[cell1], cell_space[cell2], config)
-                  cell_pair_task(cell_space[cell2], cell_space[cell1], config)
-                end
-              end
-            end
-          end
-        end
-    end
-    [update_neighbours_quote];
-end
-return asymmetric
-end
--- ... should contain a list of per_particle kernel functions.
-function run_per_particle_task_multikernel( config, cell_space, ...)
-  local read1 = terralib.newlist()
-  local read2 = terralib.newlist()
-  local write1 = terralib.newlist()
-  local write2 = terralib.newlist()
-  local reduc1 = terralib.newlist()
-  local reduc2 = terralib.newlist()
-  if select("#", ...) == 0 then
-    print("Attempting to make a 0 kernel task")
-    return nil
-  end
-  local kernels = terralib.newlist()
-  local hash_r1 = {}
-  local hash_r2 = {}
-  local hash_w1 = {}
-  local hash_w2 = {}
-  for i=1, select("#", ...) do
-    kernels:insert(select(i, ...))
-    local temp_r1, temp_r2, temp_w1, temp_w2, temp_re1, temp_re2 = compute_privileges.two_region_privileges(select(i, ...))
-    --Merge the read/writes for this kernel with previous ones, keeping uniqueness 
-    for _,v in pairs(temp_r1) do
-      if( not hash_r1[v]) then
-        read1:insert(v)
-      end
-    end
-    for _,v in pairs(temp_r2) do
-      if( not hash_r2[v]) then
-        read2:insert(v)
-      end
-    end
-    for _,v in pairs(temp_w1) do
-      if( not hash_w1[v]) then
-        write1:insert(v)
-      end
-    end
-    for _,v in pairs(temp_w2) do
-      if( not hash_w2[v]) then
-        write2:insert(v)
-      end
-    end
-    for _, v in pairs(temp_re1) do
-      local exists = false
-      for _, v2 in pairs(reduc1) do
-        if v[1] == v2[1] and v[2] == v2[2] then
-          exists = true
-        end
-      end
-      if not exists then
-        reduc1:insert(v)
-      end
-    end
-    for _, v in pairs(temp_re2) do
-      local exists = false
-      for _, v2 in pairs(reduc2) do
-        if v[1] == v2[1] and v[2] == v2[2] then
-          exists = true
-        end
-      end
-      if not exists then
-        reduc2:insert(v)
-      end
-    end
-  end
-
-local per_part_task, update_neighbours =  generate_per_part_task_multikernel( kernel_list, read1, write1, reduc1 )
-
-local update_neighbours_quote = rquote
-
-end
-if update_neighbours then
-  local temp_variables = {}
-  temp_variables.config = config
-  update_neighbours_quote = neighbour_init.update_cells(temp_variables)
-end
-local runner = rquote
-
-    --For each cell, call the task!
-    for cell1 in cell_space.colors do
-       per_part_task(cell_space[cell1], config)
-    end
-   [update_neighbours_quote];
-end
-
-return runner
 end

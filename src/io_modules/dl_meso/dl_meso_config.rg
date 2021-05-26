@@ -56,7 +56,7 @@ fspace config_type{
   lvarfc : bool,
   nspe : int32,
   npot : int32,
-  namspe : int8[CONST_max_species][9],
+  namspe : int8[9][CONST_max_species], --Reverse indexing from C for Terra definitions
   masstmp : double[CONST_max_species],
   chgetmp : double[CONST_max_species],
   nspec : int[CONST_max_species],
@@ -64,7 +64,7 @@ fspace config_type{
   nsystcell : int32,
   eunit : double,
 --  gamma : double[CONST_max_mxprm],
-  vvv : double[CONST_max_mxprm][CONST_max_potential],
+  vvv : double[CONST_max_potential][CONST_max_mxprm], --Reverse indexing from C for Terra definitions
   ktype : int[CONST_max_species],
 
   --Scan CONTROL fields

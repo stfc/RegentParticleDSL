@@ -14,7 +14,7 @@ fspace part{
   lab : int32, -- This could be jsut core_part_space.id - we'll see
   ltp : int, --Particle species
   ltm : int, --Particle molecule type (TODO: NYI)
-  atmnam : int8[25],
+  atmnam : int8[9],
  
   fxx : double, --Force components
   fyy : double,

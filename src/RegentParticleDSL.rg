@@ -63,6 +63,7 @@ function setup_part()
         else
             if DSL_settings.HIGHPERFORMANCE then
                 require("src/neighbour_search/HP_cell_pair_tradequeues/import_cell_pair")
+                DSL_settings.mapper_path = "src/mappers/high_perform_mapper.cc"
             else
                 require("src/neighbour_search/cell_pair_tradequeues/import_cell_pair")
                 DSL_settings.mapper_path = "src/mappers/tradequeue_mapper.cc"

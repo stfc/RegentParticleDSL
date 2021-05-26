@@ -193,7 +193,7 @@ do
         --write names, masses, interaction lengths, charges and frozen property for all species
         --For Fortran compatibility we always ignore the 9th element (which is \0 if the string is 8 long)
         for i=0, config[0].nspe do
-            var k = ( (i+1) *(i+1)) / 2 - 1
+            var k = ( (i+1) *(i+2)) / 2 - 1
             if config[0].ktype[k] == -1 then
                 --Write name
                 c_string.strcpy(&(name[0]), config[0].namspe[i])
@@ -218,6 +218,7 @@ do
                 var mass = config[0].masstmp[i]
                 c_stdio.fwrite(&(mass), [terralib.sizeof(double)], 1, HISTORY)
                 --Write interaction length?
+                format.println("{}", k)
                 var vvv = config[0].vvv[1][k]
                 c_stdio.fwrite(&vvv, [terralib.sizeof(double)], 1, HISTORY)
                 --Write charge

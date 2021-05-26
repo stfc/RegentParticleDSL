@@ -388,9 +388,11 @@ if DEBUG ~= nil and DEBUG then
   assert_correct_cells = function()
     local rval = rquote
       for cell in neighbour_init.cell_partition.colors do
-        for part in neighbour_init.cell_partition[cell] do
-          if neighbour_init.cell_partition[cell][part].neighbour_part_space._valid then
-            regentlib.assert(neighbour_init.cell_partition[cell][part].neighbour_part_space.cell_id == int3d(cell), "particle found in wrong cell")
+        --Avoid Legion issue #1082
+        var x = neighbour_init.cell_partition[cell]
+        for part in x do
+          if x[part].neighbour_part_space._valid then
+            regentlib.assert(x[part].neighbour_part_space.cell_id == int3d(cell), "particle found in wrong cell")
           end
         end
       end

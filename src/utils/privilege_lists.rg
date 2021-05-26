@@ -66,12 +66,14 @@ function privilege_lists.get_privileges_symmetric_pair_task( parts1, parts2, con
     return update_neighbours, read1_privs, read2_privs, read3_privs, write1_privs, write2_privs, reduc1_privs, reduc2_privs, reduc3_privs
 end
 
-function privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, read1, read2, write1, reduc1 )
+function privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, config, read1, read2,read3, write1, reduc1, reduc3 )
 
     local read1_privs = terralib.newlist()
     local read2_privs = terralib.newlist()
+    local read3_privs = terralib.newlist()
     local write1_privs = terralib.newlist()
     local reduc1_privs = terralib.newlist()
+    local reduc3_privs = terralib.newlist()
     local update_neighbours = false
     
     for _, v in pairs(read1) do
@@ -79,6 +81,9 @@ function privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, re
     end
     for _, v in pairs(read2) do
         read2_privs:insert( regentlib.privilege(regentlib.reads, parts2, string_to_field_path.get_field_path(v)))
+    end  
+    for _, v in pairs(read3) do
+        read3_privs:insert( regentlib.privilege(regentlib.reads, config, string_to_field_path.get_field_path(v)))
     end
     for _, v in pairs(write1) do
         write1_privs:insert( regentlib.privilege(regentlib.writes, parts1, string_to_field_path.get_field_path(v)))
@@ -92,8 +97,11 @@ function privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, re
             update_neighbours = true
         end
     end
+    for _, v in pairs(reduc3) do
+        reduc3_privs:insert( regentlib.privilege(regentlib.reduces(v[2]), config, string_to_field_path.get_field_path(v[1])))
+    end
 
-    return update_neighbours, read1_privs, read2_privs, write1_privs, reduc1_privs
+    return update_neighbours, read1_privs, read2_privs, read3_privs, write1_privs, reduc1_privs, reduc3_privs
 end
 
 function privilege_lists.get_privileges_self_task( parts1, config, read1, read2, read3, write1, write2, reduc1, reduc2, reduc3 )
