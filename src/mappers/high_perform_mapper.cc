@@ -81,7 +81,7 @@ class high_perform_mapper : public NullMapper
     protected:
         virtual const char* get_mapper_name(void) const;
         virtual const char* create_mapper_name(void);
-//        std::map<std::tuple<Processor, IndexSpaceID, RegionTreeID>, std::vector<PhysicalInstance>> reduction_instances;
+        std::map<std::tuple<Processor, IndexSpaceID, RegionTreeID>, std::vector<PhysicalInstance>> cell_reduction_instances;
         const char* mapper_name;
         virtual Processor select_initial_processor(const MapperContext ctx,
                                                    const Task&         task);
@@ -223,6 +223,7 @@ high_perform_mapper::high_perform_mapper(MapperRuntime *rt, Machine machine, Pro
         }
         
    }
+   total_nodes = remote_cpus.size();
 }
 
 high_perform_mapper::~high_perform_mapper(void)
@@ -377,10 +378,19 @@ PhysicalInstance high_perform_mapper::choose_instance_default(const MapperContex
 {
         Memory best_memory = get_best_memory(target_proc);
         LayoutConstraintSet constraints;
-        FieldConstraint fc(false /*!contiguous*/);
-        runtime->get_field_space_fields(ctx, req.region.get_field_space(),
-                      fc.field_set);
+        FieldConstraint fc(req.privilege_fields, false /*!contiguous*/);
         constraints.add_constraint(fc);
+        if (req.privilege == LEGION_REDUCE)
+        {
+            constraints.add_constraint(SpecializedConstraint(
+                            LEGION_AFFINE_REDUCTION_SPECIALIZE, req.redop));
+        }/*else{
+            FieldConstraint fc(false );
+            runtime->get_field_space_fields(ctx, req.region.get_field_space(),
+                      fc.field_set);
+            constraints.add_constraint(fc);
+        }*/
+        
         std::vector<LogicalRegion> regions(1, req.region);
         Mapping::PhysicalInstance result;
         bool created;
@@ -413,18 +423,83 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
     assert(!valid_variants.empty());
     output.chosen_variant = valid_variants[0];
 
+    //TODO We could cache this later.
     //If its a special type of task, do something special
     if( strcmp(task_name, "asym_pairwise_task") == 0 )
     {
+        std::vector<std::set<FieldID> > missing_fields(task.regions.size());
+        for(size_t i = 0; i < task.regions.size(); i++)
+        {
+            if(task.regions[i].privilege == LEGION_REDUCE)
+            {
+                //Check if we already made the PhysicalInstance for this
+                //Construct a triplet to uniquely represent any reduction region
+                std::tuple<Processor, IndexSpaceID, RegionTreeID> triple = std::tuple<Processor, IndexSpaceID, RegionTreeID>{task.target_proc,
+                                                                            task.regions[i].region.get_index_space().get_id(),
+                                                                            task.regions[i].region.get_tree_id()};
+                //Create an iterator over the list of valid options
+                std::map<std::tuple<Processor, IndexSpaceID, RegionTreeID>, std::vector<PhysicalInstance>>::const_iterator
+                            find_reduc_instance = cell_reduction_instances.find(triple);
+                //If we find a valid option
+                if (find_reduc_instance != cell_reduction_instances.end())
+                {
+                    //Find it. This should always be of size 1 but we don't check
+                    std::vector<PhysicalInstance> valid_instances;
+                    for(std::vector<PhysicalInstance>::const_iterator it = find_reduc_instance->second.begin();
+                            it != find_reduc_instance->second.end(); it++)
+                    {
+                        valid_instances.push_back(*it);
+                    }
 
-    }
-    for(size_t i = 0; i < task.regions.size(); i++)
+                    std::set<FieldID> valid_missing_fields;
+                    runtime->filter_instances(ctx, task, i, output.chosen_variant,
+                                              valid_instances, valid_missing_fields);
+#ifndef NDEBUG
+                    bool check =
+#endif
+                    runtime->acquire_and_filter_instances(ctx, valid_instances);
+                    assert(check);
+
+                    output.chosen_instances[i] = valid_instances;
+                    missing_fields[i] = valid_missing_fields;
+                    //If we got all the fields (which I think we should have) then we go to the next region
+                    if (missing_fields[i].empty()){
+                        continue;
+                    }
+                    //We're not done apparently...
+                }else
+                {
+
+                    Mapping::PhysicalInstance inst;
+                    RegionRequirement req = task.regions[i];
+
+                    inst = choose_instance_default(ctx, req, task.target_proc);
+                    runtime->set_garbage_collection_priority(ctx, inst, LEGION_GC_NEVER_PRIORITY);
+                    output.chosen_instances[i].push_back(inst);
+                    cell_reduction_instances[triple] = output.chosen_instances[i];
+                    continue;
+                }
+                //We should never get here as we assume we find all the fields or we find none.
+                assert(false);
+            }else
+            {
+                Mapping::PhysicalInstance inst;
+                RegionRequirement req = task.regions[i];
+
+                inst = choose_instance_default(ctx, req, task.target_proc);
+                output.chosen_instances[i].push_back(inst);
+            }
+        }
+    }else //For other types of task do the most naive option
     {
-        Mapping::PhysicalInstance inst;
-        RegionRequirement req = task.regions[i];
-
-        inst = choose_instance_default(ctx, req, task.target_proc);
-        output.chosen_instances[i].push_back(inst);
+        for(size_t i = 0; i < task.regions.size(); i++)
+        {
+            Mapping::PhysicalInstance inst;
+            RegionRequirement req = task.regions[i];
+    
+            inst = choose_instance_default(ctx, req, task.target_proc);
+            output.chosen_instances[i].push_back(inst);
+        }
     }
 //    assert(false);
 }

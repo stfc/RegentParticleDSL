@@ -219,7 +219,7 @@ function compile_mapper_run()
     local mapper_so = os.tmpname() .. ".so"
     local cxx = os.getenv('CXX') or 'c++'
     local cxx_flags = os.getenv('CXXFLAGS') or ''
-    cxx_flags = cxx_flags .. " -O2 -Wall -Werror"
+    cxx_flags = cxx_flags .. " -g -O2 -Wall -Werror"
     --Not yet working on Mac. circuit_mapper has some stuff to detect Darwin
     cxx_flags = cxx_flags .. " -shared -fPIC"
     local cmd = (cxx .. " " .. cxx_flags .. " " .. include_path .. " " ..
