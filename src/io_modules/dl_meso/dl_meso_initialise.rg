@@ -16,31 +16,7 @@ function io_module.initialise(variables)
     local init_kernel = rquote
         var [variables.config] = region(ispace(int1d, 1), config_type)
         zero_config_func(variables.config);
-        --Initialise arrays until zero_config_func can handle them
-        fill([variables.config].zum, array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ,0.0 ,0.0 ,0.0 ,0.0))
-        for i = 0, CONST_max_potential do
-            variables.config[0].gamma[i] = 0.0
-            variables.config[0].sigma[i] = 0.0
-            for j = 0, CONST_max_mxprm do
-               variables.config[0].vvv[j][i] = 0.0
-            end
-        end
-        for i = 0, CONST_max_species do
-            for j = 0, 9 do
-                variables.config[0].namspe[i][j] = int8(0)
-            end
-            variables.config[0].masstmp[i] = 0.0
-            variables.config[0].chgetmp[i] = 0.0
-            variables.config[0].nspec[i] = 0
-        end
-        for i = 0, CONST_stksize do
-            variables.config[0].rav[i] = 0.0
-        end
-        for i = 0, CONST_statsize do
-            variables.config[0].ave[i] = 0.0
-            variables.config[0].flc[i] = 0.0
-        end
-        --End of initialisation
+        --End of initialisation (done by zero_config_func entirely now)
         scan_control([variables.config])
         dl_meso_timing_mod.timchk([variables.config]) --TODO: NYI
         write_output_header([variables.config])

@@ -425,7 +425,7 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
 
     //TODO We could cache this later.
     //If its a special type of task, do something special
-    if( strcmp(task_name, "asym_pairwise_task") == 0 )
+    if( (strcmp(task_name, "asym_pairwise_task") == 0) || (strcmp(task_name, "self_task") == 0))
     {
         std::vector<std::set<FieldID> > missing_fields(task.regions.size());
         for(size_t i = 0; i < task.regions.size(); i++)
@@ -466,7 +466,6 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
                     if (missing_fields[i].empty()){
                         continue;
                     }
-                    //We're not done apparently...
                 }else
                 {
 
@@ -487,6 +486,7 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
                 RegionRequirement req = task.regions[i];
 
                 inst = choose_instance_default(ctx, req, task.target_proc);
+                runtime->set_garbage_collection_priority(ctx, inst, -1);
                 output.chosen_instances[i].push_back(inst);
             }
         }
@@ -539,7 +539,6 @@ void high_perform_mapper::map_partition(const Mapping::MapperContext ctx,
     //   Mapping::PhysicalInstance inst;
 //    inst = choose_instance(ctx, index_point, num_points,
 //               partition.requirement);
-      std::cout << "Asked for some valid instance, size is: " << input.valid_instances.size() <<"\n"<< std::flush;
       //Use the valid instances we were given if they still exist
       output.chosen_instances = input.valid_instances;
       if (!output.chosen_instances.empty())

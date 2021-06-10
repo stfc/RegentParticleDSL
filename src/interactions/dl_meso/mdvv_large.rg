@@ -2,6 +2,7 @@ import "regent"
 
 require("src/RegentParticleDSL")
 import_dl_meso()
+local c = regentlib.c
 
 function reassign_particle_properties(part1, config)
     local kernel = rquote
@@ -371,6 +372,7 @@ var l_exp : bool
 regentlib.assert(variables.config[0].btype == 0, "Only btype 0 supported")
 
 format.println("Starting DL_MESO for {} steps", variables.config[0].nrun);
+var start_time = c.legion_get_current_time_in_micros();
 while not finish do
 
     variables.config[0].nstep = variables.config[0].nstep + 1
@@ -460,6 +462,9 @@ while not finish do
         write_revive(variables.config)
    end
 end
+c.legion_runtime_issue_execution_fence(__runtime(), __context())
+var finish_time = c.legion_get_current_time_in_micros()
+format.println("Timesteps took {} s", double(finish_time-start_time) / 1000000.0)
 --***********************************************************************
 --     end of dissipative particle dynamics calculations
 --***********************************************************************

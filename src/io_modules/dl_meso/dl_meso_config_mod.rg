@@ -17,8 +17,8 @@ do
 --  config[0].nangdef = 0
 --  config[0].ndhddef = 0
 --  config[0].nfwsyst = 0
-    config[0].itype = 0
-    config[0].btype = 0
+--    config[0].itype = 0
+--    config[0].btype = 0
 --  config[0].etype = 0
 --  config[0].srftype = 0
 --  config[0].srfx = 0
@@ -62,19 +62,19 @@ do
 --  config[0].vgapy = 0.0
 --  config[0].vgapz = 0.0
 --  config[0].dvar = 0.0
-    config[0].cutoff = 0.0 --rcut
+--    config[0].cutoff = 0.0 --rcut
 --  config[0].rtcut = 0.0
 --  config[0].rhalo = 0.0
 --  config[0].relec = 0.0
 --  config[0].rmbcut = 0.0
 --  config[0].srfzcut = 0.0
 --  config[0].srfpos = 0.0
-    config[0].temp = 0.0
-    config[0].tstep = 0.0
-    config[0].rtstep = 0.0
-    config[0].space.dim_x = 0.0 --dimx
-    config[0].space.dim_y = 0.0 --dimy
-    config[0].space.dim_z = 0.0 --dimz
+ --   config[0].temp = 0.0
+ --   config[0].tstep = 0.0
+--    config[0].rtstep = 0.0
+--    config[0].space.dim_x = 0.0 --dimx
+--    config[0].space.dim_y = 0.0 --dimy
+--    config[0].space.dim_z = 0.0 --dimz
 --  config[0].dimxcell = 0.0
 --  config[0].dimycell = 0.0
 --  config[0].dimzcell = 0.0
@@ -88,12 +88,12 @@ do
 --  config[0].potrdr = 0.0
 --  config[0].mxitshake = 250
 --  config[0].shaketol = 1e-6
-    config[0].nstep = 0
-    config[0].nseql = 0
+--    config[0].nstep = 0
+--    config[0].nseql = 0
 --  config[0].nshrs = 0
-    config[0].straj = 0
-    config[0].ntraj = 0
-    config[0].keytrj = 0
+--    config[0].straj = 0
+--    config[0].ntraj = 0
+--    config[0].keytrj = 0
 --  config[0].sstrs = 0
 --  config[0].nstrs = 0
 --  config[0].engunit = 0
@@ -112,9 +112,9 @@ do
 --  config[0].lmb = false
 --  config[0].ldpol = false
 --  config[0].lnfold = false
-    config[0].ldyn = false
+--    config[0].ldyn = false
 --  config[0].ligindex = false
-    config[0].ltraj = false
+--    config[0].ltraj = false
 --  config[0].lstrs = false
 --  config[0].lstrs[0:3] = false -- Split
 --  config[0].lfrzwall = false
@@ -122,12 +122,12 @@ do
 --  config[0].lfrzy = false
 --  config[0].lfrzz = false
 --  config[0].lisoprs = false
-    config[0].lcorr = false
-    config[0].ltemp = false
+--   config[0].lcorr = false
+--    config[0].ltemp = false
 --  config[0].lvarfc = false
 --  config[0].lconfzero = false
 --  config[0].lompcrit = false
-    config[0].ltabpot = false
+--    config[0].ltabpot = false
 
 --TODO: NYI Config files not yet supported
     if( (c_unistd.access("CONFIG", c_unistd.R_OK) == 0 ) and config[0].l_config) then
@@ -559,9 +559,9 @@ do
     --config[0].bdlmax = 0.0 --TODO: NYI
     --config[0].bdang = 0.0 --TODO: NYI
     --config[0].bddhd = 0.0 --TODO: NYI
-    for i =0, 36 do
-        config[0].stress[i] = 0.0
-    end
+--    for i =0, 36 do
+--        config[0].stress[i] = 0.0
+--    end
 
     --set barostat parameters
 
