@@ -56,7 +56,7 @@ available in `src/particles/default_part.rg`. The outline of the particle type i
   }
 ```
 
-The `fspace` is equivalent to a struct in C, and elements are accessed similarly (`part.density`), and can contain both
+The `fspace` is comparable to a struct in C, and elements are accessed similarly (`part.density`), and can contain both
 further `fspace` and other variable types. The name of the `fspace` must always be `part` to be visible to the DSL.
 
 This is required code for all particle declarations but can easily be extended by adding additional values
@@ -104,7 +104,7 @@ will discuss the specifics.
 
 A pairwise kernel has the following declaration:
 ```
-  function pairwise_kernel_name( part1, part2, r2 )
+  function pairwise_kernel_name( part1, part2, r2, config )
     local kernel = rquote
       --Kernel code goes here
     end
@@ -114,6 +114,11 @@ A pairwise kernel has the following declaration:
 
 The arguments to the function are two `part` ( `part1` and `part2` ) and `r2` which contains the square of the distance between them.
 The values in the particles can be freely modified, and local variables can be created and used as required.
+
+There are two types of pairwise kernels supported in HartreeParticleDSL at the moment:
+- Symmetric pairwise kernels can freely update part1 and part2 and perform reduction operations to the config. These are not currently supported for the 
+  High Performance implementations, though we expect to add these soon.
+- Asymmetric pairwise kernels can only update part1 and perform reduction operations to the config.
 
 ### Per-particle Kernel
 
@@ -182,9 +187,10 @@ For details on the initialisation (and finalisation or other IO functions), chec
 ### The timestepping loop
 
 The main body of the method is free to be defined however you want, with the only limitation that all functions used must be either:
-1. Tasks defined through the DSL's code generation
-2. Explicit user-created Regent tasks
-3. Code that only affects local variables
+1. Invoke calls.
+2. Calls to inbuilt DSL libraries (e.g. IO libraries or neighbour search initialisation calls).
+3. Explicit user-created Regent tasks
+4. Code that only affects local variables
 
 An example of this 
 might be:
