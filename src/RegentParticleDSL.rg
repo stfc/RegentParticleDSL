@@ -216,7 +216,7 @@ function compile_mapper_run()
     include_path = include_path .. " -I " .. includepath
 
     local mapper_cc = DSL_settings.mapper_path
-    local mapper_so = os.tmpname() .. ".so"
+    local mapper_so = "./libmapper" .. ".so"
     local cxx = os.getenv('CXX') or 'c++'
     local cxx_flags = os.getenv('CXXFLAGS') or ''
     cxx_flags = cxx_flags .. " -g -O2 -Wall -Werror"
@@ -230,9 +230,8 @@ function compile_mapper_run()
     end
 
     regentlib.linklibrary(mapper_so)
-    print("header is", includepath .. string.gsub(filename, "%.cc", ".h"))
     local cmapper = terralib.includec(includepath .. string.gsub(filename, "%.cc", ".h"), include_dirs)
-    return cmapper 
+    return cmapper, mapper_so
     
     
 end
@@ -246,7 +245,7 @@ function run_DSL( main_function )
   end
   print(DSL_settings.mapper_path)
   if DSL_settings.mapper_path ~= nil then
-    local cmapper = compile_mapper_run()
+    local cmapper, _ = compile_mapper_run()
     regentlib.start(main_function, cmapper.register_mappers)
     --regentlib.start(main_function, mapper function TODO
   else
@@ -260,7 +259,7 @@ local terra set_mappers()
 end
 
 --Single function for compiling the DSL
-function compile_DSL( main_function, executable_name )
+function compile_DSL( main_task, executable_name )
 
   if DSL_settings.dsl_setup == false then
     print("DSL setup must be completed before the compile_dsl call")
@@ -273,7 +272,15 @@ function compile_DSL( main_function, executable_name )
   --Build function
   local root_dir = "./"
   local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
-  local link_flags = terralib.newlist({"-L" .. out_dir, "-lm", "-lhdf5"})
   local exe = os.getenv('OBJNAME') or executable_name
-  regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
+  if DSL_settings.mapper_path ~= nil then
+    local cmapper, mapper_so = compile_mapper_run()
+    print( "Mapper so file should be at: " .. mapper_so)
+    regentlib.linklibrary(mapper_so)
+    local link_flags = terralib.newlist({"-g", "-L" .. out_dir, "-lm", "-lhdf5", "-lmapper"})
+    regentlib.saveobj(main_task, exe, "executable", cmapper.register_mappers, link_flags)
+  else
+   local link_flags = terralib.newlist({"-g", "-L" .. out_dir, "-lm", "-lhdf5"})
+    regentlib.saveobj(main_task, exe, "executable", set_mappers, link_flags)
+  end
 end
