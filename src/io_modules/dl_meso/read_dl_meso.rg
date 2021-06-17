@@ -594,18 +594,23 @@ do
             break
         elseif c_string.strcmp(key1, "bjer") == 0 then
             --TODO: NYI bjer...
+            regentlib.assert(false, "bjer keyword not yet supported.")
         elseif c_string.strcmp(key1, "bound") == 0 and c_string.strcmp(key2, "halo") == 0 then
             --TODO NYI: Boundary halo
+            regentlib.assert(false, "bound keyword not yet supported")
         elseif c_string.strcmp(key1, "conf") == 0 then
             --TODO NYI: conf...
+            regentlib.assert(false, "conf keyword not yet supported")
         elseif c_string.strcmp(key1, "close") == 0 and c_string.strcmp(key2, "time") == 0 then
             config[0].tclose = io_utils.get_double(record, 3)
         elseif c_string.strcmp(key1, "cutoff") == 0 or c_string.strcmp(key2, "rcut" ) == 0 then
             config[0].cutoff = io_utils.get_double(record, 2)
         elseif c_string.strcmp(key1, "densvar") == 0 then
             --TODO NYI: densvar
+            regentlib.assert(false, "densvar keyword not yet supported")
         elseif c_string.strcmp(key1, "elec") == 0 and c_string.strcmp(key2, "cut") == 0 then
             --TODO NYI: elec... cut...
+            regentlib.assert(false, "elec keyword not yet supported")
         elseif c_string.strcmp(key1, "ensemble") == 0 then
             regentlib.c.free(word1)
             word1 = io_utils.get_word(record, 3)
@@ -622,13 +627,18 @@ do
                 word2 = io_utils.get_word(record, 4)
             elseif c_string.strcmp(compword, "dpdv") == 0 then
                 --TODO NYI: dpdv
+                regentlib.assert(false, "dpdv not yet supported")
             elseif c_string.strcmp(compword, "dpds") == 0 then
                 --TODO NYI: dpds
+                regentlib.assert(false, "dpds not yet supported")
             elseif c_string.strcmp(compword, "lowe") == 0 then
                 --TODO NYI: lowe
+                regentlib.assert(false, "lowe not yet supported")
             elseif c_string.strcmp(compword, "pete") == 0 then
                 --TODO NYI: pete
+                regentlib.assert(false, "pete not yet supported")
             elseif c_string.strcmp(compword, "stoy") == 0 then
+                regentlib.assert(false, "stoy not yet supported")
                 --TODO NYI: stoy
             end
             --Continue from line 1180
@@ -640,8 +650,10 @@ do
                 config[0].btype = 0
             elseif c_string.strcmp(compword, "npt") == 0 then 
                 --TODO NYI: npt
+                regentlib.assert(false, "npt not yet supported")
             elseif c_string.strcmp(compword, "nst") == 0 then
                 --TODO NYI: nst
+                regentlib.assert(false, "nst not yet supported")
             end 
         elseif c_string.strcmp(key1, "equilibration") == 0 then
             if c_string.strcmp(key2, "steps") == 0 then
@@ -655,32 +667,44 @@ do
             end
         elseif c_string.strcmp(key1, "ewald") == 0 then
             --TODO NYI: ewald
+                regentlib.assert(false, "ewald not yet supported")
         elseif c_string.strcmp(key1, "froz") == 0 then
+                regentlib.assert(false, "froz not yet supported")
             --TODO NYI: froz
         elseif c_string.strcmp(key1, "global") == 0 and c_string.strcmp(key2, "bonds") == 0 then
             --TODO NYI: global bonds
+                regentlib.assert(false, "global bonds not yet supported")
         elseif c_string.strcmp(key1, "io") == 0 and c_string.strcmp(key2, "writ") == 0 then
             --TODO NYI: io write
+                regentlib.assert(false, "io write not yet supported")
         elseif c_string.strcmp(key1, "job") == 0 and c_string.strcmp(key2, "time") == 0 then
             --TODO: We ignore job time for now
             --config[0].timjob = io_utils.get_double(record, 3)
             format.println("WARNING: Ignoring job time from CONTROL file at this time")
         elseif c_string.strcmp(key1, "many") == 0 and c_string.strcmp(key2, "cut") == 0 then
             --TODO NYI: many cut
+                regentlib.assert(false, "many cut not yet supported")
         elseif c_string.strcmp(key1, "mxshak") == 0 then
             --TODO NYI: mxshak
+                regentlib.assert(false, "mxshak not yet supported")
         elseif c_string.strcmp(key1, "ndump") == 0 then
             --TODO NYI: ndump
+                regentlib.assert(false, "ndump not yet supported")
         elseif c_string.strcmp(key1, "nfold") == 0 and (l_config or l_rest) then
             --TODO NYI: nfold
+                regentlib.assert(false, "nfold not yet supported")
         elseif c_string.strcmp(key1, "no") == 0 then
             --TODO NYI: no
+                regentlib.assert(false, "no not yet supported")
         elseif c_string.strcmp(key1, "openmp") == 0 then
             --Not supporting openmp flag - parallelism already handled
+            format.println("WARNING: Ignoring openmp request, inbuilt parallelism used instead")
         elseif c_string.strcmp(key1, "perm") == 0 then
             --TODO NYI: perm
+                regentlib.assert(false, "perm not yet supported")
         elseif c_string.strcmp(key1, "pers") == 0 then
             --TODO NYI: pers
+                regentlib.assert(false, "pers not yet supported")
         elseif c_string.strcmp(key1, "print") == 0 then
             if c_string.strcmp(key2, "part") == 0 then
                 config[0].ldyn = true
@@ -697,6 +721,7 @@ do
             end
         elseif c_string.strcmp(key1, "restart") == 0 then
             --TODO NYI: restart
+                regentlib.assert(false, "restart not yet supported")
         elseif c_string.strcmp(key1, "scale") == 0 then
             regentlib.c.free(word1)
             word1 = io_utils.get_word(record, 2)
@@ -715,13 +740,17 @@ do
                 config[0].ltemp = true
             end
         elseif c_string.strcmp(key1, "seed") == 0 then
+                regentlib.assert(false, "seed not yet supported")
             --TODO NYI: seed
         elseif c_string.strcmp(key1, "shake") == 0 then
+                regentlib.assert(false, "shake not yet supported")
             --TODO NYI: shake
         elseif c_string.strcmp(key1, "smear") == 0 then
             --TODO NYI: smear
+                regentlib.assert(false, "smear not yet supported")
         elseif c_string.strcmp(key1, "spme") == 0 then
             --TODO NYI: spme
+                regentlib.assert(false, "spme not yet supported")
         elseif c_string.strcmp(key1, "stack") == 0 then
             if c_string.strcmp(key2, "size") == 0 then
                 regentlib.c.free(word1)
@@ -750,12 +779,15 @@ do
             config[0].nrun = c_stdlib.atoi(key2)
         elseif c_string.strcmp(key1, "stres") == 0 then
             --TODO NYI: stres
+                regentlib.assert(false, "stres not yet supported")
         elseif c_string.strcmp(key1, "surf") == 0 then
             --TODO NYI: surf
+                regentlib.assert(false, "surf not yet supported")
         elseif c_string.strcmp(key1, "temperature") == 0 then
             config[0].temp = io_utils.get_double(record, 2)
         elseif c_string.strcmp(key1, "therm") == 0 and c_string.strcmp(key2, "cut") == 0 then
             --TODO NYI: therm cut
+                regentlib.assert(false, "therm cut not yet supported")
         elseif c_string.strcmp(key1, "trajectory") == 0 then
             regentlib.c.free(word1)
             word1 = io_utils.get_word(record, 2)

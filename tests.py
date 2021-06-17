@@ -126,10 +126,10 @@ def run_tests():
     if comb.returncode != 0:
         print("Failed combine test")
         sys.exit(1)
-    copy = subprocess.run(["legion/language/regent.py", "tests/zero_part/test_copy.rg"])
-    if copy.returncode != 0:
-        print("Failed copy test")
-        sys.exit(1)
+#    copy = subprocess.run(["legion/language/regent.py", "tests/zero_part/test_copy.rg"], stdout=subprocess.pipe, stderr=subprocess.stdout)
+#    if copy.returncode != 0:
+#        print("Failed copy test")
+#        sys.exit(1)
     zeroing = subprocess.run(["legion/language/regent.py", "tests/zero_part/zero_part.rg"])
     if zeroing.returncode != 0:
         print("Failed zeroing test")
