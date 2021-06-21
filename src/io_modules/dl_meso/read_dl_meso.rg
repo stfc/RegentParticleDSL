@@ -60,25 +60,26 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
     --Convert to lowercase
     io_utils.to_lowercase(&key)
 
-    if c_string.strcmp(key, "close") == 0 then 
+    if c_string.strncmp(key, "close", 5) == 0 then 
         finish = true
     end
 
-    if c_string.strcmp(key, "finish") == 0 then
+    if c_string.strncmp(key, "finish", 6) == 0 then
         ifinish = ifinish + 1
     end
 
-    if c_string.strcmp(key, "species") == 0 then
+    if c_string.strncmp(key, "speci", 5) == 0 then
         regentlib.c.free(word)
         word = io_utils.get_word(record, 2)
         inspe = c_stdlib.atoi(word)
         config[0].nspe = inspe
         regentlib.assert( config[0].nspe < CONST_max_species, "Too many species in FIELD file, increase max_species")
 
-    elseif c_string.strcmp(key, "molecule") == 0 then
+    elseif c_string.strncmp(key, "molecul", 7) == 0 then
         --TODO: NYI
+        regentlib.assert(false, "molecul keyword in FIELD not yet supported")
     
-    elseif c_string.strcmp(key, "interactions") == 0 then
+    elseif c_string.strncmp(key, "interact", 8) == 0 then
         --TODO: NYI
         regentlib.c.free(word)
         word = io_utils.get_word(record, 2)
@@ -90,30 +91,30 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
             regentlib.c.free(word)
             word = io_utils.get_word(record1, 3)
             io_utils.to_lowercase(&word)
-            if ( c_string.strcmp(word, "lj") ) == 0 then
+            if ( c_string.strncmp(word, "lj", 2) ) == 0 then
                 config[0].mxprm = regentlib.fmax(config[0].mxprm, 3)
                 if (config[0].lrcut) then config[0].cutoff = regentlib.fmax(config[0].cutoff, io_utils.get_double(record1, 5)) end
-            elseif( c_string.strcmp(word, "wca") ) == 0 then
+            elseif( c_string.strncmp(word, "wca", 3) ) == 0 then
                 config[0].mxprm = regentlib.fmax(config[0].mxprm, 5)
                 if (config[0].lrcut) then config[0].cutoff = regentlib.fmax(config[0].cutoff, io_utils.get_double(record1, 5)) end
-            elseif( c_string.strcmp(word, "dpd") ) == 0 then
+            elseif( c_string.strncmp(word, "dpd", 3) ) == 0 then
                 config[0].mxprm = regentlib.fmax(config[0].mxprm, 3)
                 if (config[0].lrcut) then config[0].cutoff = regentlib.fmax(config[0].cutoff, io_utils.get_double(record1, 5)) end
-            elseif (c_string.strcmp(word, "mdpd") ) == 0 then 
+            elseif (c_string.strncmp(word, "mdpd", 4) ) == 0 then 
                 config[0].mxprm = regentlib.fmax(config[0].mxprm, 7)
                 if (config[0].lrcut) then config[0].cutoff = regentlib.fmax(config[0].cutoff, io_utils.get_double(record1, 5)) end
-            elseif( c_string.strcmp(word, "tab") ) == 0 then
+            elseif( c_string.strncmp(word, "tab", 3) ) == 0 then
                 config[0].mxprm = regentlib.fmax(config[0].mxprm, 2)
                 config[0].ltabpot = true
             end
         end 
 
 
-    elseif c_string.strcmp(key, "surfaces" ) == 0 then
+    elseif c_string.strncmp(key, "surf", 4 ) == 0 then
         --TODO: NYI
 
 
-    elseif c_string.strcmp(key, "units" ) == 0 then
+    elseif c_string.strncmp(key, "units", 5 ) == 0 then
         --TODO: NYI
     end 
 
@@ -148,10 +149,10 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
     key = io_utils.get_word(record, 1)
     --Convert to lowercase
     io_utils.to_lowercase(&key)
-    if c_string.strcmp(key, "close") == 0 then
+    if c_string.strncmp(key, "close", 5) == 0 then
         finish = false
         break
-    elseif c_string.strcmp(key, "species")  == 0 then
+    elseif c_string.strncmp(key, "species", 7)  == 0 then
         for i=0, config[0].nspe do
             c_stdio.fgets(record1, 200, FIELD)
             regentlib.c.free(word)
@@ -164,14 +165,18 @@ task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : 
             config[0].chgetmp[i] = io_utils.get_double(record1, 3)
             --TODO: NYI FROZEN Ignoring frozen for now
         end
-    elseif c_string.strcmp(key, "bond") == 0 then
+    elseif c_string.strncmp(key, "bond", 4) == 0 then
         --TODO: NYI
-    elseif c_string.strcmp(key, "cons") == 0 then
+        regentlib.assert(false, "bond keyword in FIELD file not yet supported")
+    elseif c_string.strncmp(key, "cons", 4) == 0 then
         --TODO: NYI
-    elseif c_string.strcmp(key, "angle") == 0 then
+        regentlib.assert(false, "cons keyword in FIELD file not yet supported")
+    elseif c_string.strncmp(key, "angle", 5) == 0 then
         --TODO: NYI
-    elseif c_string.strcmp(key, "dihedrals") == 0 then
+        regentlib.assert(false, "angle keyword in FIELD file not yet supported")
+    elseif c_string.strncmp(key, "dihed", 5) == 0 then
         --TODO: NYI
+        regentlib.assert(false, "dihed keyword in FIELD file not yet supported")
     end 
   end
 
@@ -260,12 +265,11 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
     key = io_utils.get_word(record, 1)
     --Convert to lowercase
     io_utils.to_lowercase(&key)
-    if c_string.strcmp(key, "close") == 0 then
+    if c_string.strncmp(key, "close", 5) == 0 then
         finish = false
         regentlib.c.free(key)
         break
-    --TODO SPECIES!!!! -- Line 2061 in dl_meso
-    elseif c_string.strcmp(key, "species") == 0 then
+    elseif c_string.strncmp(key, "species", 7) == 0 then
         for i = 0, config[0].nspe do
             c_stdio.fgets(record1, 200, FIELD)
             regentlib.c.free(word)
@@ -274,9 +278,10 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
             config[0].nusystcell = config[0].nusystcell + config[0].nspec[i]
         end 
         config[0].nsystcell = config[0].nsystcell + config[0].nusystcell
-    elseif c_string.strcmp(key, "molecul") == 0 then
+    elseif c_string.strncmp(key, "molecul", 7) == 0 then
       --TODO: NYI Molecules
-    elseif c_string.strcmp(key, "interactions") == 0 then
+        regentlib.assert(false, "molecul keyword in FIELD file not yet supported")
+    elseif c_string.strncmp(key, "interact", 8) == 0 then
         regentlib.c.free(word)
         word = io_utils.get_word(record, 2)
         finmol = c_stdlib.atoi(word)
@@ -343,11 +348,13 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
             regentlib.c.free(word1)
             word1 =  io_utils.get_word(record1, 3)
             io_utils.to_lowercase(&word1)
-            if c_string.strcmp(word1, "lj") == 0 then
+            if c_string.strncmp(word1, "lj", 2) == 0 then
                  --TODO: NYI
-            elseif c_string.strcmp(word1, "wca") == 0 then
+                regentlib.assert(false, "lj interaction in FIELD file not yet supported")
+            elseif c_string.strncmp(word1, "wca", 3) == 0 then
                 --TODO: NYI
-            elseif c_string.strcmp(word1, "dpd") == 0 then
+                regentlib.assert(false, "wca interaction in FIELD file not yet supported")
+            elseif c_string.strncmp(word1, "dpd", 3) == 0 then
                 config[0].ktype[k] = 2
                 config[0].vvv[0][k] = config[0].eunit * fabs(aa)
                 config[0].vvv[1][k] = fabs(bb)
@@ -358,19 +365,24 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
                     interact[1][k] = true
                 end
                 interact[2][k] = true
-            elseif c_string.strcmp(word1, "mdpd") == 0 then
+            elseif c_string.strncmp(word1, "mdpd", 4) == 0 then
                 --TODO: NYI
-            elseif c_string.strcmp(word1, "tab") == 0 then
+                regentlib.assert(false, "mdpd interaction in FIELD file not yet supported")
+            elseif c_string.strncmp(word1, "tab", 3) == 0 then
                 --TODO: NYI
+                regentlib.assert(false, "tab interaction in FIELD file not yet supported")
             end
             
         end -- end of interact
-    elseif c_string.strcmp(key, "froz") == 0 then
+    elseif c_string.strncmp(key, "froz", 4) == 0 then
         --TODO: NYI Frozen atoms
-    elseif c_string.strcmp(key, "surf") == 0 then
+        regentlib.assert(false, "froz keyword in FIELD file not yet supported")
+    elseif c_string.strncmp(key, "surf", 4) == 0 then
         --TODO: NYI Surfaces
-    elseif c_string.strcmp(key, "extern") == 0 then
+        regentlib.assert(false, "surf keyword in FIELD file not yet supported")
+    elseif c_string.strncmp(key, "extern", 6) == 0 then
         --TODO: NYI external
+        regentlib.assert(false, "extern keyword in FIELD file not yet supported")
     end
   end
   c_stdio.fclose(FIELD)
@@ -508,27 +520,27 @@ do
             key = io_utils.get_word(record, 1)
             io_utils.to_lowercase(&key)
 
-            if c_string.strcmp(key, "finish") == 0 then 
-            elseif c_string.strcmp(key, "l_scr") == 0 then
+            if c_string.strncmp(key, "finish", 6) == 0 then 
+            elseif c_string.strncmp(key, "l_scr", 5) == 0 then
                 config[0].l_scr = true
-            elseif c_string.strcmp(key, "l_init") == 0 then
+            elseif c_string.strncmp(key, "l_init", 6) == 0 then
                 config[0].l_init = true
-            elseif c_string.strcmp(key, "no") == 0 then
+            elseif c_string.strncmp(key, "no", 2) == 0 then
                 regentlib.c.free(key1)
                 io_utils.to_lowercase(&key1)
                 key1[4] = int8(0)
-                if c_string.strcmp(key1, "conf") == 0 then
+                if c_string.strncmp(key1, "conf", 4) == 0 then
                     config[0].l_conf = false
                 end
-            elseif c_string.strcmp(key, "restart") == 0 then
+            elseif c_string.strncmp(key, "restart", 7) == 0 then
                 config[0].l_rest = true
-            elseif c_string.strcmp(key, "temp") == 0 then
+            elseif c_string.strncmp(key, "temp", 4) == 0 then
                 var temp = io_utils.get_double(record, 2)
                 config[0].temp = temp
                 if temp > 1e-16 then
                     config[0].l_temp = true
                 end
-            elseif c_string.strcmp(key, "timestep") == 0 then
+            elseif c_string.strncmp(key, "timestep", 8) == 0 then
                 var tstep = io_utils.get_double(record, 2)
                 config[0].tstep = tstep
                 if tstep > 1e-16 then
@@ -589,29 +601,29 @@ do
         key2 = io_utils.get_word(record, 2)
         io_utils.to_lowercase(&key1)
         io_utils.to_lowercase(&key2)
-        if c_string.strcmp(key1, "finish") == 0 then
+        if c_string.strncmp(key1, "finish", 6) == 0 then
             finish = false
             break
-        elseif c_string.strcmp(key1, "bjer") == 0 then
+        elseif c_string.strncmp(key1, "bjer", 4) == 0 then
             --TODO: NYI bjer...
             regentlib.assert(false, "bjer keyword not yet supported.")
-        elseif c_string.strcmp(key1, "bound") == 0 and c_string.strcmp(key2, "halo") == 0 then
+        elseif c_string.strncmp(key1, "bound", 5) == 0 and c_string.strncmp(key2, "halo", 4) == 0 then
             --TODO NYI: Boundary halo
             regentlib.assert(false, "bound keyword not yet supported")
-        elseif c_string.strcmp(key1, "conf") == 0 then
+        elseif c_string.strncmp(key1, "conf", 4) == 0 then
             --TODO NYI: conf...
             regentlib.assert(false, "conf keyword not yet supported")
-        elseif c_string.strcmp(key1, "close") == 0 and c_string.strcmp(key2, "time") == 0 then
+        elseif c_string.strncmp(key1, "close", 5) == 0 and c_string.strncmp(key2, "time", 4) == 0 then
             config[0].tclose = io_utils.get_double(record, 3)
-        elseif c_string.strcmp(key1, "cutoff") == 0 or c_string.strcmp(key2, "rcut" ) == 0 then
+        elseif c_string.strncmp(key1, "cut", 3) == 0 or c_string.strncmp(key2, "rcut", 4 ) == 0 then
             config[0].cutoff = io_utils.get_double(record, 2)
-        elseif c_string.strcmp(key1, "densvar") == 0 then
+        elseif c_string.strncmp(key1, "densvar", 7) == 0 then
             --TODO NYI: densvar
             regentlib.assert(false, "densvar keyword not yet supported")
-        elseif c_string.strcmp(key1, "elec") == 0 and c_string.strcmp(key2, "cut") == 0 then
+        elseif c_string.strncmp(key1, "elec", 4) == 0 and c_string.strncmp(key2, "cut", 3) == 0 then
             --TODO NYI: elec... cut...
             regentlib.assert(false, "elec keyword not yet supported")
-        elseif c_string.strcmp(key1, "ensemble") == 0 then
+        elseif c_string.strncmp(key1, "ensemble", 8) == 0 then
             regentlib.c.free(word1)
             word1 = io_utils.get_word(record, 3)
             io_utils.to_lowercase(&word1)
@@ -655,8 +667,8 @@ do
                 --TODO NYI: nst
                 regentlib.assert(false, "nst not yet supported")
             end 
-        elseif c_string.strcmp(key1, "equilibration") == 0 then
-            if c_string.strcmp(key2, "steps") == 0 then
+        elseif c_string.strncmp(key1, "equil", 5) == 0 then
+            if c_string.strncmp(key2, "steps", 5) == 0 then
                 regentlib.c.free(word1)
                 word1 = io_utils.get_word(record, 3)
                 config[0].nseql = c_stdlib.atoi(word1)
@@ -665,51 +677,51 @@ do
                 word1 = io_utils.get_word(record, 2)
                 config[0].nseql = c_stdlib.atoi(word1)
             end
-        elseif c_string.strcmp(key1, "ewald") == 0 then
+        elseif c_string.strncmp(key1, "ewald", 5) == 0 then
             --TODO NYI: ewald
                 regentlib.assert(false, "ewald not yet supported")
-        elseif c_string.strcmp(key1, "froz") == 0 then
+        elseif c_string.strncmp(key1, "froz", 4) == 0 then
                 regentlib.assert(false, "froz not yet supported")
             --TODO NYI: froz
-        elseif c_string.strcmp(key1, "global") == 0 and c_string.strcmp(key2, "bonds") == 0 then
+        elseif c_string.strncmp(key1, "global", 6) == 0 and c_string.strncmp(key2, "bonds", 5) == 0 then
             --TODO NYI: global bonds
                 regentlib.assert(false, "global bonds not yet supported")
-        elseif c_string.strcmp(key1, "io") == 0 and c_string.strcmp(key2, "writ") == 0 then
+        elseif c_string.strncmp(key1, "io", 2) == 0 and c_string.strncmp(key2, "writ", 4) == 0 then
             --TODO NYI: io write
                 regentlib.assert(false, "io write not yet supported")
-        elseif c_string.strcmp(key1, "job") == 0 and c_string.strcmp(key2, "time") == 0 then
+        elseif c_string.strncmp(key1, "job", 3) == 0 and c_string.strncmp(key2, "time", 4) == 0 then
             --TODO: We ignore job time for now
             --config[0].timjob = io_utils.get_double(record, 3)
             format.println("WARNING: Ignoring job time from CONTROL file at this time")
-        elseif c_string.strcmp(key1, "many") == 0 and c_string.strcmp(key2, "cut") == 0 then
+        elseif c_string.strncmp(key1, "many", 4) == 0 and c_string.strncmp(key2, "cut", 3) == 0 then
             --TODO NYI: many cut
                 regentlib.assert(false, "many cut not yet supported")
-        elseif c_string.strcmp(key1, "mxshak") == 0 then
+        elseif c_string.strncmp(key1, "mxshak", 6) == 0 then
             --TODO NYI: mxshak
                 regentlib.assert(false, "mxshak not yet supported")
-        elseif c_string.strcmp(key1, "ndump") == 0 then
+        elseif c_string.strncmp(key1, "ndump", 5) == 0 then
             --TODO NYI: ndump
                 regentlib.assert(false, "ndump not yet supported")
-        elseif c_string.strcmp(key1, "nfold") == 0 and (l_config or l_rest) then
+        elseif c_string.strncmp(key1, "nfold", 5) == 0 and (l_config or l_rest) then
             --TODO NYI: nfold
                 regentlib.assert(false, "nfold not yet supported")
-        elseif c_string.strcmp(key1, "no") == 0 then
+        elseif c_string.strncmp(key1, "no", 2) == 0 then
             --TODO NYI: no
-                regentlib.assert(false, "no not yet supported")
-        elseif c_string.strcmp(key1, "openmp") == 0 then
+                regentlib.assert(false, "no keyword options not yet supported")
+        elseif c_string.strncmp(key1, "openmp", 6) == 0 then
             --Not supporting openmp flag - parallelism already handled
             format.println("WARNING: Ignoring openmp request, inbuilt parallelism used instead")
-        elseif c_string.strcmp(key1, "perm") == 0 then
+        elseif c_string.strncmp(key1, "perm", 4) == 0 then
             --TODO NYI: perm
                 regentlib.assert(false, "perm not yet supported")
-        elseif c_string.strcmp(key1, "pers") == 0 then
+        elseif c_string.strncmp(key1, "pres", 4) == 0 then
             --TODO NYI: pers
-                regentlib.assert(false, "pers not yet supported")
-        elseif c_string.strcmp(key1, "print") == 0 then
-            if c_string.strcmp(key2, "part") == 0 then
+                regentlib.assert(false, "pres not yet supported")
+        elseif c_string.strncmp(key1, "print", 5) == 0 then
+            if c_string.strncmp(key2, "part", 4) == 0 then
                 config[0].ldyn = true
             else
-                if c_string.strcmp(key2, "every") == 0 then
+                if c_string.strncmp(key2, "every", 5) == 0 then
                     regentlib.c.free(word1)
                     word1 = io_utils.get_word(record, 3)
                     config[0].nsbpo = c_stdlib.atoi(word1)
@@ -719,10 +731,10 @@ do
                     config[0].nsbpo = c_stdlib.atoi(word1)
                 end
             end
-        elseif c_string.strcmp(key1, "restart") == 0 then
+        elseif c_string.strncmp(key1, "restart", 7) == 0 then
             --TODO NYI: restart
                 regentlib.assert(false, "restart not yet supported")
-        elseif c_string.strcmp(key1, "scale") == 0 then
+        elseif c_string.strncmp(key1, "scale", 5) == 0 then
             regentlib.c.free(word1)
             word1 = io_utils.get_word(record, 2)
             config[0].nsbts = c_stdlib.atoi(word1)
@@ -739,20 +751,20 @@ do
             if config[0].nsbts > 0 then
                 config[0].ltemp = true
             end
-        elseif c_string.strcmp(key1, "seed") == 0 then
+        elseif c_string.strncmp(key1, "seed", 4) == 0 then
                 regentlib.assert(false, "seed not yet supported")
             --TODO NYI: seed
-        elseif c_string.strcmp(key1, "shake") == 0 then
+        elseif c_string.strncmp(key1, "shake", 5) == 0 then
                 regentlib.assert(false, "shake not yet supported")
             --TODO NYI: shake
-        elseif c_string.strcmp(key1, "smear") == 0 then
+        elseif c_string.strncmp(key1, "smear", 5) == 0 then
             --TODO NYI: smear
                 regentlib.assert(false, "smear not yet supported")
-        elseif c_string.strcmp(key1, "spme") == 0 then
+        elseif c_string.strncmp(key1, "spme", 4) == 0 then
             --TODO NYI: spme
                 regentlib.assert(false, "spme not yet supported")
-        elseif c_string.strcmp(key1, "stack") == 0 then
-            if c_string.strcmp(key2, "size") == 0 then
+        elseif c_string.strncmp(key1, "stack", 5) == 0 then
+            if c_string.strncmp(key2, "size", 4) == 0 then
                 regentlib.c.free(word1)
                 word1 = io_utils.get_word(record, 3)
                 config[0].nstk = c_stdlib.atoi(word1)
@@ -762,8 +774,8 @@ do
                 config[0].nstk = c_stdlib.atoi(word1)
             end
             regentlib.assert(config[0].nstk < CONST_maxstk, "The Stack size is larger than the maximum - please increase CONST_maxstk to continue")
-        elseif c_string.strcmp(key1, "stats") == 0 then
-            if c_string.strcmp(key2, "every") == 0 then
+        elseif c_string.strncmp(key1, "stats", 5) == 0 then
+            if c_string.strncmp(key2, "every", 5) == 0 then
                 regentlib.c.free(word1)
                 word1 = io_utils.get_word(record, 3)
                 config[0].iscorr = c_stdlib.atoi(word1)
@@ -775,20 +787,20 @@ do
             if config[0].iscorr > 0 then
                 config[0].lcorr = true
             end
-        elseif c_string.strcmp(key1, "steps") == 0 then
+        elseif c_string.strncmp(key1, "steps", 5) == 0 then
             config[0].nrun = c_stdlib.atoi(key2)
-        elseif c_string.strcmp(key1, "stres") == 0 then
+        elseif c_string.strncmp(key1, "stres", 5) == 0 then
             --TODO NYI: stres
                 regentlib.assert(false, "stres not yet supported")
-        elseif c_string.strcmp(key1, "surf") == 0 then
+        elseif c_string.strncmp(key1, "surf", 4) == 0 then
             --TODO NYI: surf
                 regentlib.assert(false, "surf not yet supported")
-        elseif c_string.strcmp(key1, "temperature") == 0 then
+        elseif c_string.strncmp(key1, "temp", 4) == 0 then
             config[0].temp = io_utils.get_double(record, 2)
-        elseif c_string.strcmp(key1, "therm") == 0 and c_string.strcmp(key2, "cut") == 0 then
+        elseif c_string.strncmp(key1, "therm", 5) == 0 and c_string.strncmp(key2, "cut", 3) == 0 then
             --TODO NYI: therm cut
                 regentlib.assert(false, "therm cut not yet supported")
-        elseif c_string.strcmp(key1, "trajectory") == 0 then
+        elseif c_string.strncmp(key1, "traj", 4) == 0 then
             regentlib.c.free(word1)
             word1 = io_utils.get_word(record, 2)
             config[0].straj = c_stdlib.atoi(word1)        
@@ -810,11 +822,12 @@ do
             if config[0].ntraj > 0 then
                 config[0].ltraj = true
             end
-        elseif c_string.strcmp(key1, "timestep") == 0 then
+        elseif c_string.strncmp(key1, "timestep", 8) == 0 then
             config[0].tstep = io_utils.get_double(record, 2)
-        elseif c_string.strcmp(key1, "vacu") == 0 then
+        elseif c_string.strncmp(key1, "vacu", 4) == 0 then
             --TODO NYI: vacu
-        elseif c_string.strcmp(key1, "volume") == 0 and l_readvol then
+            regentlib.assert(false, "vacu keyword in CONTROL file not yet supported")
+        elseif c_string.strncmp(key1, "vol", 3) == 0 and l_readvol then
             config[0].space.dim_x = io_utils.get_double(record, 2)    
             config[0].space.dim_y = io_utils.get_double(record, 3)    
             config[0].space.dim_z = io_utils.get_double(record, 4)

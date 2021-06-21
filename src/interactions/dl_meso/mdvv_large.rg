@@ -238,9 +238,6 @@ function forces_mdvv(part1, part2, r2, config)
         config.mdvv_type.strsrzz += 0.5 * rforce * zdif * zdif
 
         -- assign force terms
---        if part1.lab == 1 then
---            format.println("{} {} fxx = {} {}",part1.lab, part2.lab, -sumforce * xdif, xdif)
---        end
         part1.fxx += -sumforce * xdif
         part1.fyy += -sumforce * ydif
         part1.fzz += -sumforce * zdif
@@ -276,24 +273,6 @@ function plcfor_mdvv()
         --Calculate pair forces
         --forces_mdvv
         [invoke(variables.config, {forces_mdvv, ASYMMETRIC_PAIRWISE}, BARRIER)];
---        var sumx = 0.0
---        var sumy = 0.0
---        var sumz = 0.0
---        var velx = 0.0
---        var vely = 0.0
---        var velz = 0.0
---        for i in neighbour_init.padded_particle_array.ispace do
---            if neighbour_init.padded_particle_array[i].neighbour_part_space._valid then
---                sumx = sumx + neighbour_init.padded_particle_array[i].fxx
---                sumy = sumy + neighbour_init.padded_particle_array[i].fyy
---                sumz = sumz + neighbour_init.padded_particle_array[i].fzz
---                velx = neighbour_init.padded_particle_array[i].core_part_space.vel_x
---                vely = neighbour_init.padded_particle_array[i].core_part_space.vel_y
---                velz = neighbour_init.padded_particle_array[i].core_part_space.vel_z
---            end
---        end
---        format.println("Force sums are {} {} {}", sumx, sumy, sumz)
---        format.println("Velocity sums are {} {} {}", velx, vely, velz)
     	var rvolm = 1.0 / (3.0 * variables.config[0].volm) --Multinode (3.0_dp * volm * REAL(nodes, KIND=dp))
 
     	variables.config[0].ivrl[0] = variables.config[0].ivrl[0] - variables.config[0].mdvv_type.strscxx --TODO NYI: LJ correction + clr(2) * rvolm
@@ -404,16 +383,8 @@ while not finish do
 
     [invoke(variables.config, {reassign_particle_properties, PER_PART}, NO_BARRIER)];
     --dl_meso_timing_mod.timchk(config) --TODO Include this.
---    format.println("Step {}", klock);
     [plcfor_mdvv()]; 
---    for i in neighbour_init.padded_particle_array.ispace do
---        if neighbour_init.padded_particle_array[i].lab == 1 and neighbour_init.padded_particle_array[i].neighbour_part_space._valid then
---            format.println("part forces {} {} {} {}", neighbour_init.padded_particle_array[i].lab, 
---                                               neighbour_init.padded_particle_array[i].fxx,
---                                               neighbour_init.padded_particle_array[i].fyy,
---                                               neighbour_init.padded_particle_array[i].fzz)
---        end
---    end
+
     klock = klock + 1
     --dl_meso_timing_mod.timchk(config) --TODO Include this.
     --TODO: NYI    frctim = timelp - timfst
@@ -470,9 +441,6 @@ format.println("Timesteps took {} s", double(finish_time-start_time) / 1000000.0
 --***********************************************************************
     variables.config[0].timfrc = variables.config[0].timfrc / double(klock)
     variables.config[0].timstp = variables.config[0].timstp / double(klock)
-    --TODO NYI
---      IF (idnode==0) WRITE (nprint, "(/,1x,'run terminating. elapsed cpu time = ',f10.2, ', job time = ',f10.2,&
---                                   &', close time = ',f10.2,/)") timelp, timjob, tclose
     var OUTPUT = c_stdio.fopen('OUTPUT', 'a')    
     c_stdio.fprintf(OUTPUT, "\n run terminating. elapsed cpu time = %10.2f, job time = %10.2f, close time = %10.2f\n",
                     0.0, 0.0, 0.0)
@@ -484,4 +452,3 @@ format.println("Timesteps took {} s", double(finish_time-start_time) / 1000000.0
 end
 
 run_DSL(mdvv)
---regentlib.start(mdvv)
