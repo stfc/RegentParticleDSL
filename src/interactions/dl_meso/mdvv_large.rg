@@ -97,7 +97,6 @@ function mdvv_nvt(stage)
 
         elseif stage == 2 then
             --Move particles by velocity verlet algorithm (this time velocity updates only)
-            [invoke(variables.config, {velocity_verlet_stage2, PER_PART}, BARRIER)];
 
             --TODO NYI: If using constraints, apply stage 2 of RATTLE
     
@@ -108,7 +107,8 @@ function mdvv_nvt(stage)
             variables.config[0].mdvv_type.strscyy = 0.0
             variables.config[0].mdvv_type.strscyz = 0.0
             variables.config[0].mdvv_type.strsczz = 0.0
-            [invoke(variables.config, {mdvv_kinetic_energy_compute, PER_PART}, BARRIER)];
+            [invoke(variables.config, {velocity_verlet_stage2, PER_PART}, {mdvv_kinetic_energy_compute, PER_PART}, BARRIER)];
+--            [invoke(variables.config, {mdvv_kinetic_energy_compute, PER_PART}, BARRIER)];
             variables.config[0].tke[0] = 0.5 * variables.config[0].mdvv_type.strscxx
             variables.config[0].tke[1] = 0.5 * variables.config[0].mdvv_type.strscyy
             variables.config[0].tke[2] = 0.5 * variables.config[0].mdvv_type.strsczz
