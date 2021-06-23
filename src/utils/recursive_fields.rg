@@ -20,7 +20,23 @@ function recursive_fields.recurse_field(field, field_table, type_table, parentst
       table.insert(type_table, field.field.symbol_type.name)
     else
       table.insert(field_table, field.field.symbol_name)
-      table.insert(type_table, field.field.symbol_type.name)
+      if field.field.symbol_type.N == nil then
+        table.insert(type_table, field.field.symbol_type.name)
+      else
+        local field_type = {}
+        field_type.dim = 1
+        field_type.size = {}
+        local temp = field.field.symbol_type.type
+        field_type.size[1] = field.field.symbol_type.N
+        while temp.N ~= nil do
+            field_type.dim = field_type.dim + 1
+            field_type.size[field_type.dim] = temp.N
+            temp = temp.type    
+        end
+        field_type.symbol_type = temp
+        field_type.symbol_type_name = temp.name
+        table.insert(type_table, field_type)
+      end
     end
   end
 end

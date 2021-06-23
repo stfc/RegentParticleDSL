@@ -7,5 +7,8 @@ import "regent"
 
 --To use cell_pair neighbour finding you must include this file in
 --the require decelarations.
-require("src/neighbour_search/cell_pair_v2/neighbour_part")
-require("src/neighbour_search/cell_pair_v2/neighbour_config")
+require("src/neighbour_search/HP_cell_pair_tradequeues/neighbour_part")
+require("src/neighbour_search/HP_cell_pair_tradequeues/neighbour_config")
+
+neighbour_search_validity = terralib.newlist()
+neighbour_search_validity:insert({field="neighbour_part_space._valid", result=true})

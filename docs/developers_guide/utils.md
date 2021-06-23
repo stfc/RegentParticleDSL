@@ -1,6 +1,6 @@
 # DEVELOPERS GUIDE: Utility functions (`src/utils`)
 
-Various functionality that powers RegentParticleDSL is designed to be used often throughout the code, and are independent
+Various functionality that powers HartreeParticleDSL is designed to be used often throughout the code, and are independent
 of the user-level program. These are grouped together as utility functions, and enable various metaprogramming features.
 
 ## Compute privileges
@@ -31,6 +31,12 @@ The `XXX_region_privilege_map` functions take an AST node as an input, and check
    field and symbol on which that access took place and add that field to the write table for the relevant symbol.
 2. If the AST node is a `FieldAccess`, if its a top-level field and has is applied to one of the symbols, then 
    add it to the read table for the relevant symbol.
+3. If the AST node is a `Reduction`, if it contains a `FieldAccess`, then it adds it to the reduction table for
+   the relevant symbol
+
+Note: All of the above nodes could be contained within an `IndexAccess` (array access). For reductions, it is required
+to explicitly recurse as long as it is an `IndexAccess` subnode, or until it finds a `FieldAccess` node.
+
 
 IMPORTANT NOTE: Right now for some reason the read accesses are just applied to top-level fields. This could recurse
 relatively easily, but doesn't at this time.

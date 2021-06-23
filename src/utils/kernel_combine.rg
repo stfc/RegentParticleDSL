@@ -15,10 +15,10 @@ function kernel_combine.combine_kernels( kernels )
    end
    --Code that expects a kernel assumes the format is a function that returns an rquote, so we create that
    --by combining all the kernels in the kernel_list inside a new function, and return that function
-    local function combine_kernels_innerfunc(part1, part2, r2)
+    local function combine_kernels_innerfunc(part1, part2, r2, config)
         local combined_kernels_rquote = rquote
             [kernel_list:map( function(kernel)
-                     return kernel(part1, part2, r2)
+                     return kernel(part1, part2, r2, config)
             end)];
         end
         return combined_kernels_rquote

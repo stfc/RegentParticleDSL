@@ -1,7 +1,11 @@
 # Writing Efficient Kernels
 
-While RegentParticleDSL aims to make things as easy as possible to get performant particle simulations, there are a few small but important ways to improve
+While HartreeParticleDSL aims to make things as easy as possible to get performant particle simulations, there are a few small but important ways to improve
 performance.
+
+## Avoid Symmetric Pairwise kernels
+At the moment, the Symmetric Pairwise kernels are not yet supported by the high performance sections of the runtime system. We plan to add this when we can, 
+however if this particularly important for your use-case, please comment on the issue at https://github.com/stfc/RegentParticleDSL/issues/92 .
 
 ## Use reduction operators
 

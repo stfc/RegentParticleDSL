@@ -284,3 +284,25 @@ task main()
 [hdf5_module.write_output("/path/to/output.hdf5", isph_module.hdf5_mapper, variables.particle_array)];
 end
 ```
+
+## DL MESO IO module
+
+The DL MESO IO module aims to replicate the functionality of the DL MESO DPD program's IO routines.
+
+To read DL MESO input files, they should be placed into the root directory of the DSL.
+First the module should be imported, which is done with a function call:
+```
+import_dl_meso([custom_config_path, custom_part_path])
+```
+Note that this function call forces a 3D periodic box, and takes two optional arguments which can be used
+to replace the inbuilt DL MESO config and particle types. Any provided config or particle types must at least contain
+all of the fields provided by the `src/io_modules/dl_meso/dl_meso_config.rg` and `src/io_modules/dl_meso/dl_meso_particle.rg`
+files.
+
+To initialise the particle system using the DL MESO input files, the user should add the following call at the start of their main task:
+```
+[dl_meso_init.initialise(variables)];
+```
+
+The DL MESO supported functionality is currently a small subset of the original DL MESO DPD code, and makes use of its own random number
+generator, so while we expect to provide correct solutions, we cannot guarantee bitwise reproducibility to DL MESO.

@@ -544,4 +544,11 @@ end
 return initialisation_quote
 end
 
+__demand(__inline)
+task neighbour_init.check_valid(ns : neighbour_part)
+
+    return ns._valid
+
+end
+
 return neighbour_init
