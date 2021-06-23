@@ -32,6 +32,7 @@ for i=1, 26 do
 end
 
 neighbour_init.cell_partition = regentlib.newsymbol("padded_cell_partition")
+neighbour_init.x_slices = regentlib.newsymbol("x_slice_partition")
 
 
 local DEBUG = true
@@ -108,7 +109,7 @@ check_command_line()
 --Find where the particles now belong
 --This task is still lightweight and could maybe combined into TradeQueue_push
 local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), part), config : region(ispace(int1d), config_type)) where
-  reads(particles, config), writes(particles.neighbour_part_space.cell_id, particles.core_part_space) do
+  reads(particles, config), writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell, particles.core_part_space) do
   for particle in particles do
     --Ignore non-valid particles
     if (particles[particle].neighbour_part_space._valid) then
@@ -136,6 +137,7 @@ local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), 
       var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
       var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
       particles[particle].neighbour_part_space.cell_id = cell_loc
+      particles[particle].neighbour_part_space.x_cell = x_cell
     end
   end
 end
@@ -462,9 +464,12 @@ local start_timing_quote, end_timing_quote = get_timing_quotes()
 local update_cells_quote = rquote
     [start_timing_quote];
     [assert_correct_cells()];
-    for cell in [neighbour_init.cell_partition].colors do
-        compute_new_dests( [neighbour_init.cell_partition][cell], [variables.config]);
+    for slice in [neighbour_init.x_slices].colors do
+        compute_new_dests( [neighbour_init.x_slices][slice], [variables.config]);
     end
+--    for cell in [neighbour_init.cell_partition].colors do
+--        compute_new_dests( [neighbour_init.cell_partition][cell], [variables.config]);
+--    end
     for cell in [neighbour_init.cell_partition].colors do
         tradequeue_push(cell, [neighbour_init.cell_partition][cell], [variables.config],
                         [generate_range_as_terralist(1, 26):map(function(i) return rexpr
@@ -524,9 +529,11 @@ local initialisation_quote = rquote                                             
          var cell_i3d = int3d({x,y,z})
         for index = 0, neighbour_init.padding_per_cell do
           [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space._valid = false
+          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space._valid = false;
           [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space.cell_id = cell_i3d
+          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space.cell_id = cell_i3d;
+          [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
+          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space.x_cell = int1d(x);
         end
       end
     end
@@ -573,7 +580,11 @@ local initialisation_quote = rquote                                             
    --Init the cell partition
     var space_parameter = ispace(int3d, {x_cells, y_cells, z_cells}, {0,0,0})
     var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter));
-    var [neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1)
+    var [neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1);
+
+    --Init the slice partition
+    var slice_parameter = ispace(int1d, x_cells, 0);
+    var [neighbour_init.x_slices] = partition(complete, [neighbour_init.padded_particle_array].neighbour_part_space.x_cell, slice_parameter);
 end
 
 return initialisation_quote

@@ -446,8 +446,9 @@ local runner = rquote
     [start_timing_quote];
     --For each cell, call the task!
     __demand(__index_launch)
-    for cell1 in cell_space.colors do
-       per_part_task(cell_space[cell1], config)
+    for slice in [neighbour_init.x_slices].colors do
+--    for cell1 in cell_space.colors do
+       per_part_task([neighbour_init.x_slices][slice], config)
     end
    [end_timing_quote];
    [update_neighbours_quote];

@@ -15,6 +15,7 @@ import "regent"
 fspace neighbour_part{
 
  cell_id : int3d,
+ x_cell : int1d,
  _valid : bool,
  _transfer_dir: int,
  _transfer_pos: int1d,

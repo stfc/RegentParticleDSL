@@ -129,7 +129,7 @@ end
 task particles_to_cells(particles : region(ispace(int1d), part),
                         config : region(ispace(int1d), config_type)) where 
   reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config),
-  writes(particles.neighbour_part_space.cell_id) do
+  writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell) do
 
   for particle in particles do
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
@@ -138,6 +138,7 @@ task particles_to_cells(particles : region(ispace(int1d), part),
 --    format.println("{} {} {}", x_cell, y_cell, z_cell)
     var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
     particles[particle].neighbour_part_space.cell_id = cell_loc
+    particles[particle].neighbour_part_space.x_cell = x_cell
   end
 end
 
@@ -146,7 +147,7 @@ end
 ----TODO: Partitioning for performance.
 task particles_to_cell_launcher(particles : region(ispace(int1d), part),config : region(ispace(int1d), config_type)) where
   reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config),
-  writes(particles.neighbour_part_space.cell_id) do
+  writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell) do
 
   particles_to_cells(particles, config)
 end

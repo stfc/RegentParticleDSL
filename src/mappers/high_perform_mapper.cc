@@ -690,9 +690,6 @@ void high_perform_mapper::slice_task(const Mapping::MapperContext ctx,
     // even though we're going to map everything from the first processor,
     //  we need to slice apart all the points so that they can be mapped
     //  to different places
-    //Check if this is a 1D slice
-//    std::cout << "get_dim = " << input.domain.get_dim() << "\n" << std::flush;
-//    assert(input.domain.get_dim() == 1);
     for(Domain::DomainPointIterator dpi(input.domain); dpi; dpi.step())
       output.slices.push_back(TaskSlice(Domain(dpi.p, dpi.p),  default_get_next_global_cpu(),
                     false /*!recurse*/,
