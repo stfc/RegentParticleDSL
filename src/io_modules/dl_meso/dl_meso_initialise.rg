@@ -17,9 +17,9 @@ function io_module.initialise(variables)
         var [variables.config] = region(ispace(int1d, 1), config_type)
         zero_config_func(variables.config);
         --End of initialisation (done by zero_config_func entirely now)
-        scan_control([variables.config])
+        dl_meso_read_mod.scan_control([variables.config])
         dl_meso_timing_mod.timchk([variables.config]) --TODO: NYI
-        write_output_header([variables.config])
+        dl_meso_write_mod.write_output_header([variables.config])
         dl_meso_config_mod.sysdef(variables.config)
         var [variables.particle_array] = region(ispace(int1d, variables.config[0].nsyst), part)
         zero_part_task(variables.particle_array)
@@ -37,9 +37,9 @@ function io_module.initialise(variables)
 -- c.legion_runtime_issue_execution_fence(__runtime(), __context())
         if [variables.config][0].kres == 0 and variables.config[0].straj == 0 and variables.config[0].ltraj then
             if variables.config[0].nseql > 0 then
-                gather_write_data(false, true, -variables.config[0].tstep * double(variables.config[0].nseql), variables.config, variables.particle_array)
+                dl_meso_write_mod.gather_write_data(false, true, -variables.config[0].tstep * double(variables.config[0].nseql), variables.config, variables.particle_array)
             else
-                gather_write_data(false, true, 0.0, variables.config, variables.particle_array)
+                dl_meso_write_mod.gather_write_data(false, true, 0.0, variables.config, variables.particle_array)
             end 
         end
     
@@ -52,7 +52,7 @@ function io_module.initialise(variables)
 
 
         dl_meso_timing_mod.timchk([variables.config]) --TODO: NYI
-        write_output_summary(0.0, true, variables.config[0].l_scr, variables.config)
+        dl_meso_write_mod.write_output_summary(0.0, true, variables.config[0].l_scr, variables.config)
         
         --Set max cutoff
         for j in variables.particle_array.ispace do 

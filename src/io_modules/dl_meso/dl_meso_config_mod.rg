@@ -146,19 +146,19 @@ do
 --  read in system parameters and job title
     --First argument is : (not ((l_config and imcon > 0) or l_rest))
     --Since l_config and l_rest both must be false then this is true for now.
-    read_control(config, true, config[0].l_config, config[0].l_rest)
+    dl_meso_read_mod.read_control(config, true, config[0].l_config, config[0].l_rest)
 
     --Write the name to the OUTPUT file
     var OUTPUT = c_stdio.fopen('OUTPUT', 'a')
     c_stdio.fprintf(OUTPUT,"%s\n", [rawstring](config[0].text))
     c_stdio.fclose(OUTPUT)
 
-    scan_field(config)
+    dl_meso_read_mod.scan_field(config)
 
     --TODO: NYI table support
     --if(ltabpot) scan_table(...)
 
-    read_field(config)
+    dl_meso_read_mod.read_field(config)
 
     if config[0].cutoff < 1e-16 then
         config[0].cutoff = config[0].rtcut

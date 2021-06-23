@@ -350,7 +350,7 @@ do
 
     if config[0].ltraj then
         --Ignore wtype TODO : NYI
-        write_history_header(config, parts)
+        [dl_meso_write_mod.write_history_header](config, parts)
     end
 end
 

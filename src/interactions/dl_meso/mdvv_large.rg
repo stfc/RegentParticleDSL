@@ -400,9 +400,9 @@ while not finish do
 
     --TODO NYI: write_output_summary
     if variables.config[0].nstep % variables.config[0].nsbpo == 0 then
-	    write_output_summary(0.0, false, false, variables.config);
+	    dl_meso_write_mod.write_output_summary(0.0, false, false, variables.config);
         if variables.config[0].nstep == variables.config[0].nseql then
-	    	write_output_equil(variables.config);
+	    	dl_meso_write_mod.write_output_equil(variables.config);
         end
     end
 
@@ -417,7 +417,7 @@ while not finish do
 
     var time : double = variables.config[0].tstep * double(variables.config[0].nstep - variables.config[0].nseql)
     if variables.config[0].lcorr and (variables.config[0].nstep >= variables.config[0].nseql ) and ( (variables.config[0].nstep - variables.config[0].nseql) % variables.config[0].iscorr == 0) then
-        write_correl(variables.config, time)
+        dl_meso_write_mod.write_correl(variables.config, time)
     end
 
     --TODO NYI: write_stress
@@ -427,10 +427,10 @@ while not finish do
     --TODO NYI: Gather write data and write revive
   
     if l_hist or l_exp then
-        gather_write_data(l_exp, l_hist, time, variables.config, neighbour_init.padded_particle_array)
+        dl_meso_write_mod.gather_write_data(l_exp, l_hist, time, variables.config, neighbour_init.padded_particle_array)
     end
     if l_exp then
-        write_revive(variables.config)
+        dl_meso_write_mod.write_revive(variables.config)
    end
 end
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
@@ -447,7 +447,7 @@ format.println("Timesteps took {} s", double(finish_time-start_time) / 1000000.0
     --c_stdio.fprintf(OUTPUT, "\n run terminating. elapsed cpu time = %10.2f, job time = %10.2f, close time = %10.2f\n",
     --                variables.config[0].timelp, variables.config[0].timjob, variables.config[0].tclose)
     c_stdio.fclose(OUTPUT)
-    write_output_result(variables.config, neighbour_init.padded_particle_array)
+    dl_meso_write_mod.write_output_result(variables.config, neighbour_init.padded_particle_array)
     --dl_meso_timing_mod.timchk(config) --TODO Include this.
 end
 

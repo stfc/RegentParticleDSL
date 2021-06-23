@@ -13,12 +13,14 @@ local c_string = terralib.includec("string.h")
 local io_utils = require("src/io_modules/dl_meso/io_utils")
 local c_math = terralib.includec("math.h")
 
+local dl_meso_read_mod = {}
+
 --Hack to deal with the fact that the EOF defition in stdio.h is not imported
 --TODO: Improve this code because its linux-dependent right now...
 --https://github.com/stfc/RegentParticleDSL/issues/39
 local EOF = -1
 
-task scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : bool, lrcut : bool, nspe : &int,
+task dl_meso_read_mod.scan_field --( cutoff : &double, srfzcut : double, mxprm : &int, ltabpot : bool, lrcut : bool, nspe : &int,
                 --  namspe : &&&int8, masstmp : &&double, chgetmp : &&double )--,  ...)
                ( config : region(ispace(int1d), config_type)) where writes(config), reads(config) do
     var record : int8[201]
@@ -196,7 +198,7 @@ end
 
 local fabs = regentlib.fabs(double)
 
-task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int, mxprm : int, namspe : &&int8,
+task dl_meso_read_mod.read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int, mxprm : int, namspe : &&int8,
                 -- eunit : double, gamma : &double ) --, ...)
              ( config : region(ispace(int1d), config_type)) where writes(config), reads(config) do
 
@@ -485,7 +487,7 @@ task read_field --( nspe : int, masstmp : &double, chgetmp : &double, npot : int
   regentlib.c.free(word)
 end
 
-task scan_control( config : region(ispace(int1d), config_type)) where writes(config.l_exist, config.l_safe, config.l_scr,
+task dl_meso_read_mod.scan_control( config : region(ispace(int1d), config_type)) where writes(config.l_exist, config.l_safe, config.l_scr,
                     config.l_temp, config.l_time, config.l_conf, config.l_init, config.l_rest, config.temp, config.tstep) 
 do
 
@@ -554,7 +556,7 @@ do
     regentlib.c.free(key1)
 end
 
-task read_control(config : region(ispace(int1d), config_type), l_readvol : bool, l_config : bool, l_rest : bool) 
+task dl_meso_read_mod.read_control(config : region(ispace(int1d), config_type), l_readvol : bool, l_config : bool, l_rest : bool) 
                     where reads(config), writes(config.tclose, config.cutoff,
                                                 config.itype, config.btype, config.nseql, config.ldyn, config.nsbpo, config.nsbts,
                                                 config.ltemp, config.nstk, config.iscorr, config.lcorr, config.nrun, config.temp,
@@ -884,3 +886,6 @@ do
     regentlib.c.free(word2)
     regentlib.c.free(word1)
 end
+
+
+return dl_meso_read_mod

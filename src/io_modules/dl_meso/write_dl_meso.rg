@@ -13,7 +13,9 @@ local c_string = terralib.includec("string.h")
 local io_utils = require("src/io_modules/dl_meso/io_utils")
 local c_math = terralib.includec("math.h")
 
-task write_output_summary( time : double, lbegin : bool, l_scr : bool, config : region(ispace(int1d), config_type) ) where reads(config.stpte,
+local dl_meso_write_mod = {}
+
+task dl_meso_write_mod.write_output_summary( time : double, lbegin : bool, l_scr : bool, config : region(ispace(int1d), config_type) ) where reads(config.stpte,
                             config.stppe, config.stpvir, config.stpprs, config.stpttp, config.rav, config.nstep, config.stptke)
 do
 
@@ -61,7 +63,7 @@ do
 end
 
 
-task write_output_equil( config : region(ispace(int1d), config_type) ) where reads(config.nstep) 
+task dl_meso_write_mod.write_output_equil( config : region(ispace(int1d), config_type) ) where reads(config.nstep) 
 do
 
     var OUTPUT = c_stdio.fopen('OUTPUT', 'a')
@@ -79,7 +81,7 @@ do
     c_stdio.fclose(OUTPUT)
 end
 
-task write_correl( config : region(ispace(int1d), config_type) , time : double) where reads(config.CORREL_newjob, config.stress,
+task dl_meso_write_mod.write_correl( config : region(ispace(int1d), config_type) , time : double) where reads(config.CORREL_newjob, config.stress,
                     config.stpte, config.stppe, config.stpprs, config.stpttp),  writes(config.CORREL_newjob)
 do
     if(config[0].CORREL_newjob) then
@@ -127,7 +129,7 @@ do
     c_stdio.fclose(CORREL)
 end
 
-task write_stress(time : double)
+task dl_meso_write_mod.write_stress(time : double)
   regentlib.assert(false, "Can't yet write stress files")
 end
 
@@ -135,7 +137,7 @@ end
 --task init_output_groups()
 --end
 
-task write_history_header(config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part)) where 
+task dl_meso_write_mod.write_history_header(config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part)) where 
                                                                                 reads(config.nstep, config.kres, config.text,
                                                                                     config.nspe, config.nusyst, config.nsyst,
                                                                                     config.ktype, config.namspe, config.filesize,
@@ -299,7 +301,7 @@ end
 
 
 
-task write_history(config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
+task dl_meso_write_mod.write_history(config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
                                                                                 reads(config),
                                                                                         reads(parts.core_part_space,
                                                                                         parts.lab, parts.fxx, parts.fyy, parts.fzz, parts.neighbour_part_space),
@@ -397,7 +399,7 @@ do
     c_stdio.fclose(HISTORY)
 end
 
-task write_export( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
+task dl_meso_write_mod.write_export( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part), time : double) where 
                                                                                 reads(config),
                                                                                         reads(parts.core_part_space,
                                                                                         parts.lab, parts.fxx, parts.fyy, parts.fzz,
@@ -465,7 +467,7 @@ do
 end
 
 __demand(__inline)
-task write_revive( config : region(ispace(int1d), config_type) ) where reads(config) --.text,
+task dl_meso_write_mod.write_revive( config : region(ispace(int1d), config_type) ) where reads(config) --.text,
                                                                             -- config.upx, config.upy, config.upz,
                                                                             -- config.fpx, config.fpy, config.fpz,
                                                                             -- config.nstep, config.nav, config.nstk,
@@ -629,11 +631,11 @@ end
 local sqrtf = regentlib.sqrt(double)
 
 --TODO: NYI write_config
-task write_config()
+task dl_meso_write_mod.write_config()
     regentlib.assert(false, "write_config not yet implemented.")
 end
 
-task write_output_result( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part) ) where
+task dl_meso_write_mod.write_output_result( config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part) ) where
                                                                         reads(config), --.text,
 --                                                                             config.upx, config.upy, config.upz,
 --                                                                             config.fpx, config.fpy, config.fpz,
@@ -656,7 +658,7 @@ task write_output_result( config : region(ispace(int1d), config_type), parts : r
                                                                         writes(config.flc)
 do
   --Line 3044
-    write_revive(config)
+    dl_meso_write_mod.write_revive(config)
     var OUTPUT = c_stdio.fopen("OUTPUT", "a")
     var i : int32
     
@@ -750,7 +752,7 @@ do
     c_stdio.fclose(OUTPUT)
 end
 
-task gather_write_data( lexport : bool, lhistory : bool, time : double, 
+task dl_meso_write_mod.gather_write_data( lexport : bool, lhistory : bool, time : double, 
                         config : region(ispace(int1d), config_type), parts : region(ispace(int1d), part)) where 
                                                                                 reads(config),
                                                                                         reads(parts.core_part_space,
@@ -761,16 +763,16 @@ task gather_write_data( lexport : bool, lhistory : bool, time : double,
 do
 
     if ( lhistory) then
-        write_history(config ,parts , time)
+        dl_meso_write_mod.write_history(config ,parts , time)
     end
 
     if( lexport) then
-        write_export(config, parts, time)
+        dl_meso_write_mod.write_export(config, parts, time)
     end
 
 end
 
-task write_output_header(config : region(ispace(int1d), config_type)) where reads(config.l_scr)
+task dl_meso_write_mod.write_output_header(config : region(ispace(int1d), config_type)) where reads(config.l_scr)
 do
     regentlib.assert(config[0].l_scr == false, "Not yet supporting output to stdio")
     
@@ -793,3 +795,5 @@ do
    
     c_stdio.fclose(OUTPUT) 
 end
+
+return dl_meso_write_mod

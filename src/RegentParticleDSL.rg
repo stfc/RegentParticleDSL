@@ -94,6 +94,8 @@ dl_meso_start_mod = nil
 dl_meso_statistics_mod = nil
 dl_meso_timing_mod = nil
 dl_meso_init = nil
+dl_meso_read_mod = nil
+dl_meso_write_mod = nil
 
 function import_dl_meso( custom_config_path, custom_part_path)
     setup_part()
@@ -134,8 +136,8 @@ function import_dl_meso( custom_config_path, custom_part_path)
     end
     require("src/utils/invoke_framework")
     DSL_settings.dsl_setup = true
-    require("src/io_modules/dl_meso/read_dl_meso")
-    require("src/io_modules/dl_meso/write_dl_meso")
+    dl_meso_read_mod = require("src/io_modules/dl_meso/read_dl_meso")
+    dl_meso_write_mod = require("src/io_modules/dl_meso/write_dl_meso")
     dl_meso_config_mod = require("src/io_modules/dl_meso/dl_meso_config_mod")
     dl_meso_field_mod = require("src/io_modules/dl_meso/dl_meso_field_mod")
     dl_meso_start_mod = require("src/io_modules/dl_meso/dl_meso_start_mod")
