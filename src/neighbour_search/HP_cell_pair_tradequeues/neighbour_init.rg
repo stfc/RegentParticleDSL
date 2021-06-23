@@ -464,12 +464,14 @@ local start_timing_quote, end_timing_quote = get_timing_quotes()
 local update_cells_quote = rquote
     [start_timing_quote];
     [assert_correct_cells()];
+    __demand(__index_launch)
     for slice in [neighbour_init.x_slices].colors do
         compute_new_dests( [neighbour_init.x_slices][slice], [variables.config]);
     end
 --    for cell in [neighbour_init.cell_partition].colors do
 --        compute_new_dests( [neighbour_init.cell_partition][cell], [variables.config]);
 --    end
+    __demand(__index_launch)
     for cell in [neighbour_init.cell_partition].colors do
         tradequeue_push(cell, [neighbour_init.cell_partition][cell], [variables.config],
                         [generate_range_as_terralist(1, 26):map(function(i) return rexpr
@@ -477,6 +479,7 @@ local update_cells_quote = rquote
                             end
                         end)] )
     end
+    __demand(__index_launch)
     for cell in [neighbour_init.cell_partition].colors do
         tradequeue_pull(cell, [neighbour_init.cell_partition][cell], [variables.config],
                     [generate_range_as_terralist(1, 26):map(function(i) return rexpr

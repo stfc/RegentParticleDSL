@@ -339,7 +339,7 @@ local asymmetric = rquote
     regentlib.assert(x_radii <= x_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
     regentlib.assert(y_radii <= y_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
     regentlib.assert(z_radii <= z_count / 2, "max_cutoff is too large relative to the boxsize for High Performance implementation. Please use a basic neighbour algorithm instead")
-    __demand(__trace)
+--    __demand(__trace)
     do
         for x = -x_radii, x_radii+1 do
             for y = -y_radii, y_radii+1 do
