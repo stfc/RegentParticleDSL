@@ -29,4 +29,4 @@ The `examples` folder contains small test programs, that have working programs t
 
 The `src` folder contains all the DSL library code, such as neighbour search algorithms, default type declarations and some kernel implementations.
 
-At the moment, all HartreeParticleDSL programs should be launched from the root directory of the DSL, due to how file's are imported.
+At the moment, all HartreeParticleDSL programs should be launched from the root directory of the DSL, due to how files are imported.

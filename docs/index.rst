@@ -23,6 +23,7 @@ Regent programming language (http://regent-lang.org/)
    neighbour_search/cell_pair
    effective_use/efficient_kernels
    developers_guide/utils
+   developers_guide/entry_points
    developers_guide/patterns
 
 

@@ -11,7 +11,7 @@ on:
 
 jobs:
     tests:
-        runs-on: ubuntu-16.04
+        runs-on: ubuntu-18.04
         steps:
             - uses: actions/checkout@v2
             - uses: actions/setup-python@v2
@@ -21,7 +21,9 @@ jobs:
               run: |
                   sudo add-apt-repository ppa:ubuntu-toolchain-r/test
                   sudo apt-get update -qq
-                  sudo apt-get install -y -qq build-essential clang-3.5 git libclang-3.5-dev libncurses5-dev llvm-3.5-dev wget zlib1g-dev libhdf5-dev cmake vim python3 python3-pip hdf5-tools g++-7 gcc-7
+                  sudo apt-get install build-essential cmake git llvm-6.0-dev libclang-6.0-dev clang-6.0 libedit-dev libncurses5-dev zlib1g-dev
+                  sudo apt-get install -y -qq build-essential git wget libhdf5-dev vim python3 python3-pip hdf5-tools g++-7 gcc-7
+                  #ls /usr/bin/llvm*
                   h5stat -V
                   h5cc --version
                   pip3 install --upgrade pip
@@ -32,8 +34,9 @@ jobs:
                   export CXX=g++-7
                   gcc -v
                   g++-7 -v
-                  clang-3.5 --version
-                  export LLVM_CONFIG=/usr/bin/llvm-config-3.5
+                  clang-6.0 --version
+                  alias clang=clang-6.0
+                  export LLVM_CONFIG=/usr/bin/llvm-config-6.0
                   export HDF5_INCLUDE_PATH=/usr/include/
                   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu/hdf5/serial
                   export PATH=$PATH:/usr/bin
@@ -42,7 +45,7 @@ jobs:
                   export C_INCLUDE_PATH=$INCLUDE_PATH
                   export CPLUS_INCLUDE_PATH=$INCLUDE_PATH
                   python3 legion/language/install.py --rdir=auto --hdf5 -j --no-terra-cmake
-                  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:legion/bindings/regent/
+                  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:legion/bindings/regent/:$PWD
                   #            - name: Run Examples
                   #             run: |
                    python3 tests.py   

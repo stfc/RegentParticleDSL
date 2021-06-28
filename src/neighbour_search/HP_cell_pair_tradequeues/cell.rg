@@ -115,9 +115,6 @@ task initialise_cells(config : region(ispace(int1d), config_type),
   config[0].neighbour_config.x_cells = x_cells
   config[0].neighbour_config.y_cells = y_cells
   config[0].neighbour_config.z_cells = z_cells
-  format.println("Cell counts: {} {} {}", x_cells, y_cells, z_cells)
-  format.println("Max cutoff: {}", config[0].neighbour_config.max_cutoff)
-  format.println("Cell dimensions: {} {} {}", cell_x_dim, cell_y_dim, cell_z_dim)
   config[0].neighbour_config.cell_dim_x = cell_x_dim
   config[0].neighbour_config.cell_dim_y = cell_y_dim
   config[0].neighbour_config.cell_dim_z = cell_z_dim
@@ -129,46 +126,28 @@ end
 
 
 
-task particles_to_cell_launcher(particles : region(ispace(int1d), part),
+task particles_to_cells(particles : region(ispace(int1d), part),
                         config : region(ispace(int1d), config_type)) where 
-  reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config),
-  writes(particles.neighbour_part_space.cell_id, particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z) do
+  reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config),
+  writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell) do
 
   for particle in particles do
-    --We need to handle periodicity
-    if (particles[particle].core_part_space.pos_x >= config[0].space.dim_x) then 
-      particles[particle].core_part_space.pos_x = particles[particle].core_part_space.pos_x - config[0].space.dim_x
-    end
-    if (particles[particle].core_part_space.pos_y >= config[0].space.dim_y) then 
-      particles[particle].core_part_space.pos_y = particles[particle].core_part_space.pos_y - config[0].space.dim_y
-    end
-    if (particles[particle].core_part_space.pos_z >= config[0].space.dim_z) then 
-      particles[particle].core_part_space.pos_z = particles[particle].core_part_space.pos_z - config[0].space.dim_z
-    end
-    if (particles[particle].core_part_space.pos_x < 0.0) then 
-      particles[particle].core_part_space.pos_x = particles[particle].core_part_space.pos_x + config[0].space.dim_x
-    end
-    if (particles[particle].core_part_space.pos_y < 0.0) then 
-      particles[particle].core_part_space.pos_y = particles[particle].core_part_space.pos_y + config[0].space.dim_y
-    end
-    if (particles[particle].core_part_space.pos_z < 0.0) then 
-      particles[particle].core_part_space.pos_z = particles[particle].core_part_space.pos_z + config[0].space.dim_z
-    end
     var x_cell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.cell_dim_x))
     var y_cell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.cell_dim_y))
     var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
-    format.println("{} {} {}", x_cell, y_cell, z_cell)
+--    format.println("{} {} {}", x_cell, y_cell, z_cell)
     var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
     particles[particle].neighbour_part_space.cell_id = cell_loc
+    particles[particle].neighbour_part_space.x_cell = x_cell
   end
 end
 
 
 ----This functions launches the particles_to_cells tasks according to some partioning scheme. The partitioning scheme is NYI.
 ----TODO: Partitioning for performance.
---task particles_to_cell_launcher(particles : region(ispace(int1d), part),config : region(ispace(int1d), config_type)) where
---  reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config),
---  writes(particles) do
---
---  particles_to_cells(particles, config)
---end
+task particles_to_cell_launcher(particles : region(ispace(int1d), part),config : region(ispace(int1d), config_type)) where
+  reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config),
+  writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell) do
+
+  particles_to_cells(particles, config)
+end

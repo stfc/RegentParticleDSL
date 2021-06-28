@@ -1,0 +1,13 @@
+DL_MESO mixture example (serial)
+
+SPECIES 3
+PLE1 1.0 0.0 333
+PLE2 1.0 0.0 333
+PLE3 1.0 0.0 334
+
+INTERACTIONS 3
+PLE1 PLE1 dpd  2.0 1.0 1.0
+PLE2 PLE2 dpd  1.0 1.0 1.0
+PLE3 PLE3 dpd  0.5 1.0 1.0
+
+CLOSE

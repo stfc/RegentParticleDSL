@@ -8,6 +8,7 @@ import "regent"
 require("src/RegentParticleDSL")
 set_dimensionality(3)
 set_periodicity(true)
+disable_high_performance()
 setup_part()
 local format = require("std/format")
 --TODO: We want to make this not just specific to a single Issue: #46

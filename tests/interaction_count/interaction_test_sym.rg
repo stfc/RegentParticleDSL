@@ -9,6 +9,7 @@ require("src/RegentParticleDSL")
 set_dimensionality(3)
 set_periodicity(true)
 enable_timing()
+disable_high_performance()
 setup_part()
 local format = require("std/format")
 --TODO: We want to make this not just specific to a single Issue: #46
@@ -153,6 +154,13 @@ reads(computed.interactions, solution.interactions, computed.core_part_space.id,
   format.println("All interactions computed correctly!")
 end
 
+function quicktestkernel(part1, config)
+local kernel = rquote
+    config.space.dim_x += 0.1
+end
+return kernel
+end
+
 local input_file = regentlib.newsymbol("input_file")
 local solution_file = regentlib.newsymbol("solution_file")
 local x_cell = regentlib.newsymbol("x_cell")
@@ -175,6 +183,7 @@ task main_task()
 
   [simple_hdf5_module.read_file( solution_file , hdf5_write_mapper, variables.solution_array)];
   comparison(neighbour_init.padded_particle_array, variables.solution_array);
+  [invoke(variables.config, {quicktestkernel, PER_PART}, BARRIER)];
   [DSL_report_timings()];
 end
 
@@ -182,6 +191,7 @@ end
 --
 --end
 
+--run_DSL(main_task)
   compile_DSL( main_task, "tests/interaction_count/interaction_test_sym.exe")
 --  local root_dir = "./tests/interaction_count/"
 --  local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir
