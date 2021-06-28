@@ -14,6 +14,7 @@ Regent programming language (http://regent-lang.org/)
 .. toctree::
    :maxdepth: 2
 
+   intro/introduction
    intro/install
    intro/syntax
    intro/DSL
