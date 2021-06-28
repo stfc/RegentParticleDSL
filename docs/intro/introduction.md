@@ -13,7 +13,7 @@ Legion’s programming model can be divided into 2 sections:
     * Field Space. A field space describes the data available at each point in a region, and at a high level could be compared to a structure in C.
 The resulting region is then similar to an array of structures in C, however the actual data layout is not defined as such.
 
-![image](cells.png)
+![](region.png)
 
 As a program launches tasks, Legion computes the dependencies between the tasks, and launches tasks when their dependencies have been satisfied and their data is available. One advantage the Legion runtime has over traditional implementation is its ability to replicate data when it deems appropriate, which can enable parallelism that may have been unavailable in a traditional application.
 
