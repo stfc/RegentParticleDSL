@@ -14,6 +14,7 @@ import "regent"
 --contained in
 fspace neighbour_part{
 
+ supercell_id : int3d,
  cell_id : int3d,
  x_cell : int1d,
  _valid : bool,
@@ -24,4 +25,32 @@ fspace neighbour_part{
 -- old_pos_y : double,
 -- old_pos_z : double,
 
+
+ --Values for setting up halos - m1 = -1, p1 = +1 so 26 directions
+  supercell_m1_m1_m1 : int3d,
+  supercell_m1_m1_0  : int3d,
+  supercell_m1_m1_p1 : int3d,
+  supercell_m1_0_m1  : int3d,
+  supercell_m1_0_0   : int3d,
+  supercell_m1_0_p1  : int3d,
+  supercell_m1_p1_m1 : int3d,
+  supercell_m1_p1_0  : int3d,
+  supercell_m1_p1_p1 : int3d,
+  supercell_0_m1_m1  : int3d,
+  supercell_0_m1_0   : int3d,
+  supercell_0_m1_p1  : int3d,
+  supercell_0_0_m1   : int3d,
+  supercell_0_0_p1   : int3d,
+  supercell_0_p1_m1  : int3d,
+  supercell_0_p1_0   : int3d,
+  supercell_0_p1_p1  : int3d,
+  supercell_p1_m1_m1 : int3d,
+  supercell_p1_m1_0  : int3d,
+  supercell_p1_m1_p1 : int3d,
+  supercell_p1_0_m1  : int3d,
+  supercell_p1_0_0   : int3d,
+  supercell_p1_0_p1  : int3d,
+  supercell_p1_p1_m1 : int3d,
+  supercell_p1_p1_0  : int3d,
+  supercell_p1_p1_p1 : int3d
 }

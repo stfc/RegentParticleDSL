@@ -12,5 +12,11 @@ fspace neighbour_config_type{
   x_cells : int,
   y_cells : int, 
   z_cells : int,
+  supercell_dim_x : double,
+  supercell_dim_y : double,
+  supercell_dim_z : double,
+  x_supercells : int,
+  y_supercells : int,
+  z_supercells : int,
   max_cutoff : double
 }

@@ -32,6 +32,8 @@ for i=1, 26 do
 end
 
 neighbour_init.cell_partition = regentlib.newsymbol("padded_cell_partition")
+neighbour_init.supercell_partition = regentlib.newsymbol("supercell_partition")
+neighbour_init.halo_partition = regentlib.newsymbol("halo_partition")
 neighbour_init.x_slices = regentlib.newsymbol("x_slice_partition")
 
 
@@ -84,8 +86,8 @@ local part_structure = construct_part_structure()
 
 --FIXME: Optimisation of this value might be good, for now we're allowing cells to grow by 50 particles before needing a repartition.
 --This realistically is simulation dependent
-neighbour_init.padding_per_cell = 50
-neighbour_init.tradequeue_size = neighbour_init.padding_per_cell / 5
+neighbour_init.padding_per_cell = 5
+neighbour_init.tradequeue_size = neighbour_init.padding_per_cell * 16
 
 --Read in some parameters from the command line. Work in progress
 local function check_command_line()
@@ -526,17 +528,285 @@ local initialisation_quote = rquote                                             
     [neighbour_init.padded_particle_array][i].neighbour_part_space._valid = true
   end
   var start_index = [variables.particle_array].ispace.bounds.hi + 1
+  var cell_to_supercell_x = config[0].neighbour_config.x_cells/config[0].neighbour_config.x_supercells
+  var cell_to_supercell_y = config[0].neighbour_config.y_cells/config[0].neighbour_config.y_supercells
+  var cell_to_supercell_z = config[0].neighbour_config.z_cells/config[0].neighbour_config.z_supercells  
   for x=0, [variables.config][0].neighbour_config.x_cells do
     for y=0, [variables.config][0].neighbour_config.y_cells do
       for z=0, [variables.config][0].neighbour_config.z_cells do
          var cell_i3d = int3d({x,y,z})
+         var base_index = start_index + (z + y*[variables.config][0].neighbour_config.z_cells + x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell;
         for index = 0, neighbour_init.padding_per_cell do
-          [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space._valid = false;
-          [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space.cell_id = cell_i3d;
-          [neighbour_init.padded_particle_array][start_index + (z + y*[variables.config][0].neighbour_config.z_cells +
-          x * [variables.config][0].neighbour_config.y_cells*[variables.config][0].neighbour_config.z_cells)*neighbour_init.padding_per_cell + index].neighbour_part_space.x_cell = int1d(x);
+          --Set the subcell index
+          [neighbour_init.padded_particle_array][base_index + index].neighbour_part_space._valid = false;
+          [neighbour_init.padded_particle_array][base_index + index].neighbour_part_space.cell_id = cell_i3d;
+          --Set the supercell index
+          var supercell_id : int3d = int3d({x / cell_to_supercell_x, y / cell_to_supercell_y, z / cell_to_supercell_z});
+          [neighbour_init.padded_particle_array][base_index + index].neighbour_part_space.supercell_id = supercell_id;
+          [neighbour_init.padded_particle_array][base_index + index].neighbour_part_space.x_cell = int1d(supercell_id.x);
+
+          --Set up the halo indices
+          var x_cell_m1 = x - int1d(1)
+          if(x_cell_m1 < int1d(0) ) then
+              x_cell_m1 = x_cell_m1 + [variables.config][0].neighbour_config.x_cells
+          end
+          var x_cell_p1 = x + int1d(1)
+          if(x_cell_p1 >= int1d([variables.config][0].neighbour_config.x_cells) ) then
+              x_cell_p1 = x_cell_p1 - [variables.config][0].neighbour_config.x_cells
+          end
+          var y_cell_m1 = y - int1d(1)
+          if(y_cell_m1 < int1d(0) ) then
+              y_cell_m1 = y_cell_m1 + [variables.config][0].neighbour_config.y_cells
+          end
+          var y_cell_p1 = y + int1d(1)
+          if(y_cell_p1 >= int1d([variables.config][0].neighbour_config.y_cells) ) then
+              y_cell_p1 = y_cell_p1 - [variables.config][0].neighbour_config.y_cells
+          end
+          var z_cell_m1 = z - int1d(1)
+          if(z_cell_m1 < int1d(0) ) then
+              z_cell_m1 = z_cell_m1 + [variables.config][0].neighbour_config.z_cells
+          end
+          var z_cell_p1 = z + int1d(1)
+          if(z_cell_p1 >= int1d([variables.config][0].neighbour_config.z_cells) ) then
+              z_cell_p1 = z_cell_p1 - [variables.config][0].neighbour_config.z_cells
+          end
+         --Save to halos. Note that the "supercell" {-1,-1,-1} doesn't exist and is used to denote that there is no containing halo in this direction
+        -- -1, -1, -1
+          var temp_supercell : int3d = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z })
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_m1_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_m1_m1 = temp_supercell
+          end
+
+          -- -1, -1, 0
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_m1_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_m1_0 = temp_supercell
+          end
+
+          -- -1, -1, 1
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_m1_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_m1_p1 = temp_supercell
+          end
+
+          -- -1, 0, -1
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_0_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_0_m1 = temp_supercell
+          end
+
+          -- -1, 0, 0
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_0_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_0_0 = temp_supercell
+          end
+
+          -- -1, 0, 1
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_0_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_0_p1 = temp_supercell
+          end
+
+          -- -1, 1, -1
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_p1_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_p1_m1 = temp_supercell
+          end
+
+          -- -1, 1, 0
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_p1_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_p1_0 = temp_supercell
+          end
+
+          -- -1, 1, 1
+          temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_p1_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_m1_p1_p1 = temp_supercell
+          end
+
+          --0, -1, -1
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_m1_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_m1_m1 = temp_supercell
+          end
+
+          -- 0, -1, 0
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_m1_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_m1_0 = temp_supercell
+          end
+
+          -- 0, -1, 1
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_m1_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_m1_p1 = temp_supercell
+          end
+
+          -- 0, 0, -1
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_0_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_0_m1 = temp_supercell
+          end
+
+          -- 0, 0, 1
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_0_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_0_p1 = temp_supercell
+          end
+
+          -- 0, 1, -1
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_p1_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_p1_m1 = temp_supercell
+          end
+
+          -- 0, 1, 0
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_p1_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_p1_0 = temp_supercell
+          end
+
+          --0, 1, 1
+          temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_p1_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_0_p1_p1 = temp_supercell
+          end
+
+          --1, -1, -1
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_m1_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_m1_m1 = temp_supercell
+          end
+
+          -- 1, -1, 0
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_m1_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_m1_0 = temp_supercell
+          end
+
+          -- 1, -1, 1
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_m1_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_m1_p1 = temp_supercell
+          end
+
+          -- 1, 0, -1
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_0_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_0_m1 = temp_supercell
+          end
+
+          -- 1, 0, 0
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_0_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_0_0 = temp_supercell
+          end
+
+          -- 1, 0, 1
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_0_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_0_p1 = temp_supercell
+          end
+
+          -- 1, 1, -1
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_p1_m1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_p1_m1 = temp_supercell
+          end
+
+          -- 1, 1, 0
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_p1_0 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_p1_0 = temp_supercell
+          end
+
+          -- 1, 1, 1
+          temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+          if temp_supercell == [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_id then
+              --Not in a halo
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_p1_p1 = int3d({-1, -1, -1})
+          else
+              [neighbour_init.padded_particle_array][base_index+index].neighbour_part_space.supercell_p1_p1_p1 = temp_supercell
+          end
+
+          --All done with halo values 
+
         end
       end
     end
@@ -548,11 +818,14 @@ local initialisation_quote = rquote                                             
   --The wrapper here is an inline way to create this for all 26 directions inside Regent code, since we're using
   -- symbols to generate this. We could do this with neighbour_init.TradeQueues:map(...) but we may in the future
   --vary tradequeue size based on direction.
+  var num_supercells = [variables.config][0].neighbour_config.x_supercells *
+                       [variables.config][0].neighbour_config.y_supercells *
+                       [variables.config][0].neighbour_config.z_supercells
   [(function() local __quotes = terralib.newlist() 
      for i = 1,26 do
      __quotes:insert(rquote
        --We could vary tradequeue size based upon direction, but for now we don't care.
-       var TradeQueue_indexSpace = ispace( int1d, num_cells * neighbour_init.tradequeue_size )
+       var TradeQueue_indexSpace = ispace( int1d, num_supercells * neighbour_init.tradequeue_size )
        var [neighbour_init.TradeQueues[i]] = region(TradeQueue_indexSpace, part);
          [generate_zero_part_quote( neighbour_init.TradeQueues[i] )];
      end)
@@ -561,12 +834,12 @@ local initialisation_quote = rquote                                             
    end) ()];
 
   --Now we have to partition the tradequeues by source and by destination.
-  --For the source we just divide each of the 26 "direction's" tradequeues into one per source cell. We use regentlib.coloring
+  --For the source we just divide each of the 26 "direction's" tradequeues into one per source supercell. We use regentlib.coloring
   --code to do this so we know the size/position accurately.
   --For the destination, we do the same, however we use an offset (based upon the direction) to shift each cells tradequeue appropriately.
-  var x_cells = [variables.config][0].neighbour_config.x_cells
-  var y_cells = [variables.config][0].neighbour_config.y_cells
-  var z_cells = [variables.config][0].neighbour_config.z_cells
+  var x_cells = [variables.config][0].neighbour_config.x_supercells
+  var y_cells = [variables.config][0].neighbour_config.y_supercells
+  var z_cells = [variables.config][0].neighbour_config.z_supercells
   var cell_space = ispace(int3d, {x_cells, y_cells, z_cells});
   [(function() local __quotes = terralib.newlist()
     for i = 1, 26 do
@@ -580,10 +853,78 @@ local initialisation_quote = rquote                                             
     return __quotes
    end) ()];
 
-   --Init the cell partition
+   --Init the supercell partition
     var space_parameter = ispace(int3d, {x_cells, y_cells, z_cells}, {0,0,0})
-    var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter));
-    var [neighbour_init.cell_partition] = __import_partition(disjoint, [neighbour_init.padded_particle_array], space_parameter, raw_lp1);
+--    var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter));
+    var [neighbour_init.supercell_partition] = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_id, space_parameter);
+    
+    var x_subcells = [variables.config][0].neighbour_config.x_cells
+    var y_subcells = [variables.config][0].neighbour_config.y_cells
+    var z_subcells = [variables.config][0].neighbour_config.z_cells
+    var cell_space_parameter = ispace(int3d, {x_subcells, y_subcells, z_subcells})
+    var [neighbour_init.cell_partition] = partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, cell_space_parameter);
+
+    --Create the halo partition
+    var m1_m1_m1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_m1_m1, space_parameter)
+    var m1_m1_0_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_m1_0,  space_parameter)
+    var m1_m1_p1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_m1_p1, space_parameter)
+    var m1_0_m1_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_0_m1,  space_parameter)
+    var m1_0_0_partition    = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_0_0,   space_parameter)
+    var m1_0_p1_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_0_p1,  space_parameter)
+    var m1_p1_m1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_p1_m1, space_parameter)
+    var m1_p1_0_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_p1_0,  space_parameter)
+    var m1_p1_p1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_m1_p1_p1, space_parameter)
+    var _0_m1_m1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_m1_m1,  space_parameter)
+    var _0_m1_0_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_m1_0,   space_parameter)
+    var _0_m1_p1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_m1_p1,  space_parameter)
+    var _0_0_m1_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_0_m1,   space_parameter)
+    var _0_0_p1_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_0_p1,   space_parameter)
+    var _0_p1_m1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_p1_m1,  space_parameter)
+    var _0_p1_0_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_p1_0,   space_parameter)
+    var _0_p1_p1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_0_p1_p1,  space_parameter)
+    var p1_m1_m1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_m1_m1, space_parameter)
+    var p1_m1_0_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_m1_0,  space_parameter)
+    var p1_m1_p1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_m1_p1, space_parameter)
+    var p1_0_m1_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_0_m1,  space_parameter)
+    var p1_0_0_partition    = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_0_0,   space_parameter)
+    var p1_0_p1_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_0_p1,  space_parameter)
+    var p1_p1_m1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_p1_m1, space_parameter)
+    var p1_p1_0_partition   = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_p1_0,  space_parameter)
+    var p1_p1_p1_partition  = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_p1_p1_p1, space_parameter)
+
+    var [neighbour_init.halo_partition] = m1_m1_m1_partition | m1_m1_0_partition  | m1_m1_p1_partition |
+                                          m1_0_m1_partition  | m1_0_0_partition   | m1_0_p1_partition  |
+                                          m1_p1_m1_partition | m1_p1_0_partition  | m1_p1_p1_partition |
+                                          _0_m1_m1_partition | _0_m1_0_partition  | _0_m1_p1_partition |
+                                          _0_0_m1_partition  |                      _0_0_p1_partition  |
+                                          _0_p1_m1_partition | _0_p1_0_partition  | _0_p1_p1_partition |
+                                          p1_m1_m1_partition | p1_m1_0_partition  | p1_m1_p1_partition |
+                                          p1_0_m1_partition  | p1_0_0_partition   | p1_0_p1_partition  |
+                                          p1_p1_m1_partition | p1_p1_0_partition  | p1_p1_p1_partition
+    --Delete all the temporary partitions used to create the halo partition
+    __delete(m1_m1_m1_partition)
+    __delete(m1_m1_0_partition)
+    __delete(m1_m1_p1_partition)
+    __delete(m1_0_m1_partition)
+    __delete(m1_0_0_partition)
+    __delete(m1_0_p1_partition)
+    __delete(m1_p1_m1_partition)
+    __delete(m1_p1_0_partition)
+    __delete(m1_p1_p1_partition)
+    __delete(_0_m1_m1_partition)
+    __delete(_0_m1_0_partition)
+    __delete(_0_m1_p1_partition)
+    __delete(_0_0_m1_partition)
+    __delete(_0_0_p1_partition)
+    __delete(p1_m1_m1_partition)
+    __delete(p1_m1_0_partition)
+    __delete(p1_m1_p1_partition)
+    __delete(p1_0_m1_partition)
+    __delete(p1_0_0_partition)
+    __delete(p1_0_p1_partition)
+    __delete(p1_p1_m1_partition)
+    __delete(p1_p1_0_partition)
+    __delete(p1_p1_p1_partition)
 
     --Init the slice partition
     var slice_parameter = ispace(int1d, x_cells, 0);
