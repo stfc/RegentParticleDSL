@@ -139,7 +139,12 @@ local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), 
       var z_cell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.cell_dim_z))
       var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
       particles[particle].neighbour_part_space.cell_id = cell_loc
-      particles[particle].neighbour_part_space.x_cell = x_cell
+      var x_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_x) )
+      var y_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_y) )
+      var z_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_z) )
+      cell_loc : int3d = int3d( {x_supercell, y_supercell, z_supercell} )
+      particles[particle].neighbour_part_space.supercell_id = cell_loc
+      particles[particle].neighbour_part_space.x_cell = x_supercell
     end
   end
 end
@@ -355,18 +360,18 @@ do
 end
 
 --Partitioning code for the tradequeues to correctly create the src/dest tradequeues.
-local __demand(__inline) task partition_tradequeue_by_cells( tradequeue : region(ispace(int1d), part),
-                                                             cell_space : ispace(int3d),
-                                                             offset : int3d)
+local __demand(__inline) task partition_tradequeue_by_supercells( tradequeue : region(ispace(int1d), part),
+                                                                  supercell_space : ispace(int3d),
+                                                                  offset : int3d)
     var count = tradequeue.bounds.hi + 1
-    var count_xcells = cell_space.bounds.hi.x + 1
-    var count_ycells = cell_space.bounds.hi.y + 1
-    var count_zcells = cell_space.bounds.hi.z + 1
+    var count_xcells = supercell_space.bounds.hi.x + 1
+    var count_ycells = supercell_space.bounds.hi.y + 1
+    var count_zcells = supercell_space.bounds.hi.z + 1
     var n_cells = count_xcells * count_ycells * count_zcells
 
     --Use legion's coloring option to create this partition
     var coloring = regentlib.c.legion_domain_point_coloring_create()
-    for cell in cell_space do
+    for cell in supercell_space do
       --Ensure we wrap the cell indices (we add # cells to each dimension to handle negative values)
       var color : int3d = (cell - offset + {count_xcells, count_ycells, count_zcells}) % {count_xcells, count_ycells, count_zcells}
       --Indices for this color are number of elements per cell (count/n_cells) * (3D to 1D conversion)
@@ -378,7 +383,7 @@ local __demand(__inline) task partition_tradequeue_by_cells( tradequeue : region
       regentlib.c.legion_domain_point_coloring_color_domain(coloring, cell, rect)
     end
     --Create the partition from the coloring. If offset = 0 this is essentially a controlled equal partition
-    var p = partition(disjoint, tradequeue, coloring, cell_space)
+    var p = partition(disjoint, tradequeue, coloring, supercell_space)
     --Clean up the runtime
     regentlib.c.legion_domain_point_coloring_destroy(coloring)
     return p
@@ -844,9 +849,9 @@ local initialisation_quote = rquote                                             
   [(function() local __quotes = terralib.newlist()
     for i = 1, 26 do
         __quotes:insert(rquote
-            var [neighbour_init.TradeQueues_bySrc[i]] = partition_tradequeue_by_cells( [neighbour_init.TradeQueues[i]],
+            var [neighbour_init.TradeQueues_bySrc[i]] = partition_tradequeue_by_supercells( [neighbour_init.TradeQueues[i]],
                                                                                        cell_space, int3d({0,0,0}) );
-            var [neighbour_init.TradeQueues_byDest[i]] = partition_tradequeue_by_cells( [neighbour_init.TradeQueues[i]],
+            var [neighbour_init.TradeQueues_byDest[i]] = partition_tradequeue_by_supercells( [neighbour_init.TradeQueues[i]],
                                                                                         cell_space, [directions[i]] );
         end)
     end
