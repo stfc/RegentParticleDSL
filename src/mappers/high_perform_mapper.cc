@@ -76,6 +76,10 @@ class high_perform_mapper : public NullMapper
                                        const MemoizeInput&  input,
                                              MemoizeOutput& output);
 
+        virtual void select_task_sources(const MapperContext        ctx,
+                                         const Task&                task,
+                                         const SelectTaskSrcInput&  input,
+                                               SelectTaskSrcOutput& output);
 
 
     protected:
@@ -123,6 +127,11 @@ class high_perform_mapper : public NullMapper
                                             LayoutConstraintSet &constraints,
                                             Memory target_memory,
                                             const RegionRequirement &req);
+    protected:
+         static inline bool physical_sort_func(
+                         const std::pair<PhysicalInstance,unsigned> &left,
+                         const std::pair<PhysicalInstance,unsigned> &right)
+        { return (left.second < right.second); }
 };
 
 const char* high_perform_mapper::create_mapper_name(void)
@@ -390,7 +399,7 @@ PhysicalInstance high_perform_mapper::choose_instance_default(const MapperContex
                       fc.field_set);
             constraints.add_constraint(fc);
         }*/
-        
+                 
         std::vector<LogicalRegion> regions(1, req.region);
         Mapping::PhysicalInstance result;
         bool created;
@@ -471,11 +480,12 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
 
                     Mapping::PhysicalInstance inst;
                     RegionRequirement req = task.regions[i];
-
-                    inst = choose_instance_default(ctx, req, task.target_proc);
-                    runtime->set_garbage_collection_priority(ctx, inst, LEGION_GC_NEVER_PRIORITY);
-                    output.chosen_instances[i].push_back(inst);
-                    cell_reduction_instances[triple] = output.chosen_instances[i];
+                    if (req.privilege_fields.size() != 0){
+                        inst = choose_instance_default(ctx, req, task.target_proc);
+                        runtime->set_garbage_collection_priority(ctx, inst, LEGION_GC_NEVER_PRIORITY);
+                        output.chosen_instances[i].push_back(inst);
+                        cell_reduction_instances[triple] = output.chosen_instances[i];
+                    }
                     continue;
                 }
                 //We should never get here as we assume we find all the fields or we find none.
@@ -485,9 +495,11 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
                 Mapping::PhysicalInstance inst;
                 RegionRequirement req = task.regions[i];
 
-                inst = choose_instance_default(ctx, req, task.target_proc);
-                runtime->set_garbage_collection_priority(ctx, inst, -1);
-                output.chosen_instances[i].push_back(inst);
+                if (req.privilege_fields.size() != 0){
+                    inst = choose_instance_default(ctx, req, task.target_proc);
+                    runtime->set_garbage_collection_priority(ctx, inst, -1);
+                    output.chosen_instances[i].push_back(inst);
+                }
             }
         }
     }else //For other types of task do the most naive option
@@ -497,8 +509,10 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
             Mapping::PhysicalInstance inst;
             RegionRequirement req = task.regions[i];
     
-            inst = choose_instance_default(ctx, req, task.target_proc);
-            output.chosen_instances[i].push_back(inst);
+            if (req.privilege_fields.size() != 0){
+                inst = choose_instance_default(ctx, req, task.target_proc);
+                output.chosen_instances[i].push_back(inst);
+            }
         }
     }
 //    assert(false);
@@ -708,6 +722,57 @@ void high_perform_mapper::select_task_options(const MapperContext    ctx,
     output.stealable = false;
     //Map at target processor
     output.map_locally = false;
+}
+
+
+void high_perform_mapper::select_task_sources(const MapperContext        ctx,
+                                              const Task&                task,
+                                              const SelectTaskSrcInput&  input,
+                                                   SelectTaskSrcOutput& output)
+{
+    //Copy the default mapper
+      // For right now we'll rank instances by the bandwidth of the memory
+      // they are in to the destination
+      // TODO: consider layouts when ranking source  to help out the DMA system
+      const PhysicalInstance target = input.target;
+      const std::vector<PhysicalInstance> sources = input.source_instances;
+      std::map<Memory,unsigned/*bandwidth*/> source_memories;
+      Memory destination_memory = target.get_location();
+      std::vector<MemoryMemoryAffinity> affinity(1);
+      // fill in a vector of the sources with their bandwidths and sort them
+      std::vector<std::pair<PhysicalInstance,
+                          unsigned/*bandwidth*/> > band_ranking(sources.size());
+      for (unsigned idx = 0; idx < sources.size(); idx++)
+      {
+        const PhysicalInstance &instance = sources[idx];
+        Memory location = instance.get_location();
+        std::map<Memory,unsigned>::const_iterator finder =
+          source_memories.find(location);
+        if (finder == source_memories.end())
+        {
+          affinity.clear();
+          machine.get_mem_mem_affinity(affinity, location, destination_memory,
+                       false /*not just local affinities*/);
+          unsigned memory_bandwidth = 0;
+          if (!affinity.empty()) {
+            assert(affinity.size() == 1);
+            memory_bandwidth = affinity[0].bandwidth;
+          }
+          source_memories[location] = memory_bandwidth;
+          band_ranking[idx] =
+            std::pair<PhysicalInstance,unsigned>(instance, memory_bandwidth);
+        }
+        else
+          band_ranking[idx] =
+            std::pair<PhysicalInstance,unsigned>(instance, finder->second);
+      }
+      // Sort them by bandwidth
+      std::sort(band_ranking.begin(), band_ranking.end(), physical_sort_func);
+      // Iterate from largest bandwidth to smallest
+      for (std::vector<std::pair<PhysicalInstance,unsigned> >::
+            const_reverse_iterator it = band_ranking.rbegin();
+            it != band_ranking.rend(); it++)
+        output.chosen_ranking.push_back(it->first);
 }
 
 

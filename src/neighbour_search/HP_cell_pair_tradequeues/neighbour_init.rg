@@ -31,6 +31,16 @@ for i=1, 26 do
   neighbour_init.TradeQueues_byDest:insert( regentlib.newsymbol() )
 end
 
+neighbour_init.TradeQueues_bysubSrc = terralib.newlist()
+for i=1, 26 do
+    neighbour_init.TradeQueues_bysubSrc:insert(regentlib.newsymbol() )
+end
+
+neighbour_init.TradeQueues_bysubDest = terralib.newlist()
+for i=1, 26 do
+    neighbour_init.TradeQueues_bysubDest:insert(regentlib.newsymbol() )
+end
+
 neighbour_init.cell_partition = regentlib.newsymbol("padded_cell_partition")
 neighbour_init.supercell_partition = regentlib.newsymbol("supercell_partition")
 neighbour_init.halo_partition = regentlib.newsymbol("halo_partition")
@@ -86,8 +96,8 @@ local part_structure = construct_part_structure()
 
 --FIXME: Optimisation of this value might be good, for now we're allowing cells to grow by 50 particles before needing a repartition.
 --This realistically is simulation dependent
-neighbour_init.padding_per_cell = 5
-neighbour_init.tradequeue_size = neighbour_init.padding_per_cell * 16
+neighbour_init.padding_per_cell = 10
+neighbour_init.tradequeue_size = neighbour_init.padding_per_cell * 8
 
 --Read in some parameters from the command line. Work in progress
 local function check_command_line()
@@ -111,7 +121,8 @@ check_command_line()
 --Find where the particles now belong
 --This task is still lightweight and could maybe combined into TradeQueue_push
 local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), part), config : region(ispace(int1d), config_type)) where
-  reads(particles, config), writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell, particles.core_part_space) do
+  reads(particles, config), writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell, particles.core_part_space,
+                                   particles.neighbour_part_space.supercell_id) do
   for particle in particles do
     --Ignore non-valid particles
     if (particles[particle].neighbour_part_space._valid) then
@@ -142,7 +153,7 @@ local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), 
       var x_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_x) )
       var y_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_y) )
       var z_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_z) )
-      cell_loc : int3d = int3d( {x_supercell, y_supercell, z_supercell} )
+      cell_loc = int3d( {x_supercell, y_supercell, z_supercell} )
       particles[particle].neighbour_part_space.supercell_id = cell_loc
       particles[particle].neighbour_part_space.x_cell = x_supercell
     end
@@ -153,6 +164,16 @@ end
 local tradequeues = terralib.newlist()
 for i=1, 26 do
   tradequeues:insert( regentlib.newsymbol(region(ispace(int1d), part) ) )
+end
+
+local all_tradequeues = terralib.newlist()
+for i= 1, 26 do
+    all_tradequeues:insert(regentlib.newsymbol(region(ispace(int1d), part) ) )
+end
+
+local tradequeues_partitions = terralib.newlist()
+for i=1, 26 do
+  tradequeues_partitions:insert(regentlib.newsymbol(partition(disjoint,all_tradequeues[i], ispace(int3d))))
 end
 
 --We need to add a flatten function for the tradequeue flattening to work.
@@ -171,10 +192,12 @@ function TerraList:flatten(res)
 end
 
 --New tradequeue push implementation
-local __demand(__leaf) task tradequeue_push( cell_id : int3d, 
+local __demand(__leaf) task tradequeue_push( supercell_id : int3d, 
                                              particles : region(ispace(int1d), part),
+                                             all_parts : region(ispace(int1d), part),
+                                             subcell_partition : partition(disjoint, all_parts, ispace(int3d)),
                                              config : region(ispace(int1d), config_type),
-                                             [tradequeues] ) where
+                                             [tradequeues], [all_tradequeues], [tradequeues_partitions] ) where
       reads(particles), reads(config), reads writes(particles.neighbour_part_space),
       --We write to all the fields in each of the tradeQueue partitions
       [tradequeues:map(function(queue)
@@ -184,11 +207,29 @@ local __demand(__leaf) task tradequeue_push( cell_id : int3d,
       end):flatten()]
 do
 
-    var toTransfer = int32(0)
     var count_xcells = config[0].neighbour_config.x_cells
     var count_ycells = config[0].neighbour_config.y_cells
     var count_zcells = config[0].neighbour_config.z_cells
-    for part in particles.ispace do
+    var n_cells = count_xcells * count_ycells * count_zcells
+
+    var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
+    var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
+    var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
+
+    --Compute the bounds for the subcells of this supercell
+    var xlo = supercell_id.x * x_per_super
+    var xhi = (supercell_id.x + 1) * x_per_super --loops noninclusive so all ok to not -1
+    var ylo = supercell_id.y * y_per_super
+    var yhi = (supercell_id.y + 1) * y_per_super
+    var zlo = supercell_id.z * z_per_super
+    var zhi = (supercell_id.z + 1) * z_per_super
+
+for x=xlo, xhi do
+for y=ylo, yhi do
+for z=zlo, zhi do
+    var cell_id : int3d = int3d({x,y,z})
+    var toTransfer = int32(0)
+    for part in subcell_partition[cell_id].ispace do
         --We only care about valid particles
         if particles[part].neighbour_part_space._valid then
             --Check if it still belongs to us
@@ -234,15 +275,16 @@ do
    --don't need to worry about any other cell touching it.
     [(function() local __quotes = terralib.newlist()
         for i=1, 26 do
+           local queuespace = tradequeues_partitions[i]
            local queue = tradequeues[i]
             __quotes:insert(rquote
                 --Empty the queue from last step
-                for j in queue.ispace do
+                for j in queuespace[cell_id].ispace do
                     queue[j].neighbour_part_space._valid = false
                 end
                --Count how many to transfer and where they belong
                 var transferred = int32(0)
-                for part in particles.ispace do
+                for part in subcell_partition[cell_id].ispace do
                     if particles[part].neighbour_part_space._valid and particles[part].neighbour_part_space._transfer_dir == i then
                         particles[part].neighbour_part_space._transfer_pos = int1d(transferred)
                         transferred += 1
@@ -251,18 +293,18 @@ do
                     end
                 end
                 --Check we have enough space
-                if int1d(transferred) > queue.bounds.hi - queue.bounds.lo + 1 then
+                if int1d(transferred) > queuespace[cell_id].bounds.hi - queuespace[cell_id].bounds.lo + 1 then
                     var s : rawstring
                     s = [rawstring] (regentlib.c.malloc(512))
                     format.snprintln(s, 512, "Transferring more particles than fit in the tradequeue. Cell {} {} {}, transfers: {}", 
                                      cell_id.x, cell_id.y, cell_id.z, int32(transferred))
-                    regentlib.assert(int1d(transferred) <= (queue.bounds.hi - queue.bounds.lo + 1), s)
+                    regentlib.assert(int1d(transferred) <= (queuespace[cell_id].bounds.hi - queuespace[cell_id].bounds.lo + 1), s)
                     regentlib.c.free(s)
                 end
                 --We have enough space, so move the particles into the queue
-                for part in particles.ispace do
+                for part in subcell_partition[cell_id].ispace do
                     if particles[part].neighbour_part_space._valid and particles[part].neighbour_part_space._transfer_dir == i then
-                        var pos = particles[part].neighbour_part_space._transfer_pos + queue.bounds.lo;
+                        var pos = particles[part].neighbour_part_space._transfer_pos + queuespace[cell_id].bounds.lo;
                         --Copy the particle data.
                         [part_structure:map(function(element)
                             return rquote
@@ -277,15 +319,23 @@ do
         end
         return __quotes
     end) ()];
+    --All done now for this cell
+
+end
+end
+end
+
     --All done now
 end
 
 
 --: New tradequeue pull implementation
-local __demand(__leaf) task tradequeue_pull( cell_id : int3d,
+local __demand(__leaf) task tradequeue_pull( supercell_id : int3d,
                                              particles : region(ispace(int1d), part),
+                                             all_parts : region(ispace(int1d), part),
+                                             subcell_partition : partition(disjoint, all_parts, ispace(int3d)),
                                              config : region(ispace(int1d), config_type),
-                                             [tradequeues] ) where
+                                             [tradequeues], [all_tradequeues], [tradequeues_partitions] ) where
       reads(config), reads writes(particles),
       --We read to all the fields in each of the tradeQueue partitions
       [tradequeues:map(function(queue)
@@ -294,6 +344,26 @@ local __demand(__leaf) task tradequeue_pull( cell_id : int3d,
         end) 
       end):flatten()]
 do
+    var count_xcells = config[0].neighbour_config.x_cells
+    var count_ycells = config[0].neighbour_config.y_cells
+    var count_zcells = config[0].neighbour_config.z_cells
+    var n_cells = count_xcells * count_ycells * count_zcells
+
+    var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
+    var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
+    var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
+
+    --Compute the bounds for the subcells of this supercell
+    var xlo = supercell_id.x * x_per_super
+    var xhi = (supercell_id.x + 1) * x_per_super --loops noninclusive so all ok to not -1
+    var ylo = supercell_id.y * y_per_super
+    var yhi = (supercell_id.y + 1) * y_per_super
+    var zlo = supercell_id.z * z_per_super
+    var zhi = (supercell_id.z + 1) * z_per_super
+for x=xlo, xhi do
+for y=ylo, yhi do
+for z=zlo, zhi do
+    var cell_id : int3d = int3d({x,y,z})
     --Keep track of where to transfer elements and total number of transfers
     var transfer_bounds : int32[27]
     transfer_bounds[0] = 0
@@ -301,9 +371,10 @@ do
     --Count the number of transfers
     [(function() local __quotes = terralib.newlist()
         for i=1, 26 do
+           local queuespace = tradequeues_partitions[i]
            local queue = tradequeues[i]
             __quotes:insert(rquote
-                for q in queue.ispace do
+                for q in queuespace[cell_id].ispace do
                     if queue[q].neighbour_part_space._valid then
                         total_transfers += 1 
                     end
@@ -315,7 +386,7 @@ do
     end) ()];
     --Number all the slots and check we have enough space
     var available_slots : int32 = 0
-    for part in particles.ispace do
+    for part in subcell_partition[cell_id].ispace do
         if not (particles[part].neighbour_part_space._valid) then
             particles[part].neighbour_part_space._transfer_pos = int1d(available_slots)
             available_slots += 1
@@ -333,16 +404,17 @@ do
     --Ok, we're good to go!
     [(function() local __quotes = terralib.newlist()
         for i=1, 26 do
+            local queuespace = tradequeues_partitions[i]
             local queue = tradequeues[i]
             __quotes:insert(rquote
                 --Get the bounds for this direction
                 var lo = int1d(transfer_bounds[i-1])
                 var hi = int1d(transfer_bounds[i])
-                for part in particles.ispace do
+                for part in subcell_partition[cell_id].ispace do
                     if not(particles[part].neighbour_part_space._valid) then
                         var offset = particles[part].neighbour_part_space._transfer_pos
                         if offset >= lo and offset < hi then
-                            var pos : int1d = offset - lo + queue.bounds.lo;
+                            var pos : int1d = offset - lo + queuespace[cell_id].bounds.lo;
                             [part_structure:map(function(element)
                                return rquote
                                  particles[part].[element.field] = queue[pos].[element.field]
@@ -357,21 +429,26 @@ do
         end
         return __quotes
     end) ()];
+
+end
+end
+end
+-- All done
 end
 
 --Partitioning code for the tradequeues to correctly create the src/dest tradequeues.
-local __demand(__inline) task partition_tradequeue_by_supercells( tradequeue : region(ispace(int1d), part),
-                                                                  supercell_space : ispace(int3d),
-                                                                  offset : int3d)
+local __demand(__inline) task partition_tradequeue_by_subcells( tradequeue : region(ispace(int1d), part),
+                                                                cell_space : ispace(int3d),
+                                                                offset : int3d)
     var count = tradequeue.bounds.hi + 1
-    var count_xcells = supercell_space.bounds.hi.x + 1
-    var count_ycells = supercell_space.bounds.hi.y + 1
-    var count_zcells = supercell_space.bounds.hi.z + 1
+    var count_xcells = cell_space.bounds.hi.x + 1
+    var count_ycells = cell_space.bounds.hi.y + 1
+    var count_zcells = cell_space.bounds.hi.z + 1
     var n_cells = count_xcells * count_ycells * count_zcells
 
     --Use legion's coloring option to create this partition
     var coloring = regentlib.c.legion_domain_point_coloring_create()
-    for cell in supercell_space do
+    for cell in cell_space do
       --Ensure we wrap the cell indices (we add # cells to each dimension to handle negative values)
       var color : int3d = (cell - offset + {count_xcells, count_ycells, count_zcells}) % {count_xcells, count_ycells, count_zcells}
       --Indices for this color are number of elements per cell (count/n_cells) * (3D to 1D conversion)
@@ -383,11 +460,64 @@ local __demand(__inline) task partition_tradequeue_by_supercells( tradequeue : r
       regentlib.c.legion_domain_point_coloring_color_domain(coloring, cell, rect)
     end
     --Create the partition from the coloring. If offset = 0 this is essentially a controlled equal partition
-    var p = partition(disjoint, tradequeue, coloring, supercell_space)
+    var p = partition(disjoint, tradequeue, coloring, cell_space)
     --Clean up the runtime
     regentlib.c.legion_domain_point_coloring_destroy(coloring)
     return p
 end
+
+local __demand(__inline) task partition_tradequeue_by_supercells( tradequeue : region(ispace(int1d), part),
+                                                                  supercell_space : ispace(int3d),
+                                                                  offset : int3d,
+                                                                  config : region(ispace(int1d), config_type) )
+    where reads(config.neighbour_config) do
+    var count = tradequeue.bounds.hi + 1
+    var count_xcells = config[0].neighbour_config.x_cells
+    var count_ycells = config[0].neighbour_config.y_cells
+    var count_zcells = config[0].neighbour_config.z_cells
+    var n_cells = count_xcells * count_ycells * count_zcells
+
+    var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
+    var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
+    var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
+
+
+    --Use legion's coloring option to create this partition - we need a multi domain point coloring since we have multiple domains per color
+    var coloring = regentlib.c.legion_multi_domain_point_coloring_create()
+    for supercell in supercell_space do
+        --The supercell coloring contains all the elements of its subcells, so we loop over the subcells to create it
+        var xlo = supercell.x * x_per_super
+        var xhi = (supercell.x + 1) * x_per_super --loops noninclusive so all ok to not -1
+        var ylo = supercell.y * y_per_super
+        var yhi = (supercell.y + 1) * y_per_super
+        var zlo = supercell.z * z_per_super
+        var zhi = (supercell.z + 1) * z_per_super
+    
+        --Loop over cells
+        for x = xlo, xhi do
+            for y = ylo, yhi do
+                for z = zlo, zhi do
+                    var cell : int3d = int3d({x,y,z})
+                    --Ensure we wrap the cell indices (we add # cells to each dimension to handle negative values)
+                    var color : int3d = (cell - offset + {count_xcells, count_ycells, count_zcells}) % {count_xcells, count_ycells, count_zcells}
+                    --Indices for this color are number of elements per cell (count/n_cells) * (3D to 1D conversion)
+                    var oneD_color : int1d = (color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z;
+                    var rect = rect1d{
+                      lo = (count/n_cells)*(oneD_color),
+                      hi = (count/n_cells)*(oneD_color+1) - 1
+                    }
+                    regentlib.c.legion_multi_domain_point_coloring_color_domain(coloring, supercell, rect)
+                end
+            end
+        end
+    end
+    --Create the partition from the coloring. If offset = 0 this is essentially a controlled equal partition
+    var p = partition(disjoint, tradequeue, coloring, supercell_space)
+    --Clean up the runtime
+    regentlib.c.legion_multi_domain_point_coloring_destroy(coloring)
+    return p
+end
+
 
 local assert_correct_cells = function()
   return rquote
@@ -472,27 +602,49 @@ local update_cells_quote = rquote
     [start_timing_quote];
     [assert_correct_cells()];
     __demand(__index_launch)
-    for slice in [neighbour_init.x_slices].colors do
-        compute_new_dests( [neighbour_init.x_slices][slice], [variables.config]);
+    for slice in [neighbour_init.supercell_partition].colors do
+        compute_new_dests( [neighbour_init.supercell_partition][slice], [variables.config]);
     end
 --    for cell in [neighbour_init.cell_partition].colors do
 --        compute_new_dests( [neighbour_init.cell_partition][cell], [variables.config]);
 --    end
     __demand(__index_launch)
-    for cell in [neighbour_init.cell_partition].colors do
-        tradequeue_push(cell, [neighbour_init.cell_partition][cell], [variables.config],
+    for cell in [neighbour_init.supercell_partition].colors do
+        tradequeue_push(cell, [neighbour_init.supercell_partition][cell],
+                        [neighbour_init.padded_particle_array], --We pass the full particle array in to reference the partition
+                        [neighbour_init.cell_partition], --The subcell partition used to index the computation
+                        [variables.config],
                         [generate_range_as_terralist(1, 26):map(function(i) return rexpr
                             [neighbour_init.TradeQueues_bySrc[i]][cell]
+                            end
+                        end)],
+                        [generate_range_as_terralist(1, 26):map(function(i) return rexpr
+                            [neighbour_init.TradeQueues[i]]
+                            end
+                        end)],
+                        [generate_range_as_terralist(1, 26):map(function(i) return rexpr
+                            [neighbour_init.TradeQueues_bysubSrc[i]]
                             end
                         end)] )
     end
     __demand(__index_launch)
-    for cell in [neighbour_init.cell_partition].colors do
-        tradequeue_pull(cell, [neighbour_init.cell_partition][cell], [variables.config],
-                    [generate_range_as_terralist(1, 26):map(function(i) return rexpr
-                        [neighbour_init.TradeQueues_byDest[i]][cell]
-                        end
-                    end)] )
+    for cell in [neighbour_init.supercell_partition].colors do
+        tradequeue_pull(cell, [neighbour_init.supercell_partition][cell],
+                        [neighbour_init.padded_particle_array], --We pass the full particle array in to reference the partition
+                        [neighbour_init.cell_partition], --The subcell partition used to index the computation
+                        [variables.config],
+                        [generate_range_as_terralist(1, 26):map(function(i) return rexpr
+                            [neighbour_init.TradeQueues_byDest[i]][cell]
+                            end
+                        end)],
+                        [generate_range_as_terralist(1, 26):map(function(i) return rexpr
+                            [neighbour_init.TradeQueues[i]]
+                            end
+                        end)],
+                        [generate_range_as_terralist(1, 26):map(function(i) return rexpr
+                            [neighbour_init.TradeQueues_bysubDest[i]]
+                            end
+                        end)])
     end
     c.legion_runtime_issue_execution_fence(__runtime(), __context());
     [assert_correct_cells()];
@@ -533,9 +685,9 @@ local initialisation_quote = rquote                                             
     [neighbour_init.padded_particle_array][i].neighbour_part_space._valid = true
   end
   var start_index = [variables.particle_array].ispace.bounds.hi + 1
-  var cell_to_supercell_x = config[0].neighbour_config.x_cells/config[0].neighbour_config.x_supercells
-  var cell_to_supercell_y = config[0].neighbour_config.y_cells/config[0].neighbour_config.y_supercells
-  var cell_to_supercell_z = config[0].neighbour_config.z_cells/config[0].neighbour_config.z_supercells  
+  var cell_to_supercell_x = [variables.config][0].neighbour_config.x_cells/[variables.config][0].neighbour_config.x_supercells
+  var cell_to_supercell_y = [variables.config][0].neighbour_config.y_cells/[variables.config][0].neighbour_config.y_supercells
+  var cell_to_supercell_z = [variables.config][0].neighbour_config.z_cells/[variables.config][0].neighbour_config.z_supercells  
   for x=0, [variables.config][0].neighbour_config.x_cells do
     for y=0, [variables.config][0].neighbour_config.y_cells do
       for z=0, [variables.config][0].neighbour_config.z_cells do
@@ -575,6 +727,9 @@ local initialisation_quote = rquote                                             
           if(z_cell_p1 >= int1d([variables.config][0].neighbour_config.z_cells) ) then
               z_cell_p1 = z_cell_p1 - [variables.config][0].neighbour_config.z_cells
           end
+          var x_cell = x
+          var y_cell = y
+          var z_cell = z
          --Save to halos. Note that the "supercell" {-1,-1,-1} doesn't exist and is used to denote that there is no containing halo in this direction
         -- -1, -1, -1
           var temp_supercell : int3d = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z })
@@ -825,7 +980,7 @@ local initialisation_quote = rquote                                             
   --vary tradequeue size based on direction.
   var num_supercells = [variables.config][0].neighbour_config.x_supercells *
                        [variables.config][0].neighbour_config.y_supercells *
-                       [variables.config][0].neighbour_config.z_supercells
+                       [variables.config][0].neighbour_config.z_supercells;
   [(function() local __quotes = terralib.newlist() 
      for i = 1,26 do
      __quotes:insert(rquote
@@ -846,13 +1001,21 @@ local initialisation_quote = rquote                                             
   var y_cells = [variables.config][0].neighbour_config.y_supercells
   var z_cells = [variables.config][0].neighbour_config.z_supercells
   var cell_space = ispace(int3d, {x_cells, y_cells, z_cells});
+  var x_subcells = [variables.config][0].neighbour_config.x_cells
+  var y_subcells = [variables.config][0].neighbour_config.y_cells
+  var z_subcells = [variables.config][0].neighbour_config.z_cells
+  var cell_space_parameter = ispace(int3d, {x_subcells, y_subcells, z_subcells});
   [(function() local __quotes = terralib.newlist()
     for i = 1, 26 do
         __quotes:insert(rquote
             var [neighbour_init.TradeQueues_bySrc[i]] = partition_tradequeue_by_supercells( [neighbour_init.TradeQueues[i]],
-                                                                                       cell_space, int3d({0,0,0}) );
+                                                                                       cell_space, int3d({0,0,0}), variables.config );
             var [neighbour_init.TradeQueues_byDest[i]] = partition_tradequeue_by_supercells( [neighbour_init.TradeQueues[i]],
-                                                                                        cell_space, [directions[i]] );
+                                                                                        cell_space, [directions[i]], variables.config );
+            var [neighbour_init.TradeQueues_bysubSrc[i]] = partition_tradequeue_by_subcells( [neighbour_init.TradeQueues[i]],
+                                                                                        cell_space_parameter, int3d({0,0,0}) );
+            var [neighbour_init.TradeQueues_bysubDest[i]] = partition_tradequeue_by_subcells( [neighbour_init.TradeQueues[i]],
+                                                                                        cell_space_parameter, [directions[i]])
         end)
     end
     return __quotes
@@ -863,10 +1026,6 @@ local initialisation_quote = rquote                                             
 --    var raw_lp1 = __raw(partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, space_parameter));
     var [neighbour_init.supercell_partition] = partition([neighbour_init.padded_particle_array].neighbour_part_space.supercell_id, space_parameter);
     
-    var x_subcells = [variables.config][0].neighbour_config.x_cells
-    var y_subcells = [variables.config][0].neighbour_config.y_cells
-    var z_subcells = [variables.config][0].neighbour_config.z_cells
-    var cell_space_parameter = ispace(int3d, {x_subcells, y_subcells, z_subcells})
     var [neighbour_init.cell_partition] = partition([neighbour_init.padded_particle_array].neighbour_part_space.cell_id, cell_space_parameter);
 
     --Create the halo partition
