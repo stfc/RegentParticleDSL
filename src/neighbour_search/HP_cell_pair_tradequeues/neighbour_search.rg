@@ -916,22 +916,22 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                             for part1 in cell_partition[cell].ispace do
                                 if [parts1][part1].neighbour_part_space._valid then
                                     for part2 in cell_partition[ne_cell].ispace do
-                                        if [parts2][part2].neighbour_part_space._valid then
+                                        if [parts1][part2].neighbour_part_space._valid then
                                             --Compute the distance between them
-                                            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                            var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
+                                            var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+                                            var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+                                            var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
                                             if (dx > half_box_x) then dx = dx - box_x end
                                             if (dy > half_box_y) then dy = dy - box_y end
                                             if (dz > half_box_z) then dz = dz - box_z end
                                             if (dx <-half_box_x) then dx = dx + box_x end
                                             if (dy <-half_box_y) then dy = dy + box_y end
                                             if (dz <-half_box_z) then dz = dz + box_z end
-                                            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
+                                            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
                                             cutoff2 = cutoff2 * cutoff2
                                             var r2 = dx*dx + dy*dy + dz*dz
                                             if(r2 <= cutoff2) then
-                                              [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
+                                              [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
                                             end
                                         end
                                     end
