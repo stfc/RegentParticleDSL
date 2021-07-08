@@ -47,7 +47,7 @@ neighbour_init.halo_partition = regentlib.newsymbol("halo_partition")
 neighbour_init.x_slices = regentlib.newsymbol("x_slice_partition")
 
 
-local DEBUG = true
+local DEBUG = false
 
 --Use terralib list for this isntead of lua table
 local directions = terralib.newlist({
@@ -296,8 +296,8 @@ for z=zlo, zhi do
                 if int1d(transferred) > queuespace[cell_id].bounds.hi - queuespace[cell_id].bounds.lo + 1 then
                     var s : rawstring
                     s = [rawstring] (regentlib.c.malloc(512))
-                    format.snprintln(s, 512, "Transferring more particles than fit in the tradequeue. Cell {} {} {}, transfers: {}", 
-                                     cell_id.x, cell_id.y, cell_id.z, int32(transferred))
+                    format.snprintln(s, 512, "Transferring more particles than fit in the tradequeue. Cell {} {} {}, transfers: {}, size: {}", 
+                                     cell_id.x, cell_id.y, cell_id.z, int32(transferred), queuespace[cell_id].bounds.hi - queuespace[cell_id].bounds.lo)
                     regentlib.assert(int1d(transferred) <= (queuespace[cell_id].bounds.hi - queuespace[cell_id].bounds.lo + 1), s)
                     regentlib.c.free(s)
                 end
@@ -439,11 +439,14 @@ end
 --Partitioning code for the tradequeues to correctly create the src/dest tradequeues.
 local __demand(__inline) task partition_tradequeue_by_subcells( tradequeue : region(ispace(int1d), part),
                                                                 cell_space : ispace(int3d),
-                                                                offset : int3d)
+                                                                offset : int3d,
+                                                                config : region(ispace(int1d), config_type) )
+    where reads(config.neighbour_config) do
+
     var count = tradequeue.bounds.hi + 1
-    var count_xcells = cell_space.bounds.hi.x + 1
-    var count_ycells = cell_space.bounds.hi.y + 1
-    var count_zcells = cell_space.bounds.hi.z + 1
+    var count_xcells = config[0].neighbour_config.x_cells
+    var count_ycells = config[0].neighbour_config.y_cells
+    var count_zcells = config[0].neighbour_config.z_cells
     var n_cells = count_xcells * count_ycells * count_zcells
 
     --Use legion's coloring option to create this partition
@@ -601,6 +604,8 @@ local start_timing_quote, end_timing_quote = get_timing_quotes()
 local update_cells_quote = rquote
     [start_timing_quote];
     [assert_correct_cells()];
+__demand(__trace)
+do
     __demand(__index_launch)
     for slice in [neighbour_init.supercell_partition].colors do
         compute_new_dests( [neighbour_init.supercell_partition][slice], [variables.config]);
@@ -646,6 +651,7 @@ local update_cells_quote = rquote
                             end
                         end)])
     end
+end
     c.legion_runtime_issue_execution_fence(__runtime(), __context());
     [assert_correct_cells()];
     [end_timing_quote];
@@ -985,7 +991,7 @@ local initialisation_quote = rquote                                             
      for i = 1,26 do
      __quotes:insert(rquote
        --We could vary tradequeue size based upon direction, but for now we don't care.
-       var TradeQueue_indexSpace = ispace( int1d, num_supercells * neighbour_init.tradequeue_size )
+       var TradeQueue_indexSpace = ispace( int1d, num_cells * neighbour_init.tradequeue_size )
        var [neighbour_init.TradeQueues[i]] = region(TradeQueue_indexSpace, part);
          [generate_zero_part_quote( neighbour_init.TradeQueues[i] )];
      end)
@@ -1013,9 +1019,9 @@ local initialisation_quote = rquote                                             
             var [neighbour_init.TradeQueues_byDest[i]] = partition_tradequeue_by_supercells( [neighbour_init.TradeQueues[i]],
                                                                                         cell_space, [directions[i]], variables.config );
             var [neighbour_init.TradeQueues_bysubSrc[i]] = partition_tradequeue_by_subcells( [neighbour_init.TradeQueues[i]],
-                                                                                        cell_space_parameter, int3d({0,0,0}) );
+                                                                                        cell_space_parameter, int3d({0,0,0}), variables.config );
             var [neighbour_init.TradeQueues_bysubDest[i]] = partition_tradequeue_by_subcells( [neighbour_init.TradeQueues[i]],
-                                                                                        cell_space_parameter, [directions[i]])
+                                                                                        cell_space_parameter, [directions[i]], variables.config);
         end)
     end
     return __quotes

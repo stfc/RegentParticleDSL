@@ -118,7 +118,9 @@ class high_perform_mapper : public NullMapper
         //Choose Physical Instances
         virtual PhysicalInstance choose_instance_default(const MapperContext ctx,
                                                          const RegionRequirement& req,
-                                                         const Processor& target_proc);
+                                                         const Processor& target_proc,
+                                                         bool& created,
+                                                         const bool in_order = true);
         virtual void default_policy_select_constraints(MapperContext ctx,
                                                        LayoutConstraintSet &constraints,
                                                        Memory target_memory,
@@ -383,11 +385,13 @@ Memory high_perform_mapper::get_best_memory(const Processor& target_proc)
 
 PhysicalInstance high_perform_mapper::choose_instance_default(const MapperContext ctx,
                                                               const RegionRequirement& req,
-                                                              const Processor& target_proc)
+                                                              const Processor& target_proc,
+                                                              bool& created,
+                                                              const bool in_order)
 {
         Memory best_memory = get_best_memory(target_proc);
         LayoutConstraintSet constraints;
-        FieldConstraint fc(req.privilege_fields, false /*!contiguous*/);
+        FieldConstraint fc(req.privilege_fields, false /*!contiguous*/, in_order);
         constraints.add_constraint(fc);
         if (req.privilege == LEGION_REDUCE)
         {
@@ -402,13 +406,16 @@ PhysicalInstance high_perform_mapper::choose_instance_default(const MapperContex
                  
         std::vector<LogicalRegion> regions(1, req.region);
         Mapping::PhysicalInstance result;
-        bool created;
+//        bool created;
         bool ok = runtime->find_or_create_physical_instance(ctx,
                                 best_memory,
                                 constraints,
                                 regions,
                                 result,
                                 created);
+//        if(!in_order && created){
+//            std::cout << "Created instance for tradequeue_pull task\n";
+//i        }
         assert(ok);
         return result;
 }
@@ -481,7 +488,8 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
                     Mapping::PhysicalInstance inst;
                     RegionRequirement req = task.regions[i];
                     if (req.privilege_fields.size() != 0){
-                        inst = choose_instance_default(ctx, req, task.target_proc);
+                        bool created;
+                        inst = choose_instance_default(ctx, req, task.target_proc, created);
                         runtime->set_garbage_collection_priority(ctx, inst, LEGION_GC_NEVER_PRIORITY);
                         output.chosen_instances[i].push_back(inst);
                         cell_reduction_instances[triple] = output.chosen_instances[i];
@@ -496,7 +504,8 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
                 RegionRequirement req = task.regions[i];
 
                 if (req.privilege_fields.size() != 0){
-                    inst = choose_instance_default(ctx, req, task.target_proc);
+                        bool created;
+                    inst = choose_instance_default(ctx, req, task.target_proc, created);
                     runtime->set_garbage_collection_priority(ctx, inst, -1);
                     output.chosen_instances[i].push_back(inst);
                 }
@@ -510,7 +519,14 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
             RegionRequirement req = task.regions[i];
     
             if (req.privilege_fields.size() != 0){
-                inst = choose_instance_default(ctx, req, task.target_proc);
+                        bool created;
+                inst = choose_instance_default(ctx, req, task.target_proc, created,
+                                                true /*strcmp(task_name, "tradequeue_pull") != 0*/);
+/*                if (strcmp(task_name, "tradequeue_pull") == 0 && created){
+                    std::cout << "Creating instance for region " << i << " of tradequeue_pull\n";
+                }else if (strcmp(task_name, "tradequeue_push") == 0 && created){
+                    std::cout << "Creating instance for region " << i << " of tradequeue_push\n";
+                }*/
                 output.chosen_instances[i].push_back(inst);
             }
         }
@@ -524,7 +540,8 @@ void high_perform_mapper::map_inline(const Mapping::MapperContext ctx,
                                            MapInlineOutput& output)
 {
     Mapping::PhysicalInstance inst;
-    inst = choose_instance_default(ctx, inline_op.requirement, inline_op.parent_task->current_proc);
+    bool created;
+    inst = choose_instance_default(ctx, inline_op.requirement, inline_op.parent_task->current_proc, created);
     output.chosen_instances.push_back(inst);
 }
 
