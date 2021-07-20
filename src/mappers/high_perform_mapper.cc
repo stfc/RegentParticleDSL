@@ -105,6 +105,8 @@ class high_perform_mapper : public NullMapper
         virtual Processor default_get_next_local_cpu();
         virtual Processor default_get_next_global_cpu();
         Machine::ProcessorQuery *global_cpu_query;
+        //Have i created/found tradequeues
+        bool tradequeue_exist;
 
     protected:
         //Memory choice functionality
@@ -235,6 +237,7 @@ high_perform_mapper::high_perform_mapper(MapperRuntime *rt, Machine machine, Pro
         
    }
    total_nodes = remote_cpus.size();
+   tradequeue_exist = false;
 }
 
 high_perform_mapper::~high_perform_mapper(void)
@@ -438,6 +441,36 @@ void high_perform_mapper::map_task(const MapperContext      ctx,
     runtime->find_valid_variants(ctx, task.task_id, valid_variants, task.target_proc.kind());
     assert(!valid_variants.empty());
     output.chosen_variant = valid_variants[0];
+    if(!tradequeue_exist && (strcmp(task_name, "tradequeue_push") == 0 || strcmp(task_name, "tradequeue_pull") == 0)){
+        bool ok = true;
+        for(size_t i = 0; i < task.regions.size(); i++)
+        {
+            Mapping::PhysicalInstance inst;
+            RegionRequirement req = task.regions[i];
+                
+            if(i >= 4 && i <= 29){
+                assert(req.privilege_fields.size() != 0);
+                //LogicalPartition a = runtime->get_parent_logical_partition(ctx, req.region);
+                Memory best_memory = get_best_memory(task.target_proc);
+                LayoutConstraintSet constraints;
+                FieldConstraint fc(req.privilege_fields, false /*!contiguous*/);
+                constraints.add_constraint(fc);
+                LogicalPartition parent = runtime->get_parent_logical_partition(ctx, req.region);
+                LogicalRegion parent_region = runtime->get_parent_logical_region(ctx, parent);
+                std::vector<LogicalRegion> regions(1, parent_region);
+                Mapping::PhysicalInstance result;
+                bool created;
+                ok &= runtime->find_or_create_physical_instance(ctx,
+                                        best_memory,
+                                        constraints,
+                                        regions,
+                                        result,
+                                        created);
+            }
+        }
+        assert(ok);
+        tradequeue_exist = true;
+    }
 
     //TODO We could cache this later.
     //If its a special type of task, do something special

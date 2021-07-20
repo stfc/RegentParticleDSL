@@ -167,8 +167,8 @@ task particles_to_cells(particles : region(ispace(int1d), part),
         particles[particle].neighbour_part_space.cell_id = cell_loc
         --Set supercell
         var x_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_x) )
-        var y_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_y) )
-        var z_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_z) )
+        var y_supercell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.supercell_dim_y) )
+        var z_supercell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.supercell_dim_z) )
         cell_loc = int3d( {x_supercell, y_supercell, z_supercell} )
         particles[particle].neighbour_part_space.supercell_id = cell_loc
         particles[particle].neighbour_part_space.x_cell = x_supercell --group things by supercell always
@@ -207,234 +207,234 @@ task particles_to_cells(particles : region(ispace(int1d), part),
         var temp_supercell : int3d = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z })
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_m1_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_m1_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_m1_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_m1_m1 = temp_supercell
         end
 
         -- -1, -1, 0
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_m1_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_m1_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_m1_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_m1_0 = temp_supercell
         end
 
         -- -1, -1, 1
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_m1_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_m1_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_m1_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_m1_p1 = temp_supercell
         end
 
         -- -1, 0, -1
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_0_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_0_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_0_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_0_m1 = temp_supercell
         end
 
         -- -1, 0, 0
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_0_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_0_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_0_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_0_0 = temp_supercell
         end
 
         -- -1, 0, 1
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_0_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_0_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_0_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_0_p1 = temp_supercell
         end
 
         -- -1, 1, -1
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_p1_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_p1_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_p1_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_p1_m1 = temp_supercell
         end
 
         -- -1, 1, 0
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_p1_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_p1_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_p1_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_p1_0 = temp_supercell
         end
 
         -- -1, 1, 1
         temp_supercell = int3d({ x_cell_m1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_m1_p1_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_m1_p1_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_m1_p1_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_m1_p1_p1 = temp_supercell
         end
 
         --0, -1, -1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_m1_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_m1_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_m1_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_m1_m1 = temp_supercell
         end
 
         -- 0, -1, 0
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_m1_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_m1_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_m1_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_m1_0 = temp_supercell
         end
 
         -- 0, -1, 1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_m1_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_m1_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_m1_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_m1_p1 = temp_supercell
         end
 
         -- 0, 0, -1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_0_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_0_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_0_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_0_m1 = temp_supercell
         end
 
         -- 0, 0, 1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_0_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_0_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_0_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_0_p1 = temp_supercell
         end
 
         -- 0, 1, -1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_p1_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_p1_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_p1_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_p1_m1 = temp_supercell
         end
 
         -- 0, 1, 0
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_p1_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_p1_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_p1_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_p1_0 = temp_supercell
         end
 
         --0, 1, 1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_0_p1_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_0_p1_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_0_p1_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_0_p1_p1 = temp_supercell
         end
 
         --1, -1, -1
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_m1_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_m1_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_m1_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_m1_m1 = temp_supercell
         end
 
         -- 1, -1, 0
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_m1_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_m1_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_m1_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_m1_0 = temp_supercell
         end
 
         -- 1, -1, 1
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_m1_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_m1_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_m1_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_m1_p1 = temp_supercell
         end
 
         -- 1, 0, -1
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_0_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_0_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_0_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_0_m1 = temp_supercell
         end
 
         -- 1, 0, 0
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_0_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_0_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_0_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_0_0 = temp_supercell
         end
 
         -- 1, 0, 1
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_0_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_0_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_0_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_0_p1 = temp_supercell
         end
 
         -- 1, 1, -1
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_m1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_p1_m1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_p1_m1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_p1_m1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_p1_m1 = temp_supercell
         end
 
         -- 1, 1, 0
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_p1_0 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_p1_0 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_p1_0 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_p1_0 = temp_supercell
         end
 
         -- 1, 1, 1
         temp_supercell = int3d({ x_cell_p1 / cell_to_supercell_x, y_cell_p1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
-            particles[particle].neighbour_part_space.supercell_p1_p1_p1 = int3d({-1, -1, -1})
+            particles[particle].neighbour_part_space.halos_supercell_p1_p1_p1 = int3d({-1, -1, -1})
         else
-            particles[particle].neighbour_part_space.supercell_p1_p1_p1 = temp_supercell
+            particles[particle].neighbour_part_space.halos_supercell_p1_p1_p1 = temp_supercell
         end
 
         --All done with halo values

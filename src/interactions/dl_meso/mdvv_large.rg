@@ -432,6 +432,7 @@ while not finish do
     if l_exp then
         dl_meso_write_mod.write_revive(variables.config)
    end
+   format.println("End of step {}", variables.config[0].nstep);
 end
 c.legion_runtime_issue_execution_fence(__runtime(), __context())
 var finish_time = c.legion_get_current_time_in_micros()
@@ -451,4 +452,5 @@ format.println("Timesteps took {} s", double(finish_time-start_time) / 1000000.0
     --dl_meso_timing_mod.timchk(config) --TODO Include this.
 end
 
-run_DSL(mdvv)
+--run_DSL(mdvv)
+compile_DSL(mdvv, "mdvv_large.exe")

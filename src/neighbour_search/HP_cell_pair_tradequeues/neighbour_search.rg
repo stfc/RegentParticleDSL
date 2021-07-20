@@ -513,12 +513,12 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
     var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
     var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
     var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
-    var xlo = cell1.x
-    var xhi = cell1.x + x_per_super --Loops non inclusive
-    var ylo = cell1.y
-    var yhi = cell1.y + y_per_super
-    var zlo = cell1.z
-    var zhi = cell1.z + z_per_super
+    var xlo = (cell1.x) * x_per_super
+    var xhi = (cell1.x+1) * x_per_super --Loops non inclusive
+    var ylo = cell1.y * y_per_super
+    var yhi = (cell1.y+1) * y_per_super
+    var zlo = (cell1.z) * z_per_super
+    var zhi = (cell1.z+1) * z_per_super
 
     var count_xcells = config[0].neighbour_config.x_cells
     var count_ycells = config[0].neighbour_config.y_cells
@@ -871,12 +871,12 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
     var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
     var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
-    var xlo = cell1.x
-    var xhi = cell1.x + x_per_super --Loops non inclusive
-    var ylo = cell1.y
-    var yhi = cell1.y + y_per_super
-    var zlo = cell1.z
-    var zhi = cell1.z + z_per_super
+    var xlo = (cell1.x) * x_per_super
+    var xhi = (cell1.x+1) * x_per_super --Loops non inclusive
+    var ylo = cell1.y * y_per_super
+    var yhi = (cell1.y+1) * y_per_super
+    var zlo = (cell1.z) * z_per_super
+    var zhi = (cell1.z+1) * z_per_super
 
     var count_xcells = config[0].neighbour_config.x_cells
     var count_ycells = config[0].neighbour_config.y_cells

@@ -192,6 +192,11 @@ end
 
 end
 
+function test_mapper(mapper_path)
+  DSL_settings.mapper_path = mapper_path
+  compile_mapper_run()
+end
+
 function compile_mapper_run()
     if DSL_settings.mapper_path == nil then
         return
