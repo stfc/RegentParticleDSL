@@ -467,6 +467,8 @@ function new_generate_asymmetric_pairwise_task( kernel_name, read1, read2, read3
 local parts1 = regentlib.newsymbol(region(ispace(int1d),part), "parts1")
 local parts2 = regentlib.newsymbol(region(ispace(int1d),part), "parts2")
 local config = regentlib.newsymbol(region(ispace(int1d), config_type), "config")
+local allparts = regentlib.newsymbol(region(ispace(int1d), part), "allparts")
+local cell_partition = regentlib.newsymbol(partition(disjoint, allparts, ispace(int3d)), "cell_partition")
 local  update_neighbours, read1_privs, read2_privs, read3_privs, write1_privs, reduc1_privs, reduc3_privs =
       privilege_lists.get_privileges_asymmetric_pair_task( parts1, parts2, config, read1, read2, read3,
               write1, reduc1, reduc3 )
@@ -502,18 +504,34 @@ local directions = terralib.newlist({
 })
 
 local cell = regentlib.newsymbol(int3d, "cell")
+local count_xcells = regentlib.newsymbol(int, "count_xcells")
+local count_ycells = regentlib.newsymbol(int, "count_ycells")
+local count_zcells = regentlib.newsymbol(int, "count_zcells")
+local xlo = regentlib.newsymbol()
+local xhi = regentlib.newsymbol()
+local ylo = regentlib.newsymbol()
+local yhi = regentlib.newsymbol()
+local zlo = regentlib.newsymbol()
+local zhi = regentlib.newsymbol()
+local box_x = regentlib.newsymbol()
+local box_y = regentlib.newsymbol()
+local box_z = regentlib.newsymbol()
+local half_box_x = regentlib.newsymbol()
+local half_box_y = regentlib.newsymbol()
+local half_box_z = regentlib.newsymbol()
+local ne_cell = regentlib.newsymbol(int3d)
+local nano_start = regentlib.newsymbol(int64)
+local nano_end = regentlib.newsymbol(int64)
+local nano_total = regentlib.newsymbol(int64)
             --Loop over all directions
 local function interact_loop_func()
 local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                  __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
               for i = 1, 26 do
                 __quotes:insert(rquote
-                    [ne_cell] = ([cell] + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
+                    [ne_cell] = ([cell] + [directions[i]] + {[count_xcells],[count_ycells],[count_zcells]})
+                                                           %{[count_xcells],[count_ycells],[count_zcells]}
                     --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
+                    if [ne_cell].x < [xlo] or [ne_cell].x >= [xhi] or [ne_cell].y < [ylo] or [ne_cell].y >= [yhi] or [ne_cell].z < [zlo] or [ne_cell].z >= [zhi] then
                         --Neighbour cell is inside, lets interact the particles!
                         for part1 in cell_partition[cell].ispace do
                             if [parts1][part1].neighbour_part_space._valid then
@@ -523,17 +541,20 @@ local __quotes = terralib.newlist()
                                         var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
                                         var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
                                         var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
+                                        if (dx > [half_box_x]) then dx = dx - [box_x] end
+                                        if (dy > [half_box_y]) then dy = dy - [box_y] end
+                                        if (dz > [half_box_z]) then dz = dz - [box_z] end
+                                        if (dx <-[half_box_x]) then dx = dx + [box_x] end
+                                        if (dy <-[half_box_y]) then dy = dy + [box_y] end
+                                        if (dz <-[half_box_z]) then dz = dz + [box_z] end
                                         var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
                                         cutoff2 = cutoff2 * cutoff2
                                         var r2 = dx*dx + dy*dy + dz*dz
                                         if(r2 <= cutoff2) then
+                                          [nano_start] = regentlib.c.legion_get_current_time_in_nanos();
                                           [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
+                                          [nano_end] = regentlib.c.legion_get_current_time_in_nanos();
+                                          [nano_total] = [nano_total] + ([nano_end] - [nano_start])
                                         end
                                     end
                                 end
@@ -547,8 +568,8 @@ end
 
 local interact_quote = interact_loop_func()
 
-local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], allparts : region(ispace(int1d), part), 
-                                                cell_partition : partition(disjoint, allparts, ispace(int3d)), cell1 : int3d )
+local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [allparts], 
+                                                [cell_partition], cell1 : int3d )
   where [read1_privs], [read2_privs], [read3_privs], [write1_privs], [reduc1_privs], [reduc3_privs], reads(config.space, config.neighbour_config),
   reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
@@ -559,22 +580,22 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
     var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
     var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
     var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
-    var xlo = (cell1.x) * x_per_super
-    var xhi = (cell1.x+1) * x_per_super --Loops non inclusive
-    var ylo = cell1.y * y_per_super
-    var yhi = (cell1.y+1) * y_per_super
-    var zlo = (cell1.z) * z_per_super
-    var zhi = (cell1.z+1) * z_per_super
+    var [xlo] = (cell1.x) * x_per_super
+    var [xhi] = (cell1.x+1) * x_per_super --Loops non inclusive
+    var [ylo] = cell1.y * y_per_super
+    var [yhi] = (cell1.y+1) * y_per_super
+    var [zlo] = (cell1.z) * z_per_super
+    var [zhi] = (cell1.z+1) * z_per_super
 
-    var count_xcells = config[0].neighbour_config.x_cells
-    var count_ycells = config[0].neighbour_config.y_cells
-    var count_zcells = config[0].neighbour_config.z_cells
-    var box_x = config[0].space.dim_x
-    var box_y = config[0].space.dim_y
-    var box_z = config[0].space.dim_z
-    var half_box_x = 0.5 * box_x
-    var half_box_y = 0.5 * box_y
-    var half_box_z = 0.5 * box_z
+    var [count_xcells] = config[0].neighbour_config.x_cells
+    var [count_ycells] = config[0].neighbour_config.y_cells
+    var [count_zcells] = config[0].neighbour_config.z_cells
+    var [box_x] = config[0].space.dim_x
+    var [box_y] = config[0].space.dim_y
+    var [box_z] = config[0].space.dim_z
+    var [half_box_x] = 0.5 * box_x
+    var [half_box_y] = 0.5 * box_y
+    var [half_box_z] = 0.5 * box_z
 
     regentlib.assert(config[0].neighbour_config.cell_dim_x > config[0].neighbour_config.max_cutoff, 
                     "Cells couldn't be created small enough to support High Performance implementation")
@@ -583,13 +604,17 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
     regentlib.assert(config[0].neighbour_config.cell_dim_z > config[0].neighbour_config.max_cutoff, 
                     "Cells couldn't be created small enough to support High Performance implementation")
 
-     var starttime = c.legion_get_current_time_in_micros()
+    var starttime = c.legion_get_current_time_in_micros()
+    var [ne_cell];
+    var [nano_start];
+    var [nano_end];
+    var [nano_total] = 0;
 
     for z = zlo, zhi do
         --First loop, loop over cells at xlo and xhi -- this covers the "right" and and "left" surfaces of the cell
         for y = ylo, yhi do
             --xlo cell
-            var [cell] : int3d = int3d({xlo, y, z});
+            var [cell] = int3d({xlo, y, z});
             [interact_quote];
 
             --xhi -1 cell
@@ -602,7 +627,7 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
         --Next we do xlo+1 to xhi-1 for the ylo and yhi cells -- this covers the "top" and "bottom" surfaces of the cell that weren't covered by the x cells
         for x = xlo+1, xhi-1 do
             --ylo cell
-            var [cell] : int3d = int3d({x, ylo, z});
+            var [cell] = int3d({x, ylo, z});
             --Loop over all directions
             [interact_quote];
             
@@ -617,7 +642,7 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
     for x= xlo+1, xhi-1 do
         for y=ylo+1, yhi-1 do
             --zlo cell
-            var [cell] : int3d = int3d({x, y, zlo});
+            var [cell] = int3d({x, y, zlo});
             [interact_quote]
 
             --zhi-1 cell
@@ -628,6 +653,8 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
 
     --Should have computed all interactions with the halos now
     var endtime = c.legion_get_current_time_in_micros()
+
+    format.println("runtime was {}us, interaction time was {}us", (endtime-starttime), ([nano_total] / 1000))
 end
 return asym_pairwise_task, update_neighbours
 end
@@ -707,6 +734,10 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     regentlib.assert(config[0].neighbour_config.cell_dim_z > config[0].neighbour_config.max_cutoff, 
                     "Cells couldn't be created small enough to support High Performance implementation")
 
+    var starttime = c.legion_get_current_time_in_micros()
+    var nano_start : int64;
+    var nano_end : int64;
+    var nano_total : int64 = 0;
     --Loop over all the internal cells
     for x = xlo, xhi do
         for y = ylo, yhi do
@@ -743,7 +774,10 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                             cutoff2 = cutoff2 * cutoff2
                                             var r2 = dx*dx + dy*dy + dz*dz
                                             if(r2 <= cutoff2) then
+                                              nano_start = regentlib.c.legion_get_current_time_in_nanos();
                                               [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
+                                              nano_end = regentlib.c.legion_get_current_time_in_nanos();
+                                              nano_total = nano_total + (nano_end - nano_start)
                                             end
                                         end
                                     end
@@ -757,6 +791,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
             end
         end
     end
+    var endtime = c.legion_get_current_time_in_micros()
+    format.println("SELF: runtime was {}us, interaction time was {}us", (endtime-starttime), ([nano_total] / 1000))
 end
 return self_task, update_neighbours
 end
