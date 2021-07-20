@@ -501,6 +501,52 @@ local directions = terralib.newlist({
     rexpr int3d({ 1,  1,  1}) end,
 })
 
+local cell = regentlib.newsymbol(int3d, "cell")
+            --Loop over all directions
+local function interact_loop_func()
+local __quotes = terralib.newlist()
+              local ne_cell = regentlib.newsymbol(int3d)
+                  __quotes:insert(rquote
+                        var [ne_cell];
+                    end)
+              for i = 1, 26 do
+                __quotes:insert(rquote
+                    [ne_cell] = ([cell] + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
+                    --Check if the cell is in the supercell or not
+                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
+                        --Neighbour cell is inside, lets interact the particles!
+                        for part1 in cell_partition[cell].ispace do
+                            if [parts1][part1].neighbour_part_space._valid then
+                                for part2 in cell_partition[ne_cell].ispace do
+                                    if [parts2][part2].neighbour_part_space._valid then
+                                        --Compute the distance between them
+                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
+                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
+                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
+                                        if (dx > half_box_x) then dx = dx - box_x end
+                                        if (dy > half_box_y) then dy = dy - box_y end
+                                        if (dz > half_box_z) then dz = dz - box_z end
+                                        if (dx <-half_box_x) then dx = dx + box_x end
+                                        if (dy <-half_box_y) then dy = dy + box_y end
+                                        if (dz <-half_box_z) then dz = dz + box_z end
+                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
+                                        cutoff2 = cutoff2 * cutoff2
+                                        var r2 = dx*dx + dy*dy + dz*dz
+                                        if(r2 <= cutoff2) then
+                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+              end
+              return __quotes
+end
+
+local interact_quote = interact_loop_func()
+
 local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], allparts : region(ispace(int1d), part), 
                                                 cell_partition : partition(disjoint, allparts, ispace(int3d)), cell1 : int3d )
   where [read1_privs], [read2_privs], [read3_privs], [write1_privs], [reduc1_privs], [reduc3_privs], reads(config.space, config.neighbour_config),
@@ -537,188 +583,33 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
     regentlib.assert(config[0].neighbour_config.cell_dim_z > config[0].neighbour_config.max_cutoff, 
                     "Cells couldn't be created small enough to support High Performance implementation")
 
+     var starttime = c.legion_get_current_time_in_micros()
+
     for z = zlo, zhi do
         --First loop, loop over cells at xlo and xhi -- this covers the "right" and and "left" surfaces of the cell
         for y = ylo, yhi do
             --xlo cell
-            var cell : int3d = int3d({xlo, y, z});
-            --Loop over all directions
-            [(function() local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                  __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-              for i = 1, 26 do
-                __quotes:insert(rquote
-                    [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                    --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
-                        --Neighbour cell is inside, lets interact the particles!
-                        for part1 in cell_partition[cell].ispace do
-                            if [parts1][part1].neighbour_part_space._valid then
-                                for part2 in cell_partition[ne_cell].ispace do
-                                    if [parts2][part2].neighbour_part_space._valid then
-                                        --Compute the distance between them
-                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
-                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                                        cutoff2 = cutoff2 * cutoff2
-                                        var r2 = dx*dx + dy*dy + dz*dz
-                                        if(r2 <= cutoff2) then
-                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-              end
-              return __quotes
-             end) ()];
+            var [cell] : int3d = int3d({xlo, y, z});
+            [interact_quote];
 
             --xhi -1 cell
-            cell = int3d({xhi-1, y, z});
+            [cell] = int3d({xhi-1, y, z});
             --Loop over all directions
-            [(function() local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-              for i = 1, 26 do
-                __quotes:insert(rquote
-                    [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                    --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
-                        --Neighbour cell is inside, lets interact the particles!
-                        for part1 in cell_partition[cell].ispace do
-                            if [parts1][part1].neighbour_part_space._valid then
-                                for part2 in cell_partition[ne_cell].ispace do
-                                    if [parts2][part2].neighbour_part_space._valid then
-                                        --Compute the distance between them
-                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
-                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                                        cutoff2 = cutoff2 * cutoff2
-                                        var r2 = dx*dx + dy*dy + dz*dz
-                                        if(r2 <= cutoff2) then
-                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-              end
-              return __quotes
-             end) ()];
+            [interact_quote];
             
         end --loop from ylo to yhi
        
         --Next we do xlo+1 to xhi-1 for the ylo and yhi cells -- this covers the "top" and "bottom" surfaces of the cell that weren't covered by the x cells
         for x = xlo+1, xhi-1 do
             --ylo cell
-            var cell : int3d = int3d({x, ylo, z});
+            var [cell] : int3d = int3d({x, ylo, z});
             --Loop over all directions
-            [(function() local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-              for i = 1, 26 do
-                __quotes:insert(rquote
-                    [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                    --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
-                        --Neighbour cell is inside, lets interact the particles!
-                        for part1 in cell_partition[cell].ispace do
-                            if [parts1][part1].neighbour_part_space._valid then
-                                for part2 in cell_partition[ne_cell].ispace do
-                                    if [parts2][part2].neighbour_part_space._valid then
-                                        --Compute the distance between them
-                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
-                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                                        cutoff2 = cutoff2 * cutoff2
-                                        var r2 = dx*dx + dy*dy + dz*dz
-                                        if(r2 <= cutoff2) then
-                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-              end
-              return __quotes
-             end) ()];
+            [interact_quote];
             
             --yhi-1 cell
-            cell = int3d({x, yhi-1, z});
+            [cell] = int3d({x, yhi-1, z});
             --Loop over all directions
-            [(function() local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-              for i = 1, 26 do
-                __quotes:insert(rquote
-                    [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                    --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
-                        --Neighbour cell is inside, lets interact the particles!
-                        for part1 in cell_partition[cell].ispace do
-                            if [parts1][part1].neighbour_part_space._valid then
-                                for part2 in cell_partition[ne_cell].ispace do
-                                    if [parts2][part2].neighbour_part_space._valid then
-                                        --Compute the distance between them
-                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
-                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                                        cutoff2 = cutoff2 * cutoff2
-                                        var r2 = dx*dx + dy*dy + dz*dz
-                                        if(r2 <= cutoff2) then
-                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-              end
-              return __quotes
-             end) ()];
+            [interact_quote];
         end
     end --end of zcell
 
@@ -726,96 +617,17 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], all
     for x= xlo+1, xhi-1 do
         for y=ylo+1, yhi-1 do
             --zlo cell
-            var cell : int3d = int3d({x, y, zlo});
-            --Loop over all directions
-            [(function() local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-              for i = 1, 26 do
-                __quotes:insert(rquote
-                    [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                    --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
-                        --Neighbour cell is inside, lets interact the particles!
-                        for part1 in cell_partition[cell].ispace do
-                            if [parts1][part1].neighbour_part_space._valid then
-                                for part2 in cell_partition[ne_cell].ispace do
-                                    if [parts2][part2].neighbour_part_space._valid then
-                                        --Compute the distance between them
-                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
-                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                                        cutoff2 = cutoff2 * cutoff2
-                                        var r2 = dx*dx + dy*dy + dz*dz
-                                        if(r2 <= cutoff2) then
-                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-              end
-              return __quotes
-             end) ()];
+            var [cell] : int3d = int3d({x, y, zlo});
+            [interact_quote]
 
             --zhi-1 cell
             cell = int3d({x, y, zhi-1});
-            [(function() local __quotes = terralib.newlist()
-              local ne_cell = regentlib.newsymbol(int3d)
-                __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-              for i = 1, 26 do
-                __quotes:insert(rquote
-                    [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                    --Check if the cell is in the supercell or not
-                    if [ne_cell].x < xlo or [ne_cell].x >= xhi or [ne_cell].y < ylo or [ne_cell].y >= yhi or [ne_cell].z < zlo or [ne_cell].z >= zhi then
-                        --Neighbour cell is inside, lets interact the particles!
-                        for part1 in cell_partition[cell].ispace do
-                            if [parts1][part1].neighbour_part_space._valid then
-                                for part2 in cell_partition[ne_cell].ispace do
-                                    if [parts2][part2].neighbour_part_space._valid then
-                                        --Compute the distance between them
-                                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                                        if (dx > half_box_x) then dx = dx - box_x end
-                                        if (dy > half_box_y) then dy = dy - box_y end
-                                        if (dz > half_box_z) then dz = dz - box_z end
-                                        if (dx <-half_box_x) then dx = dx + box_x end
-                                        if (dy <-half_box_y) then dy = dy + box_y end
-                                        if (dz <-half_box_z) then dz = dz + box_z end
-                                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                                        cutoff2 = cutoff2 * cutoff2
-                                        var r2 = dx*dx + dy*dy + dz*dz
-                                        if(r2 <= cutoff2) then
-                                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-              end
-              return __quotes
-             end) ()];
-
+            [interact_quote]
         end
     end
 
     --Should have computed all interactions with the halos now
+    var endtime = c.legion_get_current_time_in_micros()
 end
 return asym_pairwise_task, update_neighbours
 end
