@@ -741,16 +741,43 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var nano_total2 : int64 = 0;
     var total = 0;
     var hits = 0;
-    var parts_per_cell = 0;
     --Loop over all the internal cells
     for x = xlo, xhi do
         for y = ylo, yhi do
             for z = zlo, zhi do
                 --get the cell
                 var cell : int3d = int3d({x, y, z});
-                for part1 in cell_partition[cell].ispace do
+                --Cell with itself (self task section)
+                for [part1] in cell_partition[cell].ispace do
                     if [parts1][part1].neighbour_part_space._valid then
-                        parts_per_cell = parts_per_cell + 1;
+                        for [part2] in cell_partition[cell].ispace do
+                            if [part1] ~= [part2] and [parts1][part2].neighbour_part_space._valid then
+                                --Compute the distance between them
+                                total = total + 1;
+                                nano_start = regentlib.c.legion_get_current_time_in_nanos();
+                                var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+                                var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+                                var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
+                                if (dx > half_box_x) then dx = dx - box_x end
+                                if (dy > half_box_y) then dy = dy - box_y end
+                                if (dz > half_box_z) then dz = dz - box_z end
+                                if (dx <-half_box_x) then dx = dx + box_x end
+                                if (dy <-half_box_y) then dy = dy + box_y end
+                                if (dz <-half_box_z) then dz = dz + box_z end
+                                var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
+                                cutoff2 = cutoff2 * cutoff2
+                                var r2 = dx*dx + dy*dy + dz*dz
+                                nano_end = regentlib.c.legion_get_current_time_in_nanos();
+                                nano_total2 = nano_total2 + (nano_end - nano_start)
+                                if(r2 <= cutoff2) then
+                                  nano_start = regentlib.c.legion_get_current_time_in_nanos();
+                                  [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
+                                  nano_end = regentlib.c.legion_get_current_time_in_nanos();
+                                  nano_total = nano_total + (nano_end - nano_start)
+                                  hits = hits + 1
+                                end
+                            end
+                        end
                     end
                 end
                 --Loop over all neighbouring cells, and if inside the supercell then compute interactions
@@ -810,7 +837,6 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var average_ppc : double = double(parts_per_cell) / double(cell_count)
     format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
     format.println("SELF: hits {} misses {}", hits, total-hits)
-    format.println("SELF: parts_per_cell = {}, cell_count = {}, average_ppc is {}" , parts_per_cell, cell_count, average_ppc)
 end
 return self_task, update_neighbours
 end
