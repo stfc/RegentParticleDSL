@@ -739,6 +739,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var nano_end : int64;
     var nano_total : int64 = 0;
     var nano_total2 : int64 = 0;
+    var total = 0;
+    var hits = 0;
     --Loop over all the internal cells
     for x = xlo, xhi do
         for y = ylo, yhi do
@@ -762,6 +764,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                     for part2 in cell_partition[ne_cell].ispace do
                                         if [parts1][part2].neighbour_part_space._valid then
                                             --Compute the distance between them
+                                            total = total + 1;
                                             nano_start = regentlib.c.legion_get_current_time_in_nanos();
                                             var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
                                             var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
@@ -782,6 +785,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                               [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
                                               nano_end = regentlib.c.legion_get_current_time_in_nanos();
                                               nano_total = nano_total + (nano_end - nano_start)
+                                              hits = hits + 1
                                             end
                                         end
                                     end
@@ -797,6 +801,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     end
     var endtime = c.legion_get_current_time_in_micros()
     format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
+    format.println("SELF: hits {} misses {}", hits, total-hits)
 end
 return self_task, update_neighbours
 end
