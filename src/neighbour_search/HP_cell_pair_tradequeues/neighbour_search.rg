@@ -748,11 +748,13 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
             for z = zlo, zhi do
                 --get the cell
                 var cell : int3d = int3d({x, y, z});
+                var last_count = parts_per_cell
                 for part1 in cell_partition[cell].ispace do
                     if [parts1][part1].neighbour_part_space._valid then
                         parts_per_cell = parts_per_cell + 1;
                     end
                 end
+                format.println("Found {} parts", parts_per_cell - last_count);
                 --Loop over all neighbouring cells, and if inside the supercell then compute interactions
                 [(function() local __quotes = terralib.newlist()
                   local ne_cell = regentlib.newsymbol(int3d)
@@ -810,7 +812,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var average_ppc : double = double(parts_per_cell) * double(cell_count)
     format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
     format.println("SELF: hits {} misses {}", hits, total-hits)
-    format.println("SELF: average_ppc is {}" average_ppc)
+    format.println("SELF: parts_per_cell = {}, cell_count = {}, average_ppc is {}" , parts_per_cell, cell_count, average_ppc)
 end
 return self_task, update_neighbours
 end
