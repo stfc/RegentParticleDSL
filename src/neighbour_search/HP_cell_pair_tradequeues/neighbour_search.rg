@@ -748,10 +748,10 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                 --get the cell
                 var cell : int3d = int3d({x, y, z});
                 --Cell with itself (self task section)
-                for [part1] in cell_partition[cell].ispace do
+                for part1 in cell_partition[cell].ispace do
                     if [parts1][part1].neighbour_part_space._valid then
-                        for [part2] in cell_partition[cell].ispace do
-                            if [part1] ~= [part2] and [parts1][part2].neighbour_part_space._valid then
+                        for part2 in cell_partition[cell].ispace do
+                            if int1d(part1) ~= int1d(part2) and [parts1][part2].neighbour_part_space._valid then
                                 --Compute the distance between them
                                 total = total + 1;
                                 nano_start = regentlib.c.legion_get_current_time_in_nanos();
@@ -834,7 +834,6 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     end
     var cell_count = x_per_super * y_per_super * z_per_super
     var endtime = c.legion_get_current_time_in_micros()
-    var average_ppc : double = double(parts_per_cell) / double(cell_count)
     format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
     format.println("SELF: hits {} misses {}", hits, total-hits)
 end
