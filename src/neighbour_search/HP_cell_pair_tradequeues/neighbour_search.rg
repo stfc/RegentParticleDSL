@@ -738,6 +738,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var nano_start : int64;
     var nano_end : int64;
     var nano_total : int64 = 0;
+    var nano_total2 : int64 = 0;
     --Loop over all the internal cells
     for x = xlo, xhi do
         for y = ylo, yhi do
@@ -761,6 +762,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                     for part2 in cell_partition[ne_cell].ispace do
                                         if [parts1][part2].neighbour_part_space._valid then
                                             --Compute the distance between them
+                                            nano_start = regentlib.c.legion_get_current_time_in_nanos();
                                             var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
                                             var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
                                             var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
@@ -773,6 +775,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                             var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
                                             cutoff2 = cutoff2 * cutoff2
                                             var r2 = dx*dx + dy*dy + dz*dz
+                                            nano_end = regentlib.c.legion_get_current_time_in_nanos();
+                                            nano_total2 = nano_total2 + (nano_end - nano_start)
                                             if(r2 <= cutoff2) then
                                               nano_start = regentlib.c.legion_get_current_time_in_nanos();
                                               [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
@@ -792,7 +796,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
         end
     end
     var endtime = c.legion_get_current_time_in_micros()
-    format.println("SELF: runtime was {}us, interaction time was {}us", (endtime-starttime), ([nano_total] / 1000))
+    format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
 end
 return self_task, update_neighbours
 end
