@@ -47,37 +47,75 @@ neighbour_init.halo_partition = regentlib.newsymbol("halo_partition")
 neighbour_init.x_slices = regentlib.newsymbol("x_slice_partition")
 
 
-local DEBUG = false
+local DEBUG = true
 
 --Use terralib list for this isntead of lua table
+--!There are 13 positive vectors to sort along.
+--!These depend on the shape of the volume (since this affects the shape of the cells)
+--!The 13 vectors to sort along are (in order)
+--! 0 1 0, 0 0 1, 0 1 1, 0 1 -1
+--! 1 0 0, 1 0 1, 1 1 0, 1 0 -1
+--! 1 -1 0, 1 1 1, 1 -1 -1, 1 -1 1
+--! 1 1 -1
 local directions = terralib.newlist({
-    rexpr int3d({-1, -1, -1}) end,
-    rexpr int3d({-1, -1,  0}) end,
-    rexpr int3d({-1, -1,  1}) end,
-    rexpr int3d({-1,  0, -1}) end,
-    rexpr int3d({-1,  0,  0}) end,
-    rexpr int3d({-1,  0,  1}) end,
-    rexpr int3d({-1,  1, -1}) end,
-    rexpr int3d({-1,  1,  0}) end,
-    rexpr int3d({-1,  1,  1}) end,
-    rexpr int3d({ 0, -1, -1}) end,
-    rexpr int3d({ 0, -1,  0}) end,
-    rexpr int3d({ 0, -1,  1}) end,
-    rexpr int3d({ 0,  0, -1}) end,
-    rexpr int3d({ 0,  0,  1}) end,
-    rexpr int3d({ 0,  1, -1}) end,
     rexpr int3d({ 0,  1,  0}) end,
+    rexpr int3d({ 0,  0,  1}) end,
     rexpr int3d({ 0,  1,  1}) end,
-    rexpr int3d({ 1, -1, -1}) end,
-    rexpr int3d({ 1, -1,  0}) end,
-    rexpr int3d({ 1, -1,  1}) end,
-    rexpr int3d({ 1,  0, -1}) end,
+    rexpr int3d({ 0,  1, -1}) end,
     rexpr int3d({ 1,  0,  0}) end,
     rexpr int3d({ 1,  0,  1}) end,
-    rexpr int3d({ 1,  1, -1}) end,
     rexpr int3d({ 1,  1,  0}) end,
+    rexpr int3d({ 1,  0, -1}) end,
+    rexpr int3d({ 1, -1,  0}) end,
     rexpr int3d({ 1,  1,  1}) end,
+    rexpr int3d({ 1, -1, -1}) end,
+    rexpr int3d({ 1, -1,  1}) end,
+    rexpr int3d({ 1,  1, -1}) end,
+
+    rexpr int3d({ 0, -1,  0}) end,
+    rexpr int3d({ 0,  0, -1}) end,
+    rexpr int3d({ 0, -1, -1}) end,
+    rexpr int3d({ 0, -1,  1}) end,
+    rexpr int3d({-1,  0,  0}) end,
+    rexpr int3d({-1,  0, -1}) end,
+    rexpr int3d({-1, -1,  0}) end,
+    rexpr int3d({-1,  0,  1}) end,
+    rexpr int3d({-1,  1,  0}) end,
+    rexpr int3d({-1, -1, -1}) end,
+    rexpr int3d({-1,  1,  1}) end,
+    rexpr int3d({-1,  1, -1}) end,
+    rexpr int3d({-1, -1,  1}) end
 })
+    
+
+--local directions = terralib.newlist({
+--    rexpr int3d({-1, -1, -1}) end,
+--    rexpr int3d({-1, -1,  0}) end,
+--    rexpr int3d({-1, -1,  1}) end,
+--    rexpr int3d({-1,  0, -1}) end,
+--    rexpr int3d({-1,  0,  0}) end,
+--    rexpr int3d({-1,  0,  1}) end,
+--    rexpr int3d({-1,  1, -1}) end,
+--    rexpr int3d({-1,  1,  0}) end,
+--    rexpr int3d({-1,  1,  1}) end,
+--    rexpr int3d({ 0, -1, -1}) end,
+--    rexpr int3d({ 0, -1,  0}) end,
+--    rexpr int3d({ 0, -1,  1}) end,
+--    rexpr int3d({ 0,  0, -1}) end,
+--    rexpr int3d({ 0,  0,  1}) end,
+--    rexpr int3d({ 0,  1, -1}) end,
+--    rexpr int3d({ 0,  1,  0}) end,
+--    rexpr int3d({ 0,  1,  1}) end,
+--    rexpr int3d({ 1, -1, -1}) end,
+--    rexpr int3d({ 1, -1,  0}) end,
+--    rexpr int3d({ 1, -1,  1}) end,
+--    rexpr int3d({ 1,  0, -1}) end,
+--    rexpr int3d({ 1,  0,  0}) end,
+--    rexpr int3d({ 1,  0,  1}) end,
+--    rexpr int3d({ 1,  1, -1}) end,
+--    rexpr int3d({ 1,  1,  0}) end,
+--    rexpr int3d({ 1,  1,  1}) end,
+--})
 
 local function construct_part_structure()
   local part_structure = terralib.newlist()
@@ -96,8 +134,13 @@ local function construct_part_structure()
 end
 local part_structure = construct_part_structure()
 
+fspace sorting_ids{
+    sid : int1d[13]
+}
+neighbour_init.sorting_id_array = regentlib.newsymbol("sorting_array")
+neighbour_init.sorting_array_cell_partition = regentlib.newsymbol("sorting_array_cell_partition")
+neighbour_init.sorting_array_supercell_partition = regentlib.newsymbol("sorting_array_supercell_partition")
 
---FIXME: Optimisation of this value might be good, for now we're allowing cells to grow by 50 particles before needing a repartition.
 --This realistically is simulation dependent
 neighbour_init.padding_per_cell = 10
 neighbour_init.tradequeue_size = neighbour_init.padding_per_cell
@@ -546,6 +589,124 @@ local __demand(__inline) task partition_tradequeue_by_supercells( tradequeue : r
     return p
 end
 
+
+local __demand(__inline) task partition_sorting_arrays_by_subcells( sort_array : region(ispace(int1d), sorting_ids),
+                                                                    particles : region(ispace(int1d), part),
+                                                                    cell_space : ispace(int3d),
+                                                                    config : region(ispace(int1d), config_type) )
+where reads(config), reads(particles.neighbour_part_space.cell_id) do
+
+    
+    var count_xcells = config[0].neighbour_config.x_cells
+    var count_ycells = config[0].neighbour_config.y_cells
+    var count_zcells = config[0].neighbour_config.z_cells
+    var cell_counts : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+    var cell_offsets : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+    var cell_offsets_fixed : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+    for i = 0, num_cells do
+        cell_counts[i] = 0
+        cell_offsets[i] = 0
+    end
+    var copy_space = region(ispace(int1d, 1), part)
+    for part in [neighbour_init.padded_particle_array] do
+        --Find the 1D value for the cell this particle belongs to
+        var color : int3d = [neighbour_init.padded_particle_array][part].neighbour_part_space.cell_id
+
+        var oneD_color : int32 = [int32]((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
+        cell_counts[oneD_color] = cell_counts[oneD_color] + 1
+    end
+
+    --Set offsets
+    for i = 1, num_cells do
+        cell_offsets[i] = cell_offsets[i-1] + cell_counts[i-1];
+    end
+
+    var coloring = regentlib.c.legion_domain_point_coloring_create()
+    for color in cell_space do
+      --Indices for this color are number of particles (real and padded) in the cell --> (3D to 1D conversion)
+      var oneD_color : int32 = int32((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
+      var rect = rect1d{
+        lo = cell_offsets[oneD_color],
+        hi = cell_offsets[oneD_color]+cell_counts[oneD_color] - 1
+      }
+      regentlib.c.legion_domain_point_coloring_color_domain(coloring, cell, rect)
+    end
+    --Create the partition from the coloring. If offset = 0 this is essentially a controlled equal partition
+    var p = partition(disjoint, sort_array, coloring, cell_space)
+    --Clean up the runtime
+    regentlib.c.legion_domain_point_coloring_destroy(coloring)
+    return p
+end
+
+local __demand(__inline) task partition_sorting_arrays_by_supercells( sort_array : region(ispace(int1d), sorting_ids),
+                                                                      particles : region(ispace(int1d), part),
+                                                                      supercell_space : ispace(int3d),
+                                                                      config : region(ispace(int1d), config_type) )
+where reads(config), reads(particles.neighbour_part_space.cell_id) do
+
+    
+    var count_xcells = config[0].neighbour_config.x_cells
+    var count_ycells = config[0].neighbour_config.y_cells
+    var count_zcells = config[0].neighbour_config.z_cells
+    var cell_counts : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+    var cell_offsets : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+    var cell_offsets_fixed : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+    for i = 0, num_cells do
+        cell_counts[i] = 0
+        cell_offsets[i] = 0
+    end
+    var copy_space = region(ispace(int1d, 1), part)
+    for part in [neighbour_init.padded_particle_array] do
+        --Find the 1D value for the cell this particle belongs to
+        var color : int3d = [neighbour_init.padded_particle_array][part].neighbour_part_space.cell_id
+
+        var oneD_color : int32 = [int32]((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
+        cell_counts[oneD_color] = cell_counts[oneD_color] + 1
+    end
+
+    --Set offsets
+    for i = 1, num_cells do
+        cell_offsets[i] = cell_offsets[i-1] + cell_counts[i-1];
+    end
+
+    var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
+    var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
+    var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
+
+
+    --Use legion's coloring option to create this partition - we need a multi domain point coloring since we have multiple domains per color
+    var coloring = regentlib.c.legion_multi_domain_point_coloring_create()
+    for supercell in supercell_space do
+        --The supercell coloring contains all the elements of its subcells, so we loop over the subcells to create it
+        var xlo = supercell.x * x_per_super
+        var xhi = (supercell.x + 1) * x_per_super --loops noninclusive so all ok to not -1
+        var ylo = supercell.y * y_per_super
+        var yhi = (supercell.y + 1) * y_per_super
+        var zlo = supercell.z * z_per_super
+        var zhi = (supercell.z + 1) * z_per_super
+    
+        --Loop over cells
+        for x = xlo, xhi do
+            for y = ylo, yhi do
+                for z = zlo, zhi do
+                    var color : int3d = int3d({x,y,z})
+                    --Indices for this color are number of elements per cell (count/n_cells) * (3D to 1D conversion)
+                    var oneD_color : int1d = (color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z;
+                    var rect = rect1d{
+                        lo = cell_offsets[oneD_color],
+                        hi = cell_offsets[oneD_color]+cell_counts[oneD_color] - 1
+                    }
+                    regentlib.c.legion_multi_domain_point_coloring_color_domain(coloring, supercell, rect)
+                end
+            end
+        end
+    end
+    --Create the partition from the coloring. If offset = 0 this is essentially a controlled equal partition
+    var p = partition(disjoint, sort_array, coloring, supercell_space)
+    --Clean up the runtime
+    regentlib.c.legion_multi_domain_point_coloring_destroy(coloring)
+    return p
+end
 
 local assert_correct_cells = function()
   return rquote
@@ -1005,6 +1166,35 @@ local initialisation_quote = rquote                                             
   --We clear out the originally allocated memory because we don't really want that to exist.
   __delete([variables.particle_array]);
 
+--TODO: Sort particles so that all particles for each cell are contiguous in the region?
+--Its possible that we just let the mapper do this instead!
+--    var count_xcells = config[0].neighbour_config.x_cells
+--    var count_ycells = config[0].neighbour_config.y_cells
+--    var count_zcells = config[0].neighbour_config.z_cells
+--    var cell_counts : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+--    var cell_offsets : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+--    var cell_offsets_fixed : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
+--    for i = 0, num_cells do
+--        cell_counts[i] = 0
+--        cell_offsets[i] = 0
+--    end
+--    var copy_space = region(ispace(int1d, 1), part)
+--    for part in [neighbour_init.padded_particle_array] do
+--        --Find the 1D value for the cell this particle belongs to
+--        var color : int3d = [neighbour_init.padded_particle_array][part].neighbour_part_space.cell_id
+--
+--        var oneD_color : int32 = [int32]((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
+--        cell_counts[oneD_color] = cell_counts[oneD_color] + 1
+--    end
+--
+--    --Set offsets
+--    for i = 1, num_cells do
+--        cell_offsets[i] = cell_offsets[i-1] + cell_counts[i-1];
+--        cell_offsets_fixed[i] = cell_offsets[i]
+--    end
+--
+--    __delete(copy_space)
+
 --Init Tradequeues
   --The wrapper here is an inline way to create this for all 26 directions inside Regent code, since we're using
   -- symbols to generate this. We could do this with neighbour_init.TradeQueues:map(...) but we may in the future
@@ -1124,6 +1314,19 @@ local initialisation_quote = rquote                                             
     --Init the slice partition
     var slice_parameter = ispace(int1d, x_cells, 0);
     var [neighbour_init.x_slices] = partition(complete, [neighbour_init.padded_particle_array].neighbour_part_space.x_cell, slice_parameter);
+
+    --Init the sorting ID arrays
+    var [neighbour_init.sorting_id_array] = region(ispace(int1d, tot_parts), sorting_ids);
+    --TODO: Divide this into contiguous partitions for cells and non-contiguous partitions for supercells
+    var [neighbour_init.sorting_array_cell_partition] = partition_sorting_arrays_by_subcells( [neighbour_init.sorting_id_array],
+                                                                                              [neighbour_init.padded_particle_array],
+                                                                                              cell_space_parameter,
+                                                                                              [variables.config]);
+
+    var [neighbour_init.sorting_array_supercell_partition] = partition_sorting_arrays_by_supercells( [neighbour_init.sorting_id_array],
+                                                                                                     [neighbour_init.padded_particle_array],
+                                                                                                     cell_space,
+                                                                                                     [variables.config]);
 end
 
 return initialisation_quote
