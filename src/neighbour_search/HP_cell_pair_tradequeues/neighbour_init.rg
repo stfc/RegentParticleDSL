@@ -936,6 +936,34 @@ local function get_timing_quotes()
   return start_timing_quote, end_timing_quote
 end
 
+local function check_sorting()
+    local check_sorting_quote = rquote
+    end
+    if DEBUG then
+        check_sorting_quote = rquote
+            for cell in neighbour_init.sorting_array_cell_partition.colors do
+                var lo = [neighbour_init.sorting_array_cell_partition][cell].ispace.bounds.lo
+                var hi = int1d(0)
+                for index in neighbour_init.sorting_array_cell_partition[cell].ispace do
+                    if neighbour_init.sorting_array_cell_partition[cell][index].sid[0] == int1d(-1) then
+                        hi = index
+                        break
+                    end
+                end
+                for i= int(lo), int(hi-1) do
+                    for dir=0, 13 do
+                        index = int1d(i)
+                        var p1 = neighbour_init.sorting_array_cell_partition[cell][index].sid[dir]
+                        var p2 = neighbour_init.sorting_array_cell_partition[cell][index+1].sid[dir]
+                        regentlib.assert( neighbour_init.padded_particle_array[p1].neighbour_part_space.sorting_positions[dir] <= neighbour_init.padded_particle_array[p2].neighbour_part_space.sorting_positions[dir], "Sorting seems wrong")
+                    end
+                end
+            end
+        end
+    end
+    return check_sorting_quote
+end
+
 --This function updates the cells to reflect any motion that occurs in the system. We repartition only as required, but never change
 --the number of cells at this point due to causing issues with various assumptions in the system at the moment.
 function neighbour_init.update_cells(variables)
