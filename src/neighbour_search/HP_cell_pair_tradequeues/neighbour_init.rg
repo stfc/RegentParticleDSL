@@ -513,7 +513,8 @@ local __demand(__leaf) task sort_cells( supercell_id : int3d,
                                         full_sort_list : region(ispace(int1d), sorting_ids),
                                         sort_subcell_partition : partition(disjoint, full_sort_list, ispace(int3d)),
                                         supercell_sort_list : region(ispace(int1d), sorting_ids) )
-where reads(particles.core_part_space), reads(config), writes(supercell_sort_list) do
+where reads(particles.core_part_space, particles.neighbour_part_space), reads(config), writes(supercell_sort_list),
+      writes(particles.neighbour_part_space.sorting_positions), reads(supercell_sort_list) do
 
     --Get cell information
     var count_xcells = config[0].neighbour_config.x_cells
@@ -589,9 +590,9 @@ for z=zlo, zhi do
             index = index + int1d(1)
         end
     end
-    for i=index, sort_subcell_partition[cell_id].ispace.bounds.hi+1 do
+    for i=int(index), int(sort_subcell_partition[cell_id].ispace.bounds.hi+1) do
         for j=0, 13 do
-            supercell_sort_list[i].sid[j] = int1d(-1)
+            supercell_sort_list[int1d(i)].sid[j] = int1d(-1)
         end
     end
 end
@@ -606,9 +607,9 @@ for z=zlo, zhi do
     var lo : int1d = sort_subcell_partition[cell_id].ispace.bounds.lo
     var hi : int1d = sort_subcell_partition[cell_id].ispace.bounds.hi+1
     --Find the number of elements
-    for i=lo, hi do
-        if supercell_sort_list[index].sid[0] == int1d(-1) then
-            hi = i
+    for i=int(lo), int(hi) do
+        if supercell_sort_list[int1d(i)].sid[0] == int1d(-1) then
+            hi = int1d(i)
             break
         end
     end
@@ -617,10 +618,10 @@ for z=zlo, zhi do
     for dir=0, 13 do
     --If we have few elements do a n^2 sort -- Currently just do this always...
 --        if hi-lo < 15 then
-            for i=lo+1, hi do
-                var temp : int1d = supercell_sort_list[i].sid[dir]
+            for i=int(lo+1), int(hi) do
+                var temp : int1d = supercell_sort_list[int1d(i)].sid[dir]
                 var pivot = particles[temp].neighbour_part_space.sorting_positions[dir]
-                var j = i-1
+                var j = int1d(i-1)
                 --Bubble it down to the right position
                 while j >= lo do
                     var temp2 : int1d = supercell_sort_list[j].sid[dir]
@@ -629,7 +630,7 @@ for z=zlo, zhi do
                     else
                         break
                     end
-                    j = j - 1
+                    j = j - int1d(1)
                 end
                 supercell_sort_list[j].sid[dir] = temp
             end
