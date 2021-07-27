@@ -939,7 +939,7 @@ end
 local function check_sorting()
     local check_sorting_quote = rquote
     end
-    if DEBUG then
+    if DEBUG~= nil and DEBUG then
         check_sorting_quote = rquote
             for cell in neighbour_init.sorting_array_cell_partition.colors do
                 var lo = [neighbour_init.sorting_array_cell_partition][cell].ispace.bounds.lo
@@ -1031,6 +1031,7 @@ do
 end
     c.legion_runtime_issue_execution_fence(__runtime(), __context());
     [assert_correct_cells()];
+    [check_sorting()];
     [end_timing_quote];
     -- TODO: If you need repartitioning for your testcase and tradequeues are not sufficient, we need a new implementation of neighbour search
     -- If this is something you need, let us know on this issue:
