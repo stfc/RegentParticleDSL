@@ -504,6 +504,146 @@ end
 -- All done
 end
 
+local sqrt = regentlib.sqrt(double)
+local __demand(__leaf) task sort_cells( supercell_id : int3d,
+                                        particles : region(ispace(int1d), part),
+                                        all_parts : region(ispace(int1d), part),
+                                        subcell_partition : partition(disjoint, all_parts, ispace(int3d)),
+                                        config : region(ispace(int1d), config_type),
+                                        full_sort_list : region(ispace(int1d), sorting_ids),
+                                        sort_subcell_partition : partition(disjoint, full_sort_list, ispace(int3d)),
+                                        supercell_sort_list : region(ispace(int1d), sorting_ids) )
+where reads(particles.core_part_space), reads(config), writes(supercell_sort_list) do
+
+    --Get cell information
+    var count_xcells = config[0].neighbour_config.x_cells
+    var count_ycells = config[0].neighbour_config.y_cells
+    var count_zcells = config[0].neighbour_config.z_cells
+    var n_cells = count_xcells * count_ycells * count_zcells
+
+    var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
+    var y_per_super = config[0].neighbour_config.y_cells / config[0].neighbour_config.y_supercells
+    var z_per_super = config[0].neighbour_config.z_cells / config[0].neighbour_config.z_supercells
+
+    --Compute the bounds for the subcells of this supercell
+    var xlo = supercell_id.x * x_per_super
+    var xhi = (supercell_id.x + 1) * x_per_super --loops noninclusive so all ok to not -1
+    var ylo = supercell_id.y * y_per_super
+    var yhi = (supercell_id.y + 1) * y_per_super
+    var zlo = supercell_id.z * z_per_super
+    var zhi = (supercell_id.z + 1) * z_per_super
+
+    var xdim = config[0].neighbour_config.cell_dim_x
+    var ydim = config[0].neighbour_config.cell_dim_y
+    var zdim = config[0].neighbour_config.cell_dim_z
+
+    --Compute the vectors
+    var vectors : double[13][3];
+    for i=0, 13 do
+        --Work out the vector directions
+        vectors[0][i] = double([directions[i]].x)
+        vectors[1][i] = double([directions[i]].y)
+        vectors[2][i] = double([directions[i]].z)
+        vectors[0][i] = vectors[0][i] * xdim
+        vectors[1][i] = vectors[1][i] * ydim
+        vectors[2][i] = vectors[2][i] * zdim
+        --Compute the normalized vector
+        var sum : double = sqrt(vectors[0][i]*vectors[0][i] + vectors[1][i]*vectors[1][i] + vectors[2][i]*vectors[2][i])
+        vectors[0][i] = vectors[0][i] * sum
+        vectors[1][i] = vectors[1][i] * sum
+        vectors[2][i] = vectors[2][i] * sum
+    end
+
+    --We have the vectors, time to compute the particle 1D positions (just do this on top-level cell)
+    for part in particles.ispace do
+        var xpos = particles[part].core_part_space.pos_x
+        var ypos = particles[part].core_part_space.pos_y
+        var zpos = particles[part].core_part_space.pos_z
+        for i = 0, 13 do
+            particles[part].neighbour_part_space.sorting_positions[i] = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i] 
+        end
+    end
+
+    --We have the sorting positions, now we need to loop through subcells and sort them
+for x=xlo, xhi do
+for y=ylo, yhi do
+for z=zlo, zhi do
+    var cell_id : int3d = int3d({x,y,z})
+    var index : int1d = sort_subcell_partition[cell_id].ispace.bounds.lo
+    --Set the initial unsorted lists
+    for part in subcell_partition[cell_id].ispace do
+        if particles[part].neighbour_part_space._valid then
+            for i=0, 13 do
+                supercell_sort_list[index].sid[i] = part
+            end
+            index = index + int1d(1)
+        end
+    end
+    for i=index, sort_subcell_partition[cell_id].ispace.bounds.hi+1 do
+        for j=0, 13 do
+            supercell_sort_list[i].sid[j] = int1d(-1)
+        end
+    end
+end
+end
+end
+
+--Lists are setup, now we need to sort in ascending order... TODO
+for x=xlo, xhi do
+for y=ylo, yhi do
+for z=zlo, zhi do
+    var cell_id : int3d = int3d({x,y,z})
+    var lo : int1d = sort_subcell_partition[cell_id].ispace.bounds.lo
+    var hi : int1d = sort_subcell_partition[cell_id].ispace.bounds.hi+1
+    --Find the number of elements
+    for i=lo, hi do
+        if supercell_sort_list[index].sid[0] == int1d(-1) then
+            hi = i
+            break
+        end
+    end
+    --Now we need to sort in ascending order
+    
+    for dir=0, 13 do
+    --If we have few elements do a n^2 sort -- Currently just do this always...
+--        if hi-lo < 15 then
+            for i=lo+1, hi do
+                var temp : int1d = supercell_sort_list[i].sid[dir]
+                var pivot = particles[temp].neighbour_part_space.sorting_positions[dir]
+                var j = i-1
+                --Bubble it down to the right position
+                while j >= lo do
+                    var temp2 : int1d = supercell_sort_list[j].sid[dir]
+                    if pivot < particles[temp2].neighbour_part_space.sorting_positions[dir] then
+                        supercell_sort_list[j+1].sid[dir] = temp2
+                    else
+                        break
+                    end
+                    j = j - 1
+                end
+                supercell_sort_list[j].sid[dir] = temp
+            end
+--        else
+--            --Otherwise do a quicksort
+--            var i = lo
+--            var j = hi-1
+--            var temp : int1d = supercell_sort_list[(lo+hi)/2].sid[dir]
+--            var pivot = particles[temp].neighbour_part_space.sorting_positions[dir]
+--
+--            while particles[supercell_sort_list[i].sid[dir]].sorting_positions[dir] < pivot do
+--                i = i + 1
+--            end
+--            while particles[supercell_sort_list[j].sid[dir]].sorting_positions[dir] > pivot do
+--                j = j - 1
+--            end
+--        end
+    end
+end
+end
+end
+
+end
+
 --Partitioning code for the tradequeues to correctly create the src/dest tradequeues.
 local __demand(__inline) task partition_tradequeue_by_subcells( tradequeue : region(ispace(int1d), part),
                                                                 cell_space : ispace(int3d),
@@ -838,6 +978,16 @@ do
                             [neighbour_init.TradeQueues_bysubDest[i]]
                             end
                         end)])
+    end
+    __demand(__index_launch)
+    for cell in [neighbour_init.supercell_partition].colors do
+        sort_cells( cell, [neighbour_init.supercell_partition][cell],
+                          [neighbour_init.padded_particle_array], --We pass the full particle array in to reference the partition
+                          [neighbour_init.cell_partition],  --The subcell partition used to index the computation
+                          [variables.config],
+                          [neighbour_init.sorting_id_array],
+                          [neighbour_init.sorting_array_cell_partition],
+                          [neighbour_init.sorting_array_supercell_partition][cell]);
     end
 end
     c.legion_runtime_issue_execution_fence(__runtime(), __context());
