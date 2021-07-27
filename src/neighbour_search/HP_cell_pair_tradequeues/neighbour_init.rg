@@ -536,14 +536,24 @@ where reads(particles.core_part_space), reads(config), writes(supercell_sort_lis
     var xdim = config[0].neighbour_config.cell_dim_x
     var ydim = config[0].neighbour_config.cell_dim_y
     var zdim = config[0].neighbour_config.cell_dim_z
+   
+    var direction_array : int3d[13]
+    
+    [(function() local __quotes = terralib.newlist()
+        for i=1, 13 do
+            __quotes:insert(rquote
+                direction_array[i-1] = [directions[i]]
+            end)
+        end                                                                                                                                                                        return __quotes
+    end) ()];
 
     --Compute the vectors
     var vectors : double[13][3];
     for i=0, 13 do
         --Work out the vector directions
-        vectors[0][i] = double([directions[i]].x)
-        vectors[1][i] = double([directions[i]].y)
-        vectors[2][i] = double([directions[i]].z)
+        vectors[0][i] = double(direction_array[i].x)
+        vectors[1][i] = double(direction_array[i].y)
+        vectors[2][i] = double(direction_array[i].z)
         vectors[0][i] = vectors[0][i] * xdim
         vectors[1][i] = vectors[1][i] * ydim
         vectors[2][i] = vectors[2][i] * zdim
