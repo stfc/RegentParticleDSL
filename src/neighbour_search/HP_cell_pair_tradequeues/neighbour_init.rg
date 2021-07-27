@@ -600,6 +600,7 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
     var count_xcells = config[0].neighbour_config.x_cells
     var count_ycells = config[0].neighbour_config.y_cells
     var count_zcells = config[0].neighbour_config.z_cells
+    var num_cells = count_xcells * count_ycells * count_zcells;
     var cell_counts : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
     var cell_offsets : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
     var cell_offsets_fixed : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
@@ -608,9 +609,9 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
         cell_offsets[i] = 0
     end
     var copy_space = region(ispace(int1d, 1), part)
-    for part in [neighbour_init.padded_particle_array] do
+    for part in particles do
         --Find the 1D value for the cell this particle belongs to
-        var color : int3d = [neighbour_init.padded_particle_array][part].neighbour_part_space.cell_id
+        var color : int3d = particles[part].neighbour_part_space.cell_id
 
         var oneD_color : int32 = [int32]((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
         cell_counts[oneD_color] = cell_counts[oneD_color] + 1
@@ -629,7 +630,7 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
         lo = cell_offsets[oneD_color],
         hi = cell_offsets[oneD_color]+cell_counts[oneD_color] - 1
       }
-      regentlib.c.legion_domain_point_coloring_color_domain(coloring, cell, rect)
+      regentlib.c.legion_domain_point_coloring_color_domain(coloring, color, rect)
     end
     --Create the partition from the coloring. If offset = 0 this is essentially a controlled equal partition
     var p = partition(disjoint, sort_array, coloring, cell_space)
@@ -648,6 +649,7 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
     var count_xcells = config[0].neighbour_config.x_cells
     var count_ycells = config[0].neighbour_config.y_cells
     var count_zcells = config[0].neighbour_config.z_cells
+    var num_cells = count_xcells * count_ycells * count_zcells;
     var cell_counts : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
     var cell_offsets : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
     var cell_offsets_fixed : &int32 = [&int32](regentlib.c.malloc( [terralib.sizeof(int32)] * num_cells))
@@ -656,9 +658,9 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
         cell_offsets[i] = 0
     end
     var copy_space = region(ispace(int1d, 1), part)
-    for part in [neighbour_init.padded_particle_array] do
+    for part in particles do
         --Find the 1D value for the cell this particle belongs to
-        var color : int3d = [neighbour_init.padded_particle_array][part].neighbour_part_space.cell_id
+        var color : int3d = particles[part].neighbour_part_space.cell_id
 
         var oneD_color : int32 = [int32]((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
         cell_counts[oneD_color] = cell_counts[oneD_color] + 1
@@ -691,7 +693,7 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
                 for z = zlo, zhi do
                     var color : int3d = int3d({x,y,z})
                     --Indices for this color are number of elements per cell (count/n_cells) * (3D to 1D conversion)
-                    var oneD_color : int1d = (color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z;
+                    var oneD_color : int32 = int32((color.x*count_ycells*count_zcells) + (color.y*count_zcells) + color.z);
                     var rect = rect1d{
                         lo = cell_offsets[oneD_color],
                         hi = cell_offsets[oneD_color]+cell_counts[oneD_color] - 1
