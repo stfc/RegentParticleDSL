@@ -952,7 +952,7 @@ local function check_sorting()
                 end
                 for i= int(lo), int(hi-1) do
                     for dir=0, 13 do
-                        index = int1d(i)
+                        var index = int1d(i)
                         var p1 = neighbour_init.sorting_array_cell_partition[cell][index].sid[dir]
                         var p2 = neighbour_init.sorting_array_cell_partition[cell][index+1].sid[dir]
                         regentlib.assert( neighbour_init.padded_particle_array[p1].neighbour_part_space.sorting_positions[dir] <= neighbour_init.padded_particle_array[p2].neighbour_part_space.sorting_positions[dir], "Sorting seems wrong")
