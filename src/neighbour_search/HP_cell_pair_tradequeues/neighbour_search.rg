@@ -702,9 +702,13 @@ local directions = terralib.newlist({
 })
 
 local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispace(int1d), part),
-                                                cell_partition : partition(disjoint, allparts, ispace(int3d)), cell1 : int3d) where
+                                       cell_partition : partition(disjoint, allparts, ispace(int3d)), cell1 : int3d,
+                                       full_sort_list : region(ispace(int1d), sorting_ids), --Use to reference the subcell partition
+                                       sort_subcell_partition : partition(disjoint, full_sort_list, ispace(int3d)),
+                                       supercell_sort_list : region(ispace(int1d), sorting_ids) ) where
    [read1_privs], [readconf_privs], [write1_privs], [reduc1_privs], [reducconf_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
                                   reads(parts1.neighbour_part_space._valid), reads(config.space, config.neighbour_config),
+                                  reads(supercell_sort_list),
    [coherences] do
 
     var x_per_super = config[0].neighbour_config.x_cells / config[0].neighbour_config.x_supercells
@@ -727,6 +731,16 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var half_box_y = 0.5 * box_y
     var half_box_z = 0.5 * box_z
 
+    var direction_array : int3d[13]
+
+    [(function() local __quotes = terralib.newlist()
+        for i=1, 13 do
+            __quotes:insert(rquote
+                direction_array[i-1] = [directions[i]]
+            end)
+        end                                                                                                                                                                        return __quotes
+    end) ()];
+
     regentlib.assert(config[0].neighbour_config.cell_dim_x > config[0].neighbour_config.max_cutoff, 
                     "Cells couldn't be created small enough to support High Performance implementation")
     regentlib.assert(config[0].neighbour_config.cell_dim_y > config[0].neighbour_config.max_cutoff, 
@@ -741,6 +755,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     var nano_total2 : int64 = 0;
     var total = 0;
     var hits = 0;
+    var max_cutoff = config[0].neighbour_config.max_cutoff
     --Loop over all the internal cells
     for x = xlo, xhi do
         for y = ylo, yhi do
@@ -780,55 +795,129 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                         end
                     end
                 end
-                --Loop over all neighbouring cells, and if inside the supercell then compute interactions
-                [(function() local __quotes = terralib.newlist()
-                  local ne_cell = regentlib.newsymbol(int3d)
-                  __quotes:insert(rquote
-                        var [ne_cell];
-                    end)
-                  for i = 1, 26 do
-                    __quotes:insert(rquote
-                        [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
-                        --Check if the cell is in the supercell or not
-                        if [ne_cell].x >= xlo and [ne_cell].x < xhi and [ne_cell].y >= ylo and [ne_cell].y < yhi and [ne_cell].z >= zlo and [ne_cell].z < zhi then
-                            --Neighbour cell is inside, lets interact the particles!
-                            for part1 in cell_partition[cell].ispace do
-                                if [parts1][part1].neighbour_part_space._valid then
-                                    for part2 in cell_partition[ne_cell].ispace do
-                                        if [parts1][part2].neighbour_part_space._valid then
-                                            --Compute the distance between them
-                                            total = total + 1;
-                                            nano_start = regentlib.c.legion_get_current_time_in_nanos();
-                                            var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
-                                            var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-                                            var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
-                                            if (dx > half_box_x) then dx = dx - box_x end
-                                            if (dy > half_box_y) then dy = dy - box_y end
-                                            if (dz > half_box_z) then dz = dz - box_z end
-                                            if (dx <-half_box_x) then dx = dx + box_x end
-                                            if (dy <-half_box_y) then dy = dy + box_y end
-                                            if (dz <-half_box_z) then dz = dz + box_z end
-                                            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
-                                            cutoff2 = cutoff2 * cutoff2
-                                            var r2 = dx*dx + dy*dy + dz*dz
-                                            nano_end = regentlib.c.legion_get_current_time_in_nanos();
-                                            nano_total2 = nano_total2 + (nano_end - nano_start)
-                                            if(r2 <= cutoff2) then
-                                              nano_start = regentlib.c.legion_get_current_time_in_nanos();
-                                              [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
-                                              nano_end = regentlib.c.legion_get_current_time_in_nanos();
-                                              nano_total = nano_total + (nano_end - nano_start)
-                                              hits = hits + 1
-                                            end
-                                        end
-                                    end
+                --Find my bounds
+                var cell_hi = sort_subcell_partition[cell].ispace.bounds.hi
+                var cell_lo = sort_subcell_partition[cell].ispace.bounds.lo
+                for i = int(cell_lo), int(cell_hi)+1 do
+                    if supercell_sort_list[int1d(i)].sid[0] == -1 then
+                        cell_hi = int1d(i)
+                        break
+                    end
+                end 
+                --Loop over all neighbouring cells in the positive direction, if in range we do both directions
+                for dir = 0, 13 do
+                    var ne_cell : int3d = (cell + direction_array[dir] +{count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
+                    --Check if the cell is in the supercell or not
+                    if ne_cell.x >= xlo and ne_cell.x < xhi and ne_cell.y >= ylo and ne_cell.y < yhi and ne_cell.z >= zlo and ne_cell.z < zhi then
+                        --Neighbour cell is inside, lets interact the particles!
+                        
+                        --Find neighbour cell bounds
+                        var necell_hi = sort_subcell_partition[ne_cell].ispace.bounds.hi + 1
+                        var necell_lo = sort_subcell_partition[ne_cell].ispace.bounds.lo
+    
+                        --Loop over our particles in reverse order
+                        for i= int(cell_hi), int(cell_lo)-1, -1 do
+                            --Find our particle index
+                            var part1 = supercell_sort_list[int1d(i)].sid[dir]
+                            --Loop over our neighbour in ascending order
+                            for j = int(necell_lo), int(ne_cellhi) do
+                                var part2 = supercell_sort_list[int1d(j)].sid[dir]
+                                --Check if its a valid index
+                                if part2 == int1d(-1) then
+                                    --If not we reset necell_hi and stop
+                                    necell_hi = int1d(j)
+                                    break
+                                end
+                                --Its a valid one, check for the sorted distance
+                                var sort_distance = [parts1][part2].neighbour_part_space.sorting_positions[dir] 
+                                                  - [parts1][part1].neighbour_part_space.sorting_positions[dir]
+                                regentlib.assert(sort_distance >= 0, "Got a negative sort_distance which shouldn't be possible")
+                                --If its out of range, reset necell_hi and stop
+                                if sort_distance > max_cutoff then
+                                    necell_hi = int1d(j)
+                                    break
+                                end
+                                --This pair can be in range, so do the real computation
+                                --Compute the distance between them
+                                total = total + 1;
+                                nano_start = regentlib.c.legion_get_current_time_in_nanos();
+                                var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+                                var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+                                var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
+                                if (dx > half_box_x) then dx = dx - box_x end
+                                if (dy > half_box_y) then dy = dy - box_y end
+                                if (dz > half_box_z) then dz = dz - box_z end
+                                if (dx <-half_box_x) then dx = dx + box_x end
+                                if (dy <-half_box_y) then dy = dy + box_y end
+                                if (dz <-half_box_z) then dz = dz + box_z end
+                                var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
+                                cutoff2 = cutoff2 * cutoff2
+                                var r2 = dx*dx + dy*dy + dz*dz
+                                nano_end = regentlib.c.legion_get_current_time_in_nanos();
+                                nano_total2 = nano_total2 + (nano_end - nano_start)
+                                if(r2 <= cutoff2) then
+                                  nano_start = regentlib.c.legion_get_current_time_in_nanos();
+                                  [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
+                                  [kernel_name(rexpr [parts1][part2] end, rexpr [parts1][part1] end, rexpr r2 end, rexpr config[0] end)];
+                                  nano_end = regentlib.c.legion_get_current_time_in_nanos();
+                                  nano_total = nano_total + (nano_end - nano_start)
+                                  hits = hits + 1
                                 end
                             end
+                            
                         end
-                    end)
-                  end
-                  return __quotes
-                 end) ()];
+                        
+                    end
+                end
+                --Loop over all neighbouring cells, and if inside the supercell then compute interactions
+--                [(function() local __quotes = terralib.newlist()
+--                  local ne_cell = regentlib.newsymbol(int3d)
+--                  __quotes:insert(rquote
+--                        var [ne_cell];
+--                    end)
+--                  for i = 1, 26 do
+--                    __quotes:insert(rquote
+--                        [ne_cell] = (cell + [directions[i]] + {count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}
+--                        --Check if the cell is in the supercell or not
+--                        if [ne_cell].x >= xlo and [ne_cell].x < xhi and [ne_cell].y >= ylo and [ne_cell].y < yhi and [ne_cell].z >= zlo and [ne_cell].z < zhi then
+--                            --Neighbour cell is inside, lets interact the particles!
+--                            for part1 in cell_partition[cell].ispace do
+--                                if [parts1][part1].neighbour_part_space._valid then
+--                                    for part2 in cell_partition[ne_cell].ispace do
+--                                        if [parts1][part2].neighbour_part_space._valid then
+--                                            --Compute the distance between them
+--                                            total = total + 1;
+--                                            nano_start = regentlib.c.legion_get_current_time_in_nanos();
+--                                            var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+--                                            var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+--                                            var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
+--                                            if (dx > half_box_x) then dx = dx - box_x end
+--                                            if (dy > half_box_y) then dy = dy - box_y end
+--                                            if (dz > half_box_z) then dz = dz - box_z end
+--                                            if (dx <-half_box_x) then dx = dx + box_x end
+--                                            if (dy <-half_box_y) then dy = dy + box_y end
+--                                            if (dz <-half_box_z) then dz = dz + box_z end
+--                                            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
+--                                            cutoff2 = cutoff2 * cutoff2
+--                                            var r2 = dx*dx + dy*dy + dz*dz
+--                                            nano_end = regentlib.c.legion_get_current_time_in_nanos();
+--                                            nano_total2 = nano_total2 + (nano_end - nano_start)
+--                                            if(r2 <= cutoff2) then
+--                                              nano_start = regentlib.c.legion_get_current_time_in_nanos();
+--                                              [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
+--                                              nano_end = regentlib.c.legion_get_current_time_in_nanos();
+--                                              nano_total = nano_total + (nano_end - nano_start)
+--                                              hits = hits + 1
+--                                            end
+--                                        end
+--                                    end
+--                                end
+--                            end
+--                        end
+--                    end)
+--                  end
+--                  return __quotes
+--                 end) ()];
             end
         end
     end
