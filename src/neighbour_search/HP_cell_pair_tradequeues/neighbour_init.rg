@@ -560,6 +560,7 @@ where reads(particles.core_part_space, particles.neighbour_part_space), reads(co
         vectors[2][i] = vectors[2][i] * zdim
         --Compute the normalized vector
         var sum : double = sqrt(vectors[0][i]*vectors[0][i] + vectors[1][i]*vectors[1][i] + vectors[2][i]*vectors[2][i])
+        sum = 1.0 / sum
         vectors[0][i] = vectors[0][i] * sum
         vectors[1][i] = vectors[1][i] * sum
         vectors[2][i] = vectors[2][i] * sum

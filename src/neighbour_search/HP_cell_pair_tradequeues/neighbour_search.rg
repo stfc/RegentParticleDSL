@@ -15,6 +15,7 @@ local c = regentlib.c
 
 local abs = regentlib.fabs(double)
 local ceil = regentlib.ceil(double)
+local sqrt = regentlib.sqrt(double)
 ---------------------------------------------------------------------------------------------
 ----------------------------- Utility function to wrap indices ------------------------------
 ---------------------------------------------------------------------------------------------
@@ -707,7 +708,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                        sort_subcell_partition : partition(disjoint, full_sort_list, ispace(int3d)),
                                        supercell_sort_list : region(ispace(int1d), sorting_ids) ) where
    [read1_privs], [readconf_privs], [write1_privs], [reduc1_privs], [reducconf_privs], reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}), 
-                                  reads(parts1.neighbour_part_space._valid), reads(config.space, config.neighbour_config),
+                                  reads(parts1.neighbour_part_space._valid, parts1.neighbour_part_space.sorting_positions), 
+                                  reads(config.space, config.neighbour_config),
                                   reads(supercell_sort_list),
    [coherences] do
 
@@ -799,7 +801,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                 var cell_hi = sort_subcell_partition[cell].ispace.bounds.hi
                 var cell_lo = sort_subcell_partition[cell].ispace.bounds.lo
                 for i = int(cell_lo), int(cell_hi)+1 do
-                    if supercell_sort_list[int1d(i)].sid[0] == -1 then
+                    if supercell_sort_list[int1d(i)].sid[0] == int1d(-1) then
                         cell_hi = int1d(i)
                         break
                     end
@@ -820,7 +822,7 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                             --Find our particle index
                             var part1 = supercell_sort_list[int1d(i)].sid[dir]
                             --Loop over our neighbour in ascending order
-                            for j = int(necell_lo), int(ne_cellhi) do
+                            for j = int(necell_lo), int(necell_hi) do
                                 var part2 = supercell_sort_list[int1d(j)].sid[dir]
                                 --Check if its a valid index
                                 if part2 == int1d(-1) then
@@ -829,11 +831,33 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                     break
                                 end
                                 --Its a valid one, check for the sorted distance
-                                var sort_distance = [parts1][part2].neighbour_part_space.sorting_positions[dir] 
-                                                  - [parts1][part1].neighbour_part_space.sorting_positions[dir]
-                                regentlib.assert(sort_distance >= 0, "Got a negative sort_distance which shouldn't be possible")
+                                var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
+                                                  - [parts1][part2].neighbour_part_space.sorting_positions[dir]
                                 --If its out of range, reset necell_hi and stop
-                                if sort_distance > max_cutoff then
+                                if abs(sort_distance) > max_cutoff then
+                                    --Debug statement
+--                                    var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
+--                                    var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
+--                                    var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
+--                                    var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
+--                                    cutoff2 = cutoff2 * cutoff2
+--                                    var r2 = dx*dx + dy*dy + dz*dz
+--                                    if r2 <= cutoff2 then
+--                                        format.println("Sort positions {} {} give distance {}",
+--                                                        [parts1][part1].neighbour_part_space.sorting_positions[dir],
+--                                                        [parts1][part2].neighbour_part_space.sorting_positions[dir],
+--                                                        abs(sort_distance))
+--                                        format.println("Real positions ({} {} {}) and ({} {} {})", 
+--                                                        [parts1][part1].core_part_space.pos_x,
+--                                                        [parts1][part1].core_part_space.pos_y,
+--                                                        [parts1][part1].core_part_space.pos_z,
+--                                                        [parts1][part1].core_part_space.pos_x,
+--                                                        [parts1][part2].core_part_space.pos_y,
+--                                                        [parts1][part2].core_part_space.pos_z)
+--                                        format.println("Real distance was {}", sqrt(r2))
+--                                    end
+--                                    regentlib.assert(cutoff2 < r2, "Failed to correctly get neighbours")
+                                    --
                                     necell_hi = int1d(j)
                                     break
                                 end
@@ -978,7 +1002,8 @@ local asymmetric = rquote
     __demand(__index_launch)
     for supercell in neighbour_init.supercell_partition.colors do
         cell_self_task( neighbour_init.supercell_partition[supercell], variables.config, neighbour_init.padded_particle_array,
-                        neighbour_init.cell_partition, supercell);
+                        neighbour_init.cell_partition, supercell, neighbour_init.sorting_id_array,
+                        neighbour_init.sorting_array_cell_partition, neighbour_init.sorting_array_supercell_partition[supercell]);
     end
 
     [end_timing_quote];
