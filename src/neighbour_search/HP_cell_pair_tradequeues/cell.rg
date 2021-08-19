@@ -155,6 +155,7 @@ task particles_to_cells(particles : region(ispace(int1d), part),
                         config : region(ispace(int1d), config_type)) where 
   reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config, 
         particles.neighbour_part_space),
+  reads(particles.lab), --TODO: Remove
   writes(particles.neighbour_part_space) do
 
   for particle in particles do
@@ -304,6 +305,12 @@ task particles_to_cells(particles : region(ispace(int1d), part),
 
         -- 0, -1, 1
         temp_supercell = int3d({ x_cell / cell_to_supercell_x, y_cell_m1 / cell_to_supercell_y, z_cell_p1 / cell_to_supercell_z } )
+        if particles[particle].lab == 50628 then
+            format.println("0_m1_p1 supercell is {} {} {}. Supercell is {} {} {}. 0_m1_p1 cell is {} {} {}", temp_supercell.x, temp_supercell.y, temp_supercell.z,
+              particles[particle].neighbour_part_space.supercell_id.x, particles[particle].neighbour_part_space.supercell_id.y,
+               particles[particle].neighbour_part_space.supercell_id.z, x_cell, y_cell_p1, z_cell_m1)
+            format.println("Original index is {}", particle)
+        end
         if temp_supercell == particles[particle].neighbour_part_space.supercell_id then
             --Not in a halo
             particles[particle].neighbour_part_space.halos_supercell_0_m1_p1 = int3d({-1, -1, -1})
@@ -438,6 +445,12 @@ task particles_to_cells(particles : region(ispace(int1d), part),
         end
 
         --All done with halo values
+        if particles[particle].lab == 50628 then
+             format.println("50627 original _0_m1_p1 halo = {} {} {}", particles[particle].neighbour_part_space.halos_supercell_0_m1_p1.x,
+          particles[particle].neighbour_part_space.halos_supercell_0_m1_p1.y, particles[particle].neighbour_part_space.halos_supercell_0_m1_p1.z)
+             format.println("50627 original cell halo = {} {} {}", particles[particle].neighbour_part_space.cell_id.x,
+          particles[particle].neighbour_part_space.cell_id.y, particles[particle].neighbour_part_space.cell_id.z)
+        end
   end
 end
 
@@ -447,6 +460,7 @@ end
 task particles_to_cell_launcher(particles : region(ispace(int1d), part),config : region(ispace(int1d), config_type)) where
   reads(particles.core_part_space.pos_x, particles.core_part_space.pos_y, particles.core_part_space.pos_z, config.neighbour_config,
          particles.neighbour_part_space),
+  reads(particles.lab), --TODO: REmove
   writes(particles.neighbour_part_space.cell_id, particles.neighbour_part_space.x_cell,  particles.neighbour_part_space) do
 
   particles_to_cells(particles, config)

@@ -35,7 +35,7 @@ local mapping_table = terralib.newlist()
 for k, v in pairs(field_strings) do
   if( default_value_table[string_table[k]] == nil) then
     if type(string_table[k]) == "boolean" then
-        print("Uhoh")
+        print("Uhoh, string_table["..k.."] is a bool")
     elseif type(string_table[k]) == "table" then
         local field_type = string_table[k]
         if field_type.dim == 1 then
@@ -110,10 +110,10 @@ for k, v in pairs(part.fields) do
 end
 --print(field_strings)
 local mapping_table = terralib.newlist()
-for k, _ in pairs(field_strings) do
+for k, v in pairs(field_strings) do
   if( default_value_table[string_table[k]] == nil) then
     if type(string_table[k]) == "boolean" then
-        print("Uhoh")
+        print("Uhoh, string_table["..k.."] is a bool")
     elseif type(string_table[k]) == "table" then
         local field_type = string_table[k]
         if field_type.dim == 1 then

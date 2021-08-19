@@ -579,7 +579,9 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
   reads(parts1.core_part_space.{pos_x, pos_y, pos_z, cutoff}),
   reads(parts2.core_part_space.{pos_x, pos_y, pos_z, cutoff}), reads(parts1.neighbour_part_space._valid), reads(parts2.neighbour_part_space._valid),
   reads(parts1.neighbour_part_space.sorting_positions), reads(parts2.neighbour_part_space.sorting_positions),
-  [coherences], reads(supercell_sort_list), reads(full_sort_list) do
+  [coherences], reads(supercell_sort_list), reads(full_sort_list), reads(allparts.neighbour_part_space),
+--TODO REMOVE
+   reads(parts2.neighbour_part_space.cell_id) do
 
     --parts1 is our supercell we write to. parts2 is our halo we're reading from. In this task we only interact subcells in our supercell with subcells from the halo
     --This could change in the future, but for now makes life easier
@@ -620,10 +622,10 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
     var total = 0;
     var hits = 0;
 
-    var direction_array : int3d[13]
+    var direction_array : int3d[26]
 
     [(function() local __quotes = terralib.newlist()
-        for i=1, 13 do
+        for i=1, 26 do
             __quotes:insert(rquote
                 direction_array[i-1] = [directions[i]]
             end)
@@ -657,14 +659,13 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                 --Find neighbour cell bounds
                 var necell_hi = sort_subcell_partition[ne_cell].ispace.bounds.hi + 1
                 var necell_lo = sort_subcell_partition[ne_cell].ispace.bounds.lo
-    
                 --Loop over our particles in reverse order
-                for i= int(cell_hi), int(cell_lo)-1, -1 do
+                for i= int(cell_hi-1), int(cell_lo)-1, -1 do
                     --Find our particle index
                     var part1 = supercell_sort_list[int1d(i)].sid[dir]
                     --Loop over our neighbour in ascending order
                     for j = int(necell_lo), int(necell_hi) do
-                        var part2 = supercell_sort_list[int1d(j)].sid[dir]
+                        var part2 = full_sort_list[int1d(j)].sid[dir]
                         --Check if its a valid index
                         if part2 == int1d(-1) then
                             --If not we reset necell_hi and stop
@@ -673,7 +674,7 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                         end
                         --Its a valid one, check for the sorted distance
                         var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
-                                          - [parts1][part2].neighbour_part_space.sorting_positions[dir]
+                                          - [parts2][part2].neighbour_part_space.sorting_positions[dir]
                         --If its out of range, reset necell_hi and stop
                         if abs(sort_distance) > max_cutoff then
                             necell_hi = int1d(j)
@@ -683,23 +684,23 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                         --Compute the distance between them
                         total = total + 1;
                         nano_start = regentlib.c.legion_get_current_time_in_nanos();
-                        var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
-                        var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-                        var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
+                        var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
+                        var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
+                        var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
                         if (dx > half_box_x) then dx = dx - box_x end
                         if (dy > half_box_y) then dy = dy - box_y end
                         if (dz > half_box_z) then dz = dz - box_z end
                         if (dx <-half_box_x) then dx = dx + box_x end
                         if (dy <-half_box_y) then dy = dy + box_y end
                         if (dz <-half_box_z) then dz = dz + box_z end
-                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
+                        var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
                         cutoff2 = cutoff2 * cutoff2
                         var r2 = dx*dx + dy*dy + dz*dz
                         nano_end = regentlib.c.legion_get_current_time_in_nanos();
                         nano_total2 = nano_total2 + (nano_end - nano_start)
                         if(r2 <= cutoff2) then
                           nano_start = regentlib.c.legion_get_current_time_in_nanos();
-                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
+                          [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
                           nano_end = regentlib.c.legion_get_current_time_in_nanos();
                           nano_total = nano_total + (nano_end - nano_start)
                           hits = hits + 1
@@ -720,17 +721,17 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                 var necell_hi = sort_subcell_partition[ne_cell].ispace.bounds.hi
                 var necell_lo = sort_subcell_partition[ne_cell].ispace.bounds.lo
                 for i = int(cell_lo), int(cell_hi) do
-                    var part1 = supercell_sort_list[int1d(i)].sid[dir]
+                    var part1 = supercell_sort_list[int1d(i)].sid[dir-13]
                     for j = int(necell_hi), int(necell_lo)-1, -1 do
-                       var part2 = supercell_sort_list[int1d(j)].sid[dir] 
+                       var part2 = full_sort_list[int1d(j)].sid[dir-13] 
                        --Check if its a valid index
                        if part2 == int1d(-1) then
                            --Its not a valid one
                            necell_hi = necell_hi - 1
                        else
                            --Its a valid one, check for the sorted distance
-                           var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
-                                             - [parts1][part2].neighbour_part_space.sorting_positions[dir]
+                           var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir-13] 
+                                             - [parts2][part2].neighbour_part_space.sorting_positions[dir-13]
                            --If its out of range, reset necell_lo and stop
                            if abs(sort_distance) > max_cutoff then
                                necell_lo = int1d(j)
@@ -740,23 +741,24 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                            --Compute the distance between them
                            total = total + 1;
                            nano_start = regentlib.c.legion_get_current_time_in_nanos();
-                           var dx = [parts1][part1].core_part_space.pos_x - [parts1][part2].core_part_space.pos_x
-                           var dy = [parts1][part1].core_part_space.pos_y - [parts1][part2].core_part_space.pos_y
-                           var dz = [parts1][part1].core_part_space.pos_z - [parts1][part2].core_part_space.pos_z
+                           regentlib.assert(int1d(part1) ~= int1d(part2), "part1 == part2") --TODO
+                           var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
+                           var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
+                           var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
                            if (dx > half_box_x) then dx = dx - box_x end
                            if (dy > half_box_y) then dy = dy - box_y end
                            if (dz > half_box_z) then dz = dz - box_z end
                            if (dx <-half_box_x) then dx = dx + box_x end
                            if (dy <-half_box_y) then dy = dy + box_y end
                            if (dz <-half_box_z) then dz = dz + box_z end
-                           var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts1][part2].core_part_space.cutoff)
+                           var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
                            cutoff2 = cutoff2 * cutoff2
                            var r2 = dx*dx + dy*dy + dz*dz
                            nano_end = regentlib.c.legion_get_current_time_in_nanos();
                            nano_total2 = nano_total2 + (nano_end - nano_start)
                            if(r2 <= cutoff2) then
                              nano_start = regentlib.c.legion_get_current_time_in_nanos();
-                             [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
+                             [kernel_name(rexpr [parts1][part1] end, rexpr [parts2][part2] end, rexpr r2 end, rexpr config[0] end)];
                              nano_end = regentlib.c.legion_get_current_time_in_nanos();
                              nano_total = nano_total + (nano_end - nano_start)
                              hits = hits + 1
@@ -968,7 +970,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                         cell_hi = int1d(i)
                         break
                     end
-                end 
+                end
+                cell_hi = cell_hi - 1 
                 --Loop over all neighbouring cells in the positive direction, if in range we do both directions
                 for dir = 0, 13 do
                     var ne_cell : int3d = (cell + direction_array[dir] +{count_xcells,count_ycells,count_zcells})%{count_xcells,count_ycells,count_zcells}

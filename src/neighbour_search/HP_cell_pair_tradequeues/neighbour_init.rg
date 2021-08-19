@@ -47,7 +47,7 @@ neighbour_init.halo_partition = regentlib.newsymbol("halo_partition")
 neighbour_init.x_slices = regentlib.newsymbol("x_slice_partition")
 
 
-local DEBUG = true
+local DEBUG = false
 
 --Use terralib list for this isntead of lua table
 --!There are 13 positive vectors to sort along.
@@ -134,6 +134,21 @@ local function construct_part_structure()
 end
 local part_structure = construct_part_structure()
 
+local function construct_full_part_structure()
+    local part_structure = terralib.newlist()
+    local field_strings = {}
+    local type_table = {}
+    for k, v in pairs(part.fields) do
+        recursive_fields.recurse_field(v, field_strings, type_table)
+    end
+    for k, _ in pairs(field_strings) do
+        part_structure:insert({field = string_to_field_path.get_field_path(field_strings[k])})
+    end
+    return part_structure
+end
+
+local full_part_structure = construct_full_part_structure()
+
 fspace sorting_ids{
     sid : int1d[13]
 }
@@ -197,8 +212,8 @@ local __demand(__leaf) task compute_new_dests(particles : region(ispace(int1d), 
       var cell_loc : int3d = int3d( {x_cell, y_cell, z_cell} )
       particles[particle].neighbour_part_space.cell_id = cell_loc
       var x_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_x) )
-      var y_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_y) )
-      var z_supercell : int1d = int1d( (particles[particle].core_part_space.pos_x / config[0].neighbour_config.supercell_dim_z) )
+      var y_supercell : int1d = int1d( (particles[particle].core_part_space.pos_y / config[0].neighbour_config.supercell_dim_y) )
+      var z_supercell : int1d = int1d( (particles[particle].core_part_space.pos_z / config[0].neighbour_config.supercell_dim_z) )
       cell_loc = int3d( {x_supercell, y_supercell, z_supercell} )
       particles[particle].neighbour_part_space.supercell_id = cell_loc
       particles[particle].neighbour_part_space.x_cell = x_supercell
@@ -269,12 +284,6 @@ do
     var yhi = (supercell_id.y + 1) * y_per_super
     var zlo = supercell_id.z * z_per_super
     var zhi = (supercell_id.z + 1) * z_per_super
-
---format.println("supercell {} {} {} index space:", supercell_id.x, supercell_id.y, supercell_id.z)
---for part in particles.ispace do
---    format.println("{}", part)
---end
---format.println("End of index space")
 
 var total_transfers = int32(0);
 for x=xlo, xhi do
@@ -572,7 +581,7 @@ where reads(particles.core_part_space, particles.neighbour_part_space), reads(co
         var ypos = particles[part].core_part_space.pos_y
         var zpos = particles[part].core_part_space.pos_z
         for i = 0, 13 do
-            particles[part].neighbour_part_space.sorting_positions[i] = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i] 
+            particles[part].neighbour_part_space.sorting_positions[i] = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i]
         end
     end
 
@@ -584,6 +593,9 @@ for z=zlo, zhi do
     var index : int1d = sort_subcell_partition[cell_id].ispace.bounds.lo
     --Set the initial unsorted lists
     for part in subcell_partition[cell_id].ispace do
+--        if particles[part].neighbour_part_space.cell_id == int3d({1,1,0}) and particles[part].neighbour_part_space._valid then
+--            format.println("Sorting {} in 1,1,0 subcell {} {} {}", part, cell_id.x, cell_id.y, cell_id.z)
+--        end
         if particles[part].neighbour_part_space._valid then
             for i=0, 13 do
                 supercell_sort_list[index].sid[i] = part
@@ -628,11 +640,13 @@ for z=zlo, zhi do
                     var temp2 : int1d = supercell_sort_list[j].sid[dir]
                     if pivot < particles[temp2].neighbour_part_space.sorting_positions[dir] then
                         supercell_sort_list[j+1].sid[dir] = temp2
+                        j = j - int1d(1)
                     else
                         break
                     end
-                    j = j - int1d(1)
                 end
+                j=j+1
+--                format.println("j= {}, i = {}, lo = {}",j, i ,lo)
                 supercell_sort_list[j].sid[dir] = temp
             end
 --        else
@@ -650,7 +664,8 @@ for z=zlo, zhi do
 --            end
 --        end
     end
-end
+
+end 
 end
 end
 
@@ -862,6 +877,11 @@ where reads(config), reads(particles.neighbour_part_space.cell_id) do
     return p
 end
 
+
+local task dummy_task(particles: region(ispace(int1d), part)) where reads(particles) do
+
+end
+
 local assert_correct_cells = function()
   return rquote
   end
@@ -869,11 +889,23 @@ end
 if DEBUG ~= nil and DEBUG then
   assert_correct_cells = function()
     local rval = rquote
+    dummy_task(neighbour_init.padded_particle_array)
       for cell in neighbour_init.cell_partition.colors do
         --Avoid Legion issue #1082
         var x = neighbour_init.cell_partition[cell]
         for part in x do
           if x[part].neighbour_part_space._valid then
+            if x[part].neighbour_part_space.cell_id ~= int3d(cell) then
+            format.println("Particle {} found in cell {} {} {} expected {} {} {}", x[part].lab, cell.x, cell.y, cell.z,
+                            x[part].neighbour_part_space.cell_id.x, x[part].neighbour_part_space.cell_id.y,
+                            x[part].neighbour_part_space.cell_id.z)
+            format.println("Position {} {} {} velocity {} {} {}", x[part].core_part_space.pos_x,
+                             x[part].core_part_space.pos_y,  x[part].core_part_space.pos_z, 
+                            x[part].core_part_space.vel_x,x[part].core_part_space.vel_y, 
+                            x[part].core_part_space.vel_z)
+            format.println("Cell dims are {} {} {}", [variables.config][0].neighbour_config.cell_dim_x,
+                            [variables.config][0].neighbour_config.cell_dim_y, [variables.config][0].neighbour_config.cell_dim_z) 
+            end
             regentlib.assert(x[part].neighbour_part_space.cell_id == int3d(cell), "particle found in wrong cell")
           end
         end
@@ -956,6 +988,8 @@ local function check_sorting()
                         var index = int1d(i)
                         var p1 = neighbour_init.sorting_array_cell_partition[cell][index].sid[dir]
                         var p2 = neighbour_init.sorting_array_cell_partition[cell][index+1].sid[dir]
+                        regentlib.assert( int3d(neighbour_init.padded_particle_array[p1].neighbour_part_space.cell_id) == int3d(cell), "particle sorted in wrong cell")
+                        regentlib.assert( int3d(neighbour_init.padded_particle_array[p2].neighbour_part_space.cell_id) == int3d(cell), "particle sorted in wrong cell")
                         regentlib.assert( neighbour_init.padded_particle_array[p1].neighbour_part_space.sorting_positions[dir] <= neighbour_init.padded_particle_array[p2].neighbour_part_space.sorting_positions[dir], "Sorting seems wrong")
                     end
                 end
@@ -970,6 +1004,7 @@ end
 function neighbour_init.update_cells(variables)
 local start_timing_quote, end_timing_quote = get_timing_quotes()
 local update_cells_quote = rquote
+    c.legion_runtime_issue_execution_fence(__runtime(), __context());
     [start_timing_quote];
     [assert_correct_cells()];
 __demand(__trace)
@@ -1019,6 +1054,7 @@ do
                             end
                         end)])
     end
+    c.legion_runtime_issue_execution_fence(__runtime(), __context());
     __demand(__index_launch)
     for cell in [neighbour_init.supercell_partition].colors do
         sort_cells( cell, [neighbour_init.supercell_partition][cell],
@@ -1062,7 +1098,7 @@ local initialisation_quote = rquote                                             
   --Copy the particle data into the new particle array
   for i in [variables.particle_array].ispace do
     --Generate copies here.
-    [part_structure:map(function(element)
+    [full_part_structure:map(function(element)
       return rquote
         [neighbour_init.padded_particle_array][i].[element.field] = [variables.particle_array][i].[element.field]
       end
