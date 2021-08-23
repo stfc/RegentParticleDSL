@@ -623,6 +623,7 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
     var hits = 0;
 
     var direction_array : int3d[26]
+    var periodic_sort_distance : double[26]
 
     [(function() local __quotes = terralib.newlist()
         for i=1, 26 do
@@ -631,6 +632,13 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
             end)
         end                                                                                                                                                                        return __quotes
     end) ()];
+    for i=0, 26 do
+        var periodic_sort_x = double(direction_array[i].x) * [box_x]
+        var periodic_sort_y = double(direction_array[i].y) * [box_y]
+        var periodic_sort_z = double(direction_array[i].z) * [box_z]
+        periodic_sort_distance[i] = periodic_sort_x * periodic_sort_x + periodic_sort_y * periodic_sort_y + periodic_sort_z * periodic_sort_z
+        periodic_sort_distance[i] = sqrt(periodic_sort_distance[i]) 
+    end
 
     var max_cutoff = config[0].neighbour_config.max_cutoff
 
@@ -675,6 +683,21 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                         --Its a valid one, check for the sorted distance
                         var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
                                           - [parts2][part2].neighbour_part_space.sorting_positions[dir]
+                        if abs(sort_distance) > 0.5 * periodic_sort_distance[dir] then
+                            sort_distance = abs(sort_distance) - periodic_sort_distance[dir]
+                        end
+--                        if [parts1][part1].core_part_space.id == int1d(3) and ne_cell == int3d({0, 2, 1}) then
+--                            format.println("Checking 3 and {}, cell {} {} {}", [parts2][part2].core_part_space.id, ne_cell.x, ne_cell.y, ne_cell.z)
+--                            for k = int(necell_lo), int(necell_hi) do
+--                                format.println("Not yet checked {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.id)
+--                                var temp_sd = [parts1][part1].neighbour_part_space.sorting_positions[dir]
+--                                            - [parts2][full_sort_list[int1d(k)].sid[dir]].neighbour_part_space.sorting_positions[dir]
+--                                if abs(temp_sd) >  0.5 * periodic_sort_distance[dir] then
+--                                    temp_sd = abs(temp_sd) - periodic_sort_distance[dir]
+--                                end
+--                                format.println("Sort distance would be {} and cutoff is {}", temp_sd, max_cutoff)
+--                            end
+--                        end
                         --If its out of range, reset necell_hi and stop
                         if abs(sort_distance) > max_cutoff then
                             necell_hi = int1d(j)
@@ -730,8 +753,65 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                            necell_hi = necell_hi - 1
                        else
                            --Its a valid one, check for the sorted distance
-                           var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir-13] 
-                                             - [parts2][part2].neighbour_part_space.sorting_positions[dir-13]
+                           var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
+                                             - [parts2][part2].neighbour_part_space.sorting_positions[dir]
+                            if abs(sort_distance) > 0.5 * periodic_sort_distance[dir] then
+                                sort_distance = abs(sort_distance) - periodic_sort_distance[dir]
+                            end
+                          if [parts1][part1].core_part_space.id == int1d(3) and ne_cell == int3d({2, 2, 1}) then
+                                 format.println("Checking 3 and {}, cell {} {} {}", [parts2][part2].core_part_space.id, ne_cell.x, ne_cell.y, ne_cell.z)
+                            for k = int(necell_hi), int(necell_lo)-1, -1 do
+                                format.println("Not yet checked {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.id)
+                                if [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.id == int1d(994) then
+                                    var temp_sd = [parts1][part1].neighbour_part_space.sorting_positions[dir]
+                                                + [parts2][full_sort_list[int1d(k)].sid[dir]].neighbour_part_space.sorting_positions[dir]
+                                    format.println("Direction is {}", dir)
+                                    format.println("3 pos is {} {} {}, sort pos is {}", [parts1][part1].core_part_space.pos_x, 
+                                                    [parts1][part1].core_part_space.pos_y, [parts1][part1].core_part_space.pos_z,
+                                                    [parts1][part1].neighbour_part_space.sorting_positions[dir])
+                                    format.println("94 pos is {} {} {}, sort pos is {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_x,
+                                     [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_y,
+                                     [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_z,  [parts2][full_sort_list[int1d(k)].sid[dir]].neighbour_part_space.sorting_positions[dir])
+                                    format.println("vector is {} {} {}", direction_array[dir].x, direction_array[dir].y, direction_array[dir].z)
+                                    format.println("Non-wrapped sort distance is {}", temp_sd)
+                                    if abs(temp_sd) >  0.5 * periodic_sort_distance[dir] then
+                                        temp_sd = abs(temp_sd) - periodic_sort_distance[dir]
+                                    end
+                                    format.println("Sort distance would be {} and cutoff is {}", temp_sd, max_cutoff)
+                                    var dx = [parts1][part1].core_part_space.pos_x - [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_x
+                                    var dy = [parts1][part1].core_part_space.pos_y - [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_y
+                                    var dz = [parts1][part1].core_part_space.pos_z - [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_z
+                                    if (dx > half_box_x) then dx = dx - box_x end
+                                    if (dy > half_box_y) then dy = dy - box_y end
+                                    if (dz > half_box_z) then dz = dz - box_z end
+                                    if (dx <-half_box_x) then dx = dx + box_x end
+                                    if (dy <-half_box_y) then dy = dy + box_y end
+                                    if (dz <-half_box_z) then dz = dz + box_z end
+                                    var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.cutoff)
+                                    cutoff2 = cutoff2 * cutoff2
+                                    var r2 = dx*dx + dy*dy + dz*dz
+                                    format.println("Part 3 @ {} {} {}", [parts1][part1].core_part_space.pos_x, [parts1][part1].core_part_space.pos_y, 
+                                                                        [parts1][part1].core_part_space.pos_z)
+                                    format.println("Part 94 @ {} {} {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_x, [parts1][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_y, 
+                                                                        [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_z)
+
+                                    format.println("{} {} {}, Real distance2 {}, cutoff2 = {}",dx, dy, dz, r2, cutoff2)
+                                end
+                            end
+                                 format.println("Sort distance {}, max_cutoff {}", sort_distance, max_cutoff)
+                            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
+                            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
+                            var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
+                            if (dx > half_box_x) then dx = dx - box_x end
+                            if (dy > half_box_y) then dy = dy - box_y end
+                            if (dz > half_box_z) then dz = dz - box_z end
+                            if (dx <-half_box_x) then dx = dx + box_x end
+                            if (dy <-half_box_y) then dy = dy + box_y end
+                            if (dz <-half_box_z) then dz = dz + box_z end
+                            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
+                            cutoff2 = cutoff2 * cutoff2
+                            var r2 = dx*dx + dy*dy + dz*dz
+                          end
                            --If its out of range, reset necell_lo and stop
                            if abs(sort_distance) > max_cutoff then
                                necell_lo = int1d(j)
@@ -817,8 +897,8 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
     --Should have computed all interactions with the halos now
     var endtime = c.legion_get_current_time_in_micros()
 
-    format.println("PAIR: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
-    format.println("PAIR: hits {} misses {}", hits, total-hits)
+--    format.println("PAIR: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
+--    format.println("PAIR: hits {} misses {}", hits, total-hits)
     --format.println("runtime was {}us, interaction time was {}us", (endtime-starttime), ([nano_total] / 1000))
 end
 return asym_pairwise_task, update_neighbours
@@ -951,6 +1031,9 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                 var r2 = dx*dx + dy*dy + dz*dz
                                 nano_end = regentlib.c.legion_get_current_time_in_nanos();
                                 nano_total2 = nano_total2 + (nano_end - nano_start)
+--                            if [parts1][part1].core_part_space.id == int1d(0) then
+--                                 format.println("Checking 0 and {}, cell {} {} {}", [parts1][part2].core_part_space.id, cell.x, cell.y, cell.z)
+--                            end
                                 if(r2 <= cutoff2) then
                                   nano_start = regentlib.c.legion_get_current_time_in_nanos();
                                   [kernel_name(rexpr [parts1][part1] end, rexpr [parts1][part2] end, rexpr r2 end, rexpr config[0] end)];
@@ -999,6 +1082,9 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                 --Its a valid one, check for the sorted distance
                                 var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
                                                   - [parts1][part2].neighbour_part_space.sorting_positions[dir]
+--                            if [parts1][part1].core_part_space.id == int1d(0) then
+--                                 format.println("Checking 0 and {}, cell {} {} {}", [parts1][part2].core_part_space.id, ne_cell.x, ne_cell.y, ne_cell.z)
+--                            end
                                 --If its out of range, reset necell_hi and stop
                                 if abs(sort_distance) > max_cutoff then
                                     --Debug statement
@@ -1113,8 +1199,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
     end
     var cell_count = x_per_super * y_per_super * z_per_super
     var endtime = c.legion_get_current_time_in_micros()
-    format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
-    format.println("SELF: hits {} misses {}", hits, total-hits)
+--    format.println("SELF: runtime was {}us, interaction time was {}us, distance time was {}us", (endtime-starttime), (nano_total / 1000), (nano_total2 / 1000))
+--    format.println("SELF: hits {} misses {}", hits, total-hits)
 end
 return self_task, update_neighbours
 end

@@ -581,7 +581,12 @@ where reads(particles.core_part_space, particles.neighbour_part_space), reads(co
         var ypos = particles[part].core_part_space.pos_y
         var zpos = particles[part].core_part_space.pos_z
         for i = 0, 13 do
-            particles[part].neighbour_part_space.sorting_positions[i] = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i]
+            var val = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i]
+            particles[part].neighbour_part_space.sorting_positions[i] = val
+            particles[part].neighbour_part_space.sorting_positions[i+13] = - val
+            if particles[part].core_part_space.id == int1d(94) and i == 3 then
+                format.println("94 for dir 16 is {}, vector is {} {} {}", -val, vectors[0][i], vectors[1][i], vectors[2][i])
+            end
         end
     end
 

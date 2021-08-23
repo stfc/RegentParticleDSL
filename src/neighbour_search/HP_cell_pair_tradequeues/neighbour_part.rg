@@ -24,7 +24,7 @@ fspace neighbour_part{
 -- old_pos_x : double,
 -- old_pos_y : double,
 -- old_pos_z : double,
-  sorting_positions : double[13],
+  sorting_positions : double[26],
 
  --Values for setting up halos - m1 = -1, p1 = +1 so 26 directions
   halos_supercell_m1_m1_m1 : int3d,

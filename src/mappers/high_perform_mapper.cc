@@ -58,6 +58,14 @@ class high_perform_mapper : public NullMapper
                                 const Task& task,
                                 const SliceTaskInput& input,
                                 SliceTaskOutput& output);
+        virtual void map_acquire(const MapperContext         ctx,
+                                 const Acquire&              acquire,
+                                 const MapAcquireInput&      input,
+                                       MapAcquireOutput&     output);
+        virtual void map_release(const MapperContext         ctx,
+                                 const Release&              release,
+                                 const MapReleaseInput&      input,
+                                       MapReleaseOutput&     output);
 
     public:
         virtual void configure_context(const Mapping::MapperContext ctx,
@@ -772,6 +780,25 @@ void high_perform_mapper::select_task_options(const MapperContext    ctx,
     output.stealable = false;
     //Map at target processor
     output.map_locally = false;
+}
+
+void high_perform_mapper::map_acquire(const MapperContext         ctx,
+                                      const Acquire&              acquire,
+                                      const MapAcquireInput&      input,
+                                            MapAcquireOutput&     output)
+//--------------------------------------------------------------------------
+{
+      // Nothing to do here for now until we start using profiling
+}
+
+//--------------------------------------------------------------------------
+void high_perform_mapper::map_release(const MapperContext         ctx,
+                                      const Release&              release,
+                                      const MapReleaseInput&      input,
+                                            MapReleaseOutput&     output)
+//--------------------------------------------------------------------------
+{
+  // Nothing to do here for now until we start using profiling
 }
 
 
