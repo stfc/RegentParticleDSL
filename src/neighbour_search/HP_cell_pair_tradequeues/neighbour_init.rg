@@ -546,6 +546,7 @@ where reads(particles.core_part_space, particles.neighbour_part_space), reads(co
     var xdim = config[0].neighbour_config.cell_dim_x
     var ydim = config[0].neighbour_config.cell_dim_y
     var zdim = config[0].neighbour_config.cell_dim_z
+
    
     var direction_array : int3d[13]
     
@@ -575,34 +576,25 @@ where reads(particles.core_part_space, particles.neighbour_part_space), reads(co
         vectors[2][i] = vectors[2][i] * sum
     end
 
-    --We have the vectors, time to compute the particle 1D positions (just do this on top-level cell)
-    for part in particles.ispace do
-        var xpos = particles[part].core_part_space.pos_x
-        var ypos = particles[part].core_part_space.pos_y
-        var zpos = particles[part].core_part_space.pos_z
-        for i = 0, 13 do
-            var val = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i]
-            particles[part].neighbour_part_space.sorting_positions[i] = val
-            particles[part].neighbour_part_space.sorting_positions[i+13] = - val
-            if particles[part].core_part_space.id == int1d(94) and i == 3 then
-                format.println("94 for dir 16 is {}, vector is {} {} {}", -val, vectors[0][i], vectors[1][i], vectors[2][i])
-            end
-        end
-    end
-
     --We have the sorting positions, now we need to loop through subcells and sort them
 for x=xlo, xhi do
 for y=ylo, yhi do
 for z=zlo, zhi do
     var cell_id : int3d = int3d({x,y,z})
     var index : int1d = sort_subcell_partition[cell_id].ispace.bounds.lo
+    var cell_x = double(x) * xdim
+    var cell_y = double(y) * ydim
+    var cell_z = double(z) * zdim
     --Set the initial unsorted lists
     for part in subcell_partition[cell_id].ispace do
---        if particles[part].neighbour_part_space.cell_id == int3d({1,1,0}) and particles[part].neighbour_part_space._valid then
---            format.println("Sorting {} in 1,1,0 subcell {} {} {}", part, cell_id.x, cell_id.y, cell_id.z)
---        end
+        var xpos = particles[part].core_part_space.pos_x - cell_x
+        var ypos = particles[part].core_part_space.pos_y - cell_y
+        var zpos = particles[part].core_part_space.pos_z - cell_z
         if particles[part].neighbour_part_space._valid then
             for i=0, 13 do
+                var val = xpos * vectors[0][i] + ypos * vectors[1][i] + zpos * vectors[2][i]
+                particles[part].neighbour_part_space.sorting_positions[i] = val
+                particles[part].neighbour_part_space.sorting_positions[i+13] = - val
                 supercell_sort_list[index].sid[i] = part
             end
             index = index + int1d(1)
@@ -1561,6 +1553,25 @@ local initialisation_quote = rquote                                             
                                                                                                      [neighbour_init.padded_particle_array],
                                                                                                      cell_space,
                                                                                                      [variables.config]);
+
+    --Compute shifts
+    var direction_array : int3d[26]
+
+    [(function() local __quotes = terralib.newlist()
+        for i=1, 26 do
+            __quotes:insert(rquote
+                direction_array[i-1] = [directions[i]]
+            end)
+        end                                                                                                                                                                        return __quotes
+    end) ()];
+
+    for i=0, 26 do
+        var x_vec = double(direction_array[i].x) * [variables.config][0].neighbour_config.cell_dim_x
+        var y_vec = double(direction_array[i].y) * [variables.config][0].neighbour_config.cell_dim_y
+        var z_vec = double(direction_array[i].z) * [variables.config][0].neighbour_config.cell_dim_z
+        var mag = sqrt(x_vec * x_vec + y_vec * y_vec + z_vec * z_vec);
+        [variables.config][0].neighbour_config.shift_vectors[i] = mag
+    end
 end
 
 return initialisation_quote

@@ -18,5 +18,7 @@ fspace neighbour_config_type{
   x_supercells : int,
   y_supercells : int,
   z_supercells : int,
-  max_cutoff : double
+  max_cutoff : double,
+  
+  shift_vectors : double[26]
 }

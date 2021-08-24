@@ -133,14 +133,24 @@ end
 return kernel
 end
 
-task comparison(computed : region(ispace(int1d), part), solution : region(ispace(int1d), part)) where
+function move_part(part)
+local kernel = rquote
+    part.core_part_space.pos_x += 0.25
+    part.core_part_space.pos_y += 0.15
+    part.core_part_space.pos_z += 0.05
+    part.interactions = 0
+end
+return kernel
+end
+
+task comparison(computed : region(ispace(int1d), part), solution : region(ispace(int1d), part), step : int) where
 reads(computed.interactions, solution.interactions, computed.core_part_space.id, solution.core_part_space.id, computed.neighbour_part_space) do
   for x in computed.ispace do
     for y in solution.ispace do
-      if computed[x].core_part_space.id == solution[x].core_part_space.id and computed[x].neighbour_part_space._valid then
-        if computed[x].interactions ~= solution[x].interactions then
+      if computed[x].core_part_space.id == solution[y].core_part_space.id and computed[x].neighbour_part_space._valid then
+        if computed[x].interactions ~= solution[y].interactions then
           var buffer = [rawstring](regentlib.c.malloc(1024))
-          format.snprintln(buffer, 1024, "Interactions incorrect for particle ID {}, computed {} solution {}", computed[x].core_part_space.id,
+          format.snprintln(buffer, 1024, "Step {}: Interactions incorrect for particle ID {}, computed {} solution {}", step, computed[x].core_part_space.id,
                             computed[x].interactions, solution[x].interactions)
           regentlib.assert(computed[x].interactions == solution[x].interactions, buffer)
           regentlib.c.free(buffer)
@@ -167,18 +177,22 @@ task main_task()
 --
   [neighbour_init.initialise(variables)];
   [neighbour_init.update_cells(variables)];
-
-  [invoke(variables.config, {asymmetric_interaction_count_kernel,ASYMMETRIC_PAIRWISE}, NO_BARRIER)]; 
-
   [simple_hdf5_module.read_file( solution_file, hdf5_write_mapper, variables.solution_array)];
-  comparison(neighbour_init.padded_particle_array, variables.solution_array);
+
+
+  for i=0, 100 do
+    [invoke(variables.config, {asymmetric_interaction_count_kernel,ASYMMETRIC_PAIRWISE}, BARRIER)]; 
+    comparison(neighbour_init.padded_particle_array, variables.solution_array, i);
+    [invoke(variables.config, {move_part, PER_PART}, BARRIER)];
+
+  end
 end
 
 terra set_mappers()
 
 end
 
-  compile_DSL( main_task, "tests/interaction_count/interaction_test_asym.exe")
+  compile_DSL( main_task, "tests/moving_interaction_count/interaction_test_asym.exe")
 
   --local root_dir = "./tests/interaction_count/"
   --local out_dir = (os.getenv('OBJNAME') and os.getenv('OBJNAME'):match('.*/')) or root_dir

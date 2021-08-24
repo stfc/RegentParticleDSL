@@ -681,8 +681,8 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                             break
                         end
                         --Its a valid one, check for the sorted distance
-                        var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
-                                          - [parts2][part2].neighbour_part_space.sorting_positions[dir]
+                        var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] - config[0].neighbour_config.shift_vectors[dir] 
+                                          - ([parts2][part2].neighbour_part_space.sorting_positions[dir])
                         if abs(sort_distance) > 0.5 * periodic_sort_distance[dir] then
                             sort_distance = abs(sort_distance) - periodic_sort_distance[dir]
                         end
@@ -753,65 +753,11 @@ local __demand(__leaf) task asym_pairwise_task([parts1], [parts2], [config], [al
                            necell_hi = necell_hi - 1
                        else
                            --Its a valid one, check for the sorted distance
-                           var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
-                                             - [parts2][part2].neighbour_part_space.sorting_positions[dir]
+                           var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] - config[0].neighbour_config.shift_vectors[dir]
+                                             - ([parts2][part2].neighbour_part_space.sorting_positions[dir])
                             if abs(sort_distance) > 0.5 * periodic_sort_distance[dir] then
                                 sort_distance = abs(sort_distance) - periodic_sort_distance[dir]
                             end
-                          if [parts1][part1].core_part_space.id == int1d(3) and ne_cell == int3d({2, 2, 1}) then
-                                 format.println("Checking 3 and {}, cell {} {} {}", [parts2][part2].core_part_space.id, ne_cell.x, ne_cell.y, ne_cell.z)
-                            for k = int(necell_hi), int(necell_lo)-1, -1 do
-                                format.println("Not yet checked {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.id)
-                                if [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.id == int1d(994) then
-                                    var temp_sd = [parts1][part1].neighbour_part_space.sorting_positions[dir]
-                                                + [parts2][full_sort_list[int1d(k)].sid[dir]].neighbour_part_space.sorting_positions[dir]
-                                    format.println("Direction is {}", dir)
-                                    format.println("3 pos is {} {} {}, sort pos is {}", [parts1][part1].core_part_space.pos_x, 
-                                                    [parts1][part1].core_part_space.pos_y, [parts1][part1].core_part_space.pos_z,
-                                                    [parts1][part1].neighbour_part_space.sorting_positions[dir])
-                                    format.println("94 pos is {} {} {}, sort pos is {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_x,
-                                     [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_y,
-                                     [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_z,  [parts2][full_sort_list[int1d(k)].sid[dir]].neighbour_part_space.sorting_positions[dir])
-                                    format.println("vector is {} {} {}", direction_array[dir].x, direction_array[dir].y, direction_array[dir].z)
-                                    format.println("Non-wrapped sort distance is {}", temp_sd)
-                                    if abs(temp_sd) >  0.5 * periodic_sort_distance[dir] then
-                                        temp_sd = abs(temp_sd) - periodic_sort_distance[dir]
-                                    end
-                                    format.println("Sort distance would be {} and cutoff is {}", temp_sd, max_cutoff)
-                                    var dx = [parts1][part1].core_part_space.pos_x - [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_x
-                                    var dy = [parts1][part1].core_part_space.pos_y - [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_y
-                                    var dz = [parts1][part1].core_part_space.pos_z - [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_z
-                                    if (dx > half_box_x) then dx = dx - box_x end
-                                    if (dy > half_box_y) then dy = dy - box_y end
-                                    if (dz > half_box_z) then dz = dz - box_z end
-                                    if (dx <-half_box_x) then dx = dx + box_x end
-                                    if (dy <-half_box_y) then dy = dy + box_y end
-                                    if (dz <-half_box_z) then dz = dz + box_z end
-                                    var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.cutoff)
-                                    cutoff2 = cutoff2 * cutoff2
-                                    var r2 = dx*dx + dy*dy + dz*dz
-                                    format.println("Part 3 @ {} {} {}", [parts1][part1].core_part_space.pos_x, [parts1][part1].core_part_space.pos_y, 
-                                                                        [parts1][part1].core_part_space.pos_z)
-                                    format.println("Part 94 @ {} {} {}", [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_x, [parts1][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_y, 
-                                                                        [parts2][full_sort_list[int1d(k)].sid[dir]].core_part_space.pos_z)
-
-                                    format.println("{} {} {}, Real distance2 {}, cutoff2 = {}",dx, dy, dz, r2, cutoff2)
-                                end
-                            end
-                                 format.println("Sort distance {}, max_cutoff {}", sort_distance, max_cutoff)
-                            var dx = [parts1][part1].core_part_space.pos_x - [parts2][part2].core_part_space.pos_x
-                            var dy = [parts1][part1].core_part_space.pos_y - [parts2][part2].core_part_space.pos_y
-                            var dz = [parts1][part1].core_part_space.pos_z - [parts2][part2].core_part_space.pos_z
-                            if (dx > half_box_x) then dx = dx - box_x end
-                            if (dy > half_box_y) then dy = dy - box_y end
-                            if (dz > half_box_z) then dz = dz - box_z end
-                            if (dx <-half_box_x) then dx = dx + box_x end
-                            if (dy <-half_box_y) then dy = dy + box_y end
-                            if (dz <-half_box_z) then dz = dz + box_z end
-                            var cutoff2 = regentlib.fmax([parts1][part1].core_part_space.cutoff, [parts2][part2].core_part_space.cutoff)
-                            cutoff2 = cutoff2 * cutoff2
-                            var r2 = dx*dx + dy*dy + dz*dz
-                          end
                            --If its out of range, reset necell_lo and stop
                            if abs(sort_distance) > max_cutoff then
                                necell_lo = int1d(j)
@@ -1080,8 +1026,8 @@ local __demand(__leaf) task self_task([parts1], [config],allparts : region(ispac
                                     break
                                 end
                                 --Its a valid one, check for the sorted distance
-                                var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] 
-                                                  - [parts1][part2].neighbour_part_space.sorting_positions[dir]
+                                var sort_distance = [parts1][part1].neighbour_part_space.sorting_positions[dir] - config[0].neighbour_config.shift_vectors[dir]
+                                                  - ([parts1][part2].neighbour_part_space.sorting_positions[dir])
 --                            if [parts1][part1].core_part_space.id == int1d(0) then
 --                                 format.println("Checking 0 and {}, cell {} {} {}", [parts1][part2].core_part_space.id, ne_cell.x, ne_cell.y, ne_cell.z)
 --                            end
